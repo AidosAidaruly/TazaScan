@@ -1,0 +1,70 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ServingType {
+  per100g
+  per100ml
+}
+
+enum ProductDataStatus {
+  unverified
+  community
+  verified
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+model Product {
+  id             String            @id @default(uuid())
+  barcode        String            @unique
+  name           String
+  brand          String?
+  category       String
+  ingredients    String[]
+  servingType    ServingType
+  energyKcal     Float?
+  protein        Float?
+  carbohydrates  Float?
+  sugars         Float?
+  fat            Float?
+  saturatedFat   Float?
+  fiber          Float?
+  salt           Float?
+  healthScore    Int
+  imageUrl       String?
+  dataStatus     ProductDataStatus @default(unverified)
+  source         String?
+  lastVerifiedAt DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([barcode])
+  @@index([name])
+  @@index([brand])
+  @@index([category])
+  @@map("products")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(user)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}

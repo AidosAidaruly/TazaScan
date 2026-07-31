@@ -1,0 +1,45 @@
+import dotenv from 'dotenv';
+import { z } from 'zod';
+
+dotenv.config();
+
+const envSchema = z.object({
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
+  PORT: z.coerce.number().int().positive().default(4000),
+  DATABASE_URL: z.string().min(1),
+  CORS_ORIGIN: z.string().default(''),
+  JWT_SECRET: z.string().optional(),
+  JWT_ACCESS_TOKEN_TTL: z.string().default('15m'),
+  ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD: z.string().min(12).optional()
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  console.error('Invalid environment variables', parsedEnv.error.flatten().fieldErrors);
+  process.exit(1);
+}
+
+if (parsedEnv.data.NODE_ENV === 'production') {
+  const missingSecrets = ['JWT_SECRET', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'].filter(
+    (key) => !parsedEnv.data[key as keyof typeof parsedEnv.data]
+  );
+
+  if (missingSecrets.length > 0) {
+    console.error(`Missing required production secrets: ${missingSecrets.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+export const env = {
+  ...parsedEnv.data,
+  jwtSecret:
+    parsedEnv.data.JWT_SECRET ??
+    'development-only-change-this-secret-before-production',
+  corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+};
