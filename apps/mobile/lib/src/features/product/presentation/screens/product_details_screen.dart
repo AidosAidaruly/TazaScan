@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/widgets/health_score_card.dart';
+import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_hero_card.dart';
 import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
@@ -20,7 +21,9 @@ class ProductDetailsScreen extends StatelessWidget {
           children: [
             ProductHeroCard(product: product),
             const SizedBox(height: 16),
-            HealthScoreCard(score: product.healthScore),
+            HealthScoreCard(nutritionScore: product.nutritionScore),
+            const SizedBox(height: 16),
+            NutritionScoreDetailsSection(score: product.nutritionScore),
             const SizedBox(height: 16),
             ProductInfoSection(product: product),
             const SizedBox(height: 16),

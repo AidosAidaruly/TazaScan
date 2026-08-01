@@ -13,6 +13,10 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).pushNamed(AppRoutes.scanner);
   }
 
+  void _openPhotoSearch(BuildContext context) {
+    Navigator.of(context).pushNamed(AppRoutes.photoSearch);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,6 +29,12 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.qr_code_scanner_rounded,
               label: 'Scan Product',
               onPressed: () => _openScanner(context),
+            ),
+            const SizedBox(height: 12),
+            HomeActionButton.outlined(
+              icon: Icons.photo_camera_rounded,
+              label: 'Photo Search',
+              onPressed: () => _openPhotoSearch(context),
             ),
             const SizedBox(height: 12),
             HomeActionButton.outlined(

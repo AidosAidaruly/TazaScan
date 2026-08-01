@@ -149,7 +149,7 @@ export function ProductsListPage() {
                   <td>
                     <Link to={`/products/${product.id}`}>{product.name}</Link>
                   </td>
-                  <td>{product.brand ?? '—'}</td>
+                  <td>{product.brand ?? '-'}</td>
                   <td>{product.barcode}</td>
                   <td>{product.category}</td>
                   <td>
@@ -157,7 +157,11 @@ export function ProductsListPage() {
                       {product.dataStatus}
                     </span>
                   </td>
-                  <td>{product.healthScore}</td>
+                  <td>
+                    {product.nutritionScore.grade ?? '-'} / {product.nutritionScore.score ?? '-'}
+                    <br />
+                    <small>{product.nutritionScore.status}</small>
+                  </td>
                   <td>{formatDate(product.lastVerifiedAt)}</td>
                   <td>
                     <div className="table-actions">

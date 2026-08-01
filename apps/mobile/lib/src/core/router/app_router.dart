@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/features/home/presentation/screens/home_screen.dart';
+import 'package:project/src/features/photo_search/presentation/screens/photo_search_screen.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
@@ -8,6 +9,7 @@ import 'package:project/src/features/scanner/presentation/screens/scanner_screen
 abstract final class AppRoutes {
   static const home = '/';
   static const scanner = '/scanner';
+  static const photoSearch = '/photo-search';
   static const productDetails = '/product-details';
   static const productLookupError = '/product-lookup-error';
 }
@@ -21,6 +23,10 @@ abstract final class AppRouter {
       ),
       AppRoutes.scanner => MaterialPageRoute(
         builder: (_) => const ScannerScreen(),
+        settings: settings,
+      ),
+      AppRoutes.photoSearch => MaterialPageRoute(
+        builder: (_) => const PhotoSearchScreen(),
         settings: settings,
       ),
       AppRoutes.productDetails => MaterialPageRoute(

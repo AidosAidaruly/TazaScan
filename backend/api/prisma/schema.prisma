@@ -24,6 +24,20 @@ enum UserRole {
   user
 }
 
+enum ScoreGrade {
+  A
+  B
+  C
+  D
+  E
+}
+
+enum ScoreStatus {
+  calculated
+  insufficient_data
+  requires_review
+}
+
 model Product {
   id             String            @id @default(uuid())
   barcode        String            @unique
@@ -40,7 +54,17 @@ model Product {
   saturatedFat   Float?
   fiber          Float?
   salt           Float?
-  healthScore    Int
+  healthScore    Int               @default(0)
+  calculatedScore Int?
+  calculatedGrade ScoreGrade?
+  scoreStatus    ScoreStatus       @default(insufficient_data)
+  scoreAlgorithm String?
+  scoreVersion   String?
+  scoreCalculatedAt DateTime?
+  scoreDetails   Json?
+  manualScoreOverride Int?
+  manualOverrideReason String?
+  manualOverrideAt DateTime?
   imageUrl       String?
   dataStatus     ProductDataStatus @default(unverified)
   source         String?

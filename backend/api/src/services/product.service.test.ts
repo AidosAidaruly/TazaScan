@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Product } from '../generated/prisma/client';
 import type { ListProductsQuery } from '../schemas/product.schema';
 import { productBodySchema } from '../schemas/product.schema';
+import type { ScoreEngine } from '../scoring/contracts/score-engine';
+import type { ScoreInput, ScoreResult } from '../scoring/types/score-result';
 import { ProductService } from './product.service';
 
 const now = new Date('2026-07-31T00:00:00.000Z');
@@ -24,6 +26,27 @@ function createProduct(overrides: Partial<Product> = {}): Product {
     fiber: null,
     salt: 0,
     healthScore: 65,
+    calculatedScore: 65,
+    calculatedGrade: 'D',
+    scoreStatus: 'calculated',
+    scoreAlgorithm: 'test',
+    scoreVersion: 'test-1',
+    scoreCalculatedAt: now,
+    scoreDetails: {
+      score: 65,
+      grade: 'D',
+      status: 'calculated',
+      positiveReasons: [],
+      negativeReasons: [],
+      warnings: [],
+      missingFields: [],
+      algorithm: 'test',
+      algorithmVersion: 'test-1',
+      calculatedAt: now.toISOString()
+    },
+    manualScoreOverride: null,
+    manualOverrideReason: null,
+    manualOverrideAt: null,
     imageUrl: null,
     dataStatus: 'verified',
     source: 'test',
@@ -52,16 +75,37 @@ function createProductBody(overrides = {}) {
       fiber: null,
       salt: 0
     },
-    healthScore: 65,
     dataStatus: 'verified',
     ...overrides
   };
+}
+
+class FakeScoreEngine implements ScoreEngine {
+  inputs: ScoreInput[] = [];
+
+  calculate(input: ScoreInput): ScoreResult {
+    this.inputs.push(input);
+
+    return {
+      score: 65,
+      grade: 'D',
+      status: 'calculated',
+      positiveReasons: [],
+      negativeReasons: ['High sugar content.'],
+      warnings: [],
+      missingFields: [],
+      algorithm: 'test',
+      algorithmVersion: 'test-1',
+      calculatedAt: now.toISOString()
+    };
+  }
 }
 
 class FakeProductRepository {
   products: Product[] = [];
   deletedIds: string[] = [];
   lastListFilters: unknown;
+  lastScoreResult: ScoreResult | null = null;
 
   list(filters: ListProductsQuery) {
     this.lastListFilters = filters;
@@ -93,13 +137,15 @@ class FakeProductRepository {
     );
   }
 
-  create(_data: unknown) {
+  create(_data: unknown, _scoreResult: ScoreResult) {
+    this.lastScoreResult = _scoreResult;
     const product = createProduct();
     this.products.push(product);
     return Promise.resolve(product);
   }
 
-  update(id: string, _data: unknown) {
+  update(id: string, _data: unknown, _scoreResult: ScoreResult) {
+    this.lastScoreResult = _scoreResult;
     const product = createProduct({ id, name: 'Updated product' });
     this.products = this.products.map((item) => (item.id === id ? product : item));
     return Promise.resolve(product);
@@ -113,9 +159,12 @@ class FakeProductRepository {
 }
 
 function createService(repository = new FakeProductRepository()) {
+  const scoreEngine = new FakeScoreEngine();
+
   return {
     repository,
-    service: new ProductService(repository)
+    scoreEngine,
+    service: new ProductService(repository, scoreEngine)
   };
 }
 
@@ -127,6 +176,7 @@ describe('ProductService', () => {
 
     expect(product.barcode).toBe('5449000000996');
     expect(product.nutritionFacts.sugars).toBe(10.6);
+    expect(product.nutritionScore.status).toBe('calculated');
   });
 
   it('returns 409 for duplicate barcode', async () => {
@@ -163,13 +213,27 @@ describe('ProductService', () => {
   it('updates a product', async () => {
     const repository = new FakeProductRepository();
     repository.products = [createProduct()];
-    const { service } = createService(repository);
+    const { scoreEngine, service } = createService(repository);
 
     const product = await service.update('11111111-1111-4111-8111-111111111111', {
       name: 'Updated product'
     });
 
     expect(product.name).toBe('Updated product');
+    expect(scoreEngine.inputs[0]?.category).toBe('Soft Drinks');
+  });
+
+  it('automatically recalculates after update', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [createProduct()];
+    const { service } = createService(repository);
+
+    await service.update('11111111-1111-4111-8111-111111111111', {
+      nutritionFacts: { sugars: 0 }
+    });
+
+    expect(repository.lastScoreResult?.algorithm).toBe('test');
+    expect(repository.lastScoreResult?.status).toBe('calculated');
   });
 
   it('deletes a product', async () => {

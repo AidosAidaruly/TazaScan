@@ -15,7 +15,6 @@ export type ProductFormValues = {
   saturatedFat: string
   fiber: string
   salt: string
-  healthScore: string
   imageUrl: string
   dataStatus: 'unverified' | 'community' | 'verified'
   source: string
@@ -37,7 +36,6 @@ export const emptyProductFormValues: ProductFormValues = {
   saturatedFat: '',
   fiber: '',
   salt: '',
-  healthScore: '50',
   imageUrl: '',
   dataStatus: 'unverified',
   source: '',
@@ -60,7 +58,6 @@ export function productToFormValues(product: ProductDto): ProductFormValues {
     saturatedFat: numberToInput(product.nutritionFacts.saturatedFat),
     fiber: numberToInput(product.nutritionFacts.fiber),
     salt: numberToInput(product.nutritionFacts.salt),
-    healthScore: String(product.healthScore),
     imageUrl: product.imageUrl ?? '',
     dataStatus: product.dataStatus,
     source: product.source ?? '',
@@ -89,7 +86,6 @@ export function formValuesToPayload(values: ProductFormValues): ProductPayload {
       fiber: nullableNumber(values.fiber),
       salt: nullableNumber(values.salt),
     },
-    healthScore: Number(values.healthScore),
     imageUrl: optionalText(values.imageUrl),
     dataStatus: values.dataStatus,
     source: optionalText(values.source),

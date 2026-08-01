@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { NutriScoreEngine } from '../src/scoring/engines/nutri-score.engine';
 import { PasswordService } from '../src/services/password.service';
 
 const adapter = new PrismaPg({
@@ -9,9 +10,41 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 const passwordService = new PasswordService();
+const scoreEngine = new NutriScoreEngine();
 
 async function main() {
   await seedAdminUser();
+  const cocaColaScore = scoreEngine.calculate({
+    servingType: 'per100ml',
+    energyKcal: 42,
+    protein: 0,
+    carbohydrates: 10.6,
+    sugars: 10.6,
+    fat: 0,
+    saturatedFat: 0,
+    fiber: 0,
+    salt: 0,
+    category: 'Soft Drinks',
+    ingredients: [
+      'Carbonated water',
+      'Sugar',
+      'Colour caramel E150d',
+      'Phosphoric acid',
+      'Natural flavourings',
+      'Caffeine'
+    ]
+  });
+  const scoreData = {
+    healthScore: cocaColaScore.score ?? 0,
+    calculatedScore: cocaColaScore.score,
+    calculatedGrade: cocaColaScore.grade,
+    scoreStatus: cocaColaScore.status,
+    scoreAlgorithm: cocaColaScore.algorithm,
+    scoreVersion: cocaColaScore.algorithmVersion,
+    scoreCalculatedAt: new Date(cocaColaScore.calculatedAt),
+    scoreDetails: cocaColaScore
+  };
+
   await prisma.product.upsert({
     where: {
       barcode: '5449000000996'
@@ -35,9 +68,9 @@ async function main() {
       sugars: 10.6,
       fat: 0,
       saturatedFat: 0,
-      fiber: null,
+      fiber: 0,
       salt: 0,
-      healthScore: 65,
+      ...scoreData,
       imageUrl: null,
       dataStatus: 'verified',
       source: 'seed',
@@ -63,9 +96,9 @@ async function main() {
       sugars: 10.6,
       fat: 0,
       saturatedFat: 0,
-      fiber: null,
+      fiber: 0,
       salt: 0,
-      healthScore: 65,
+      ...scoreData,
       imageUrl: null,
       dataStatus: 'verified',
       source: 'seed',

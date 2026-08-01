@@ -72,20 +72,42 @@ export function ProductDetailsPage() {
         <div className="details-card">
           <dl>
             <dt>Brand</dt>
-            <dd>{product.brand ?? '—'}</dd>
+            <dd>{product.brand ?? '-'}</dd>
             <dt>Category</dt>
             <dd>{product.category}</dd>
             <dt>Barcode</dt>
             <dd>{product.barcode}</dd>
             <dt>Data status</dt>
             <dd>{product.dataStatus}</dd>
-            <dt>Health score</dt>
-            <dd>{product.healthScore}</dd>
+            <dt>Calculated score</dt>
+            <dd>{product.nutritionScore.score ?? '-'}</dd>
+            <dt>Grade</dt>
+            <dd>{product.nutritionScore.grade ?? '-'}</dd>
+            <dt>Calculation status</dt>
+            <dd>{product.nutritionScore.status}</dd>
+            <dt>Algorithm</dt>
+            <dd>
+              {product.nutritionScore.algorithm} {product.nutritionScore.algorithmVersion}
+            </dd>
             <dt>Last verified</dt>
             <dd>{formatDate(product.lastVerifiedAt)}</dd>
           </dl>
         </div>
       </div>
+
+      <section className="details-card">
+        <h2>Score review</h2>
+        <dl className="nutrition-grid">
+          <div>
+            <dt>Missing fields</dt>
+            <dd>{product.nutritionScore.missingFields.join(', ') || 'None'}</dd>
+          </div>
+          <div>
+            <dt>Warnings</dt>
+            <dd>{product.nutritionScore.warnings.join(', ') || 'None'}</dd>
+          </div>
+        </dl>
+      </section>
 
       <section className="details-card">
         <h2>Ingredients</h2>

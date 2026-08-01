@@ -15,6 +15,7 @@ describe('product form mapping', () => {
 
     expect(payload.nutritionFacts.sugars).toBeNull()
     expect(payload.nutritionFacts.protein).toBe(0)
+    expect('healthScore' in payload).toBe(false)
   })
 
   it('validates supported barcodes', () => {

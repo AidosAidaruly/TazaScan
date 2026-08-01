@@ -7,7 +7,11 @@ void main() {
 
     expect(find.text('Project'), findsOneWidget);
     expect(find.text('Scan Product'), findsOneWidget);
+    expect(find.text('Photo Search'), findsOneWidget);
     expect(find.text('Search Product'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('No recent scans yet'), 200);
+
     expect(find.text('No recent scans yet'), findsOneWidget);
   });
 }

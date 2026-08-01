@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isSupportedProductBarcode } from '../utils/barcode';
 
-const nullableNumberSchema = z.number().finite().nonnegative().nullable().optional();
+const nullableNumberSchema = z.number().finite().nullable().optional();
 
 export const productIdParamsSchema = z.object({
   id: z.string().uuid()
@@ -40,7 +40,8 @@ export const productBodySchema = z.object({
     fiber: nullableNumberSchema,
     salt: nullableNumberSchema
   }),
-  healthScore: z.number().int().min(0).max(100),
+  manualScoreOverride: z.number().int().min(0).max(100).nullable().optional(),
+  manualOverrideReason: z.string().trim().min(1).nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
   dataStatus: z.enum(['unverified', 'community', 'verified']).default('unverified'),
   source: z.string().trim().min(1).nullable().optional(),

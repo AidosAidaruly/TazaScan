@@ -7,9 +7,11 @@ import {
   listProducts,
   updateProduct
 } from '../controllers/product.controller';
+import { searchProductsByPhoto } from '../controllers/photo-search.controller';
 import { asyncHandler } from '../middleware/async-handler';
 import { authenticate } from '../middleware/authenticate';
 import { authorizeRole } from '../middleware/authorize-role';
+import { uploadProductImage } from '../middleware/image-upload';
 import { validate } from '../middleware/validate';
 import {
   barcodeParamsSchema,
@@ -31,6 +33,12 @@ productRouter.get(
   '/barcode/:barcode',
   validate(barcodeParamsSchema, 'params'),
   asyncHandler(getProductByBarcode)
+);
+
+productRouter.post(
+  '/photo-search',
+  uploadProductImage,
+  asyncHandler(searchProductsByPhoto)
 );
 
 productRouter.get(

@@ -1,6 +1,7 @@
 import { prisma } from '../prisma/client';
 import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
 import type { Prisma } from '../generated/prisma/client';
+import type { ScoreResult } from '../scoring/types/score-result';
 
 export class ProductRepository {
   list(filters: ListProductsQuery) {
@@ -30,16 +31,39 @@ export class ProductRepository {
     });
   }
 
-  create(data: ProductBody) {
-    return prisma.product.create({
-      data: this.toPrismaData(data)
+  searchByNameOrBrand(query: string, limit: number) {
+    return prisma.product.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { brand: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit
     });
   }
 
-  update(id: string, data: UpdateProductBody) {
+  create(data: ProductBody, scoreResult: ScoreResult) {
+    const productData: Prisma.ProductCreateInput = {
+      ...this.toCreatePrismaData(data),
+      ...this.toScorePrismaData(scoreResult)
+    };
+
+    return prisma.product.create({
+      data: productData
+    });
+  }
+
+  update(id: string, data: UpdateProductBody, scoreResult: ScoreResult) {
+    const productData: Prisma.ProductUpdateInput = {
+      ...this.toUpdatePrismaData(data),
+      ...this.toScorePrismaData(scoreResult)
+    };
+
     return prisma.product.update({
       where: { id },
-      data: this.toPrismaData(data)
+      data: productData
     });
   }
 
@@ -63,9 +87,47 @@ export class ProductRepository {
     };
   }
 
-  private toPrismaData(data: ProductBody): Prisma.ProductCreateInput;
-  private toPrismaData(data: UpdateProductBody): Prisma.ProductUpdateInput;
-  private toPrismaData(data: ProductBody | UpdateProductBody) {
+  private toCreatePrismaData(data: ProductBody): Prisma.ProductCreateInput {
+    const productData: Prisma.ProductCreateInput = {
+      barcode: data.barcode,
+      name: data.name,
+      category: data.category,
+      ingredients: data.ingredients,
+      servingType: data.nutritionFacts.servingType,
+      dataStatus: data.dataStatus
+    };
+
+    this.assignDefined(productData, 'brand', data.brand);
+    this.assignDefined(productData, 'energyKcal', data.nutritionFacts.energyKcal);
+    this.assignDefined(productData, 'protein', data.nutritionFacts.protein);
+    this.assignDefined(productData, 'carbohydrates', data.nutritionFacts.carbohydrates);
+    this.assignDefined(productData, 'sugars', data.nutritionFacts.sugars);
+    this.assignDefined(productData, 'fat', data.nutritionFacts.fat);
+    this.assignDefined(productData, 'saturatedFat', data.nutritionFacts.saturatedFat);
+    this.assignDefined(productData, 'fiber', data.nutritionFacts.fiber);
+    this.assignDefined(productData, 'salt', data.nutritionFacts.salt);
+    this.assignDefined(productData, 'manualScoreOverride', data.manualScoreOverride);
+    this.assignDefined(productData, 'manualOverrideReason', data.manualOverrideReason);
+    this.assignDefined(productData, 'imageUrl', data.imageUrl);
+    this.assignDefined(productData, 'source', data.source);
+    this.assignDefined(
+      productData,
+      'lastVerifiedAt',
+      data.lastVerifiedAt ? new Date(data.lastVerifiedAt) : data.lastVerifiedAt
+    );
+
+    if (data.manualScoreOverride !== undefined || data.manualOverrideReason !== undefined) {
+      productData.manualOverrideAt = data.manualScoreOverride === null ? null : new Date();
+    }
+
+    return productData;
+  }
+
+  private toUpdatePrismaData(data: UpdateProductBody): Prisma.ProductUpdateInput {
+    return this.toPrismaData(data);
+  }
+
+  private toPrismaData(data: ProductBody | UpdateProductBody): Prisma.ProductUpdateInput {
     const nutritionFacts = data.nutritionFacts;
     const productData: Prisma.ProductUpdateInput = {};
 
@@ -74,7 +136,15 @@ export class ProductRepository {
     this.assignDefined(productData, 'brand', data.brand);
     this.assignDefined(productData, 'category', data.category);
     this.assignDefined(productData, 'ingredients', data.ingredients);
-    this.assignDefined(productData, 'healthScore', data.healthScore);
+    this.assignDefined(productData, 'manualScoreOverride', data.manualScoreOverride);
+    this.assignDefined(
+      productData,
+      'manualOverrideReason',
+      data.manualOverrideReason
+    );
+    if (data.manualScoreOverride !== undefined || data.manualOverrideReason !== undefined) {
+      productData.manualOverrideAt = data.manualScoreOverride === null ? null : new Date();
+    }
     this.assignDefined(productData, 'imageUrl', data.imageUrl);
     this.assignDefined(productData, 'dataStatus', data.dataStatus);
     this.assignDefined(productData, 'source', data.source);
@@ -97,6 +167,19 @@ export class ProductRepository {
     }
 
     return productData;
+  }
+
+  private toScorePrismaData(scoreResult: ScoreResult) {
+    return {
+      calculatedScore: scoreResult.score,
+      calculatedGrade: scoreResult.grade,
+      scoreStatus: scoreResult.status,
+      scoreAlgorithm: scoreResult.algorithm,
+      scoreVersion: scoreResult.algorithmVersion,
+      scoreCalculatedAt: new Date(scoreResult.calculatedAt),
+      scoreDetails: scoreResult,
+      healthScore: scoreResult.score ?? 0
+    };
   }
 
   private assignDefined<T extends object, K extends keyof T>(

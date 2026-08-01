@@ -1,10 +1,11 @@
 import type { RequestHandler } from 'express';
 import { ProductRepository } from '../repositories/product.repository';
 import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import { NutriScoreEngine } from '../scoring/engines/nutri-score.engine';
 import { ProductService } from '../services/product.service';
 import { requireParam } from '../utils/request';
 
-const productService = new ProductService(new ProductRepository());
+const productService = new ProductService(new ProductRepository(), new NutriScoreEngine());
 
 export const listProducts: RequestHandler = async (request, response) => {
   const result = await productService.list(request.query as unknown as ListProductsQuery);

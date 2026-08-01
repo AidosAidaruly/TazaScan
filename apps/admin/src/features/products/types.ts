@@ -1,5 +1,7 @@
 export type ServingType = 'per100g' | 'per100ml'
 export type ProductDataStatus = 'unverified' | 'community' | 'verified'
+export type ScoreStatus = 'calculated' | 'insufficient_data' | 'requires_review'
+export type ScoreGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 
 export type NutritionFactsDto = {
   servingType: ServingType
@@ -22,6 +24,21 @@ export type ProductDto = {
   ingredients: string[]
   nutritionFacts: NutritionFactsDto
   healthScore: number
+  nutritionScore: {
+    score: number | null
+    grade: ScoreGrade | null
+    status: ScoreStatus
+    positiveReasons: string[]
+    negativeReasons: string[]
+    warnings: string[]
+    missingFields: string[]
+    algorithm: string
+    algorithmVersion: string
+    calculatedAt: string
+  }
+  manualScoreOverride: number | null
+  manualOverrideReason: string | null
+  manualOverrideAt: string | null
   imageUrl: string | null
   dataStatus: ProductDataStatus
   source: string | null
@@ -51,7 +68,8 @@ export type ProductPayload = {
   category: string
   ingredients: string[]
   nutritionFacts: NutritionFactsDto
-  healthScore: number
+  manualScoreOverride?: number | null
+  manualOverrideReason?: string | null
   imageUrl?: string | null
   dataStatus: ProductDataStatus
   source?: string | null

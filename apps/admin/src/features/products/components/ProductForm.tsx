@@ -127,16 +127,6 @@ export function ProductForm({
       <section className="form-section">
         <h2>Status</h2>
         <div className="form-grid">
-          <TextField
-            label="Health score"
-            type="number"
-            min="0"
-            max="100"
-            value={values.healthScore}
-            error={errors.healthScore}
-            onChange={(event) => updateValue('healthScore', event.target.value)}
-            required
-          />
           <SelectField
             label="Data status"
             value={values.dataStatus}
@@ -191,12 +181,6 @@ function validate(values: ProductFormValues): FieldErrors {
 
   if (!values.category.trim()) {
     errors.category = 'Category is required.'
-  }
-
-  const healthScore = Number(values.healthScore)
-
-  if (!Number.isInteger(healthScore) || healthScore < 0 || healthScore > 100) {
-    errors.healthScore = 'Health score must be between 0 and 100.'
   }
 
   return errors

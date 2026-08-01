@@ -1,5 +1,7 @@
 import type { Product } from '../generated/prisma/client';
 import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type { ScoreEngine } from '../scoring/contracts/score-engine';
+import type { ScoreInput } from '../scoring/types/score-result';
 import type { PaginatedResponse } from '../types/pagination';
 import type { ProductDto } from '../types/product';
 import { toProductDto } from '../types/product';
@@ -9,13 +11,18 @@ type ProductRepositoryContract = {
   list(filters: ListProductsQuery): Promise<[Product[], number]>;
   findById(id: string): Promise<Product | null>;
   findByBarcode(barcode: string): Promise<Product | null>;
-  create(data: ProductBody): Promise<Product>;
-  update(id: string, data: UpdateProductBody): Promise<Product>;
+  create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
+  update(id: string, data: UpdateProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   delete(id: string): Promise<Product>;
 };
 
+type NumericNutritionField = Exclude<keyof ProductBody['nutritionFacts'], 'servingType'>;
+
 export class ProductService {
-  constructor(private readonly productRepository: ProductRepositoryContract) {}
+  constructor(
+    private readonly productRepository: ProductRepositoryContract,
+    private readonly scoreEngine: ScoreEngine
+  ) {}
 
   async list(filters: ListProductsQuery): Promise<PaginatedResponse<ProductDto>> {
     const [products, total] = await this.productRepository.list(filters);
@@ -53,19 +60,45 @@ export class ProductService {
 
   async create(data: ProductBody) {
     await this.ensureBarcodeAvailable(data.barcode);
-    const product = await this.productRepository.create(data);
+    const scoreResult = this.scoreEngine.calculate(this.toScoreInput(data));
+    const product = await this.productRepository.create(data, scoreResult);
 
     return toProductDto(product);
   }
 
   async update(id: string, data: UpdateProductBody) {
-    await this.ensureExists(id);
+    const existingProduct = await this.ensureExists(id);
 
     if (data.barcode) {
       await this.ensureBarcodeAvailable(data.barcode, id);
     }
 
-    const product = await this.productRepository.update(id, data);
+    const scoreInput = this.toScoreInput({
+      barcode: data.barcode ?? existingProduct.barcode,
+      name: data.name ?? existingProduct.name,
+      brand: data.brand ?? existingProduct.brand,
+      category: data.category ?? existingProduct.category,
+      ingredients: data.ingredients ?? existingProduct.ingredients,
+      nutritionFacts: {
+        servingType: data.nutritionFacts?.servingType ?? existingProduct.servingType,
+        energyKcal: this.readNutritionValue(data, existingProduct, 'energyKcal'),
+        protein: this.readNutritionValue(data, existingProduct, 'protein'),
+        carbohydrates: this.readNutritionValue(data, existingProduct, 'carbohydrates'),
+        sugars: this.readNutritionValue(data, existingProduct, 'sugars'),
+        fat: this.readNutritionValue(data, existingProduct, 'fat'),
+        saturatedFat: this.readNutritionValue(data, existingProduct, 'saturatedFat'),
+        fiber: this.readNutritionValue(data, existingProduct, 'fiber'),
+        salt: this.readNutritionValue(data, existingProduct, 'salt')
+      },
+      manualScoreOverride: data.manualScoreOverride,
+      manualOverrideReason: data.manualOverrideReason,
+      imageUrl: data.imageUrl,
+      dataStatus: data.dataStatus ?? existingProduct.dataStatus,
+      source: data.source,
+      lastVerifiedAt: data.lastVerifiedAt
+    });
+    const scoreResult = this.scoreEngine.calculate(scoreInput);
+    const product = await this.productRepository.update(id, data, scoreResult);
 
     return toProductDto(product);
   }
@@ -81,6 +114,8 @@ export class ProductService {
     if (!product) {
       throw new HttpError(404, 'Product not found');
     }
+
+    return product;
   }
 
   private async ensureBarcodeAvailable(barcode: string, currentProductId?: string) {
@@ -89,5 +124,33 @@ export class ProductService {
     if (product && product.id !== currentProductId) {
       throw new HttpError(409, 'Barcode already exists');
     }
+  }
+
+  private toScoreInput(data: ProductBody | (UpdateProductBody & ProductBody)): ScoreInput {
+    return {
+      servingType: data.nutritionFacts.servingType,
+      energyKcal: data.nutritionFacts.energyKcal ?? null,
+      protein: data.nutritionFacts.protein ?? null,
+      carbohydrates: data.nutritionFacts.carbohydrates ?? null,
+      sugars: data.nutritionFacts.sugars ?? null,
+      fat: data.nutritionFacts.fat ?? null,
+      saturatedFat: data.nutritionFacts.saturatedFat ?? null,
+      fiber: data.nutritionFacts.fiber ?? null,
+      salt: data.nutritionFacts.salt ?? null,
+      category: data.category,
+      ingredients: data.ingredients
+    };
+  }
+
+  private readNutritionValue(
+    data: UpdateProductBody,
+    existingProduct: Product,
+    field: NumericNutritionField
+  ) {
+    if (data.nutritionFacts && field in data.nutritionFacts) {
+      return data.nutritionFacts[field];
+    }
+
+    return existingProduct[field];
   }
 }
