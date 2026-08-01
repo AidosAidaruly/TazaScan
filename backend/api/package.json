@@ -1,7 +1,7 @@
 {
-  "name": "@project/api",
+  "name": "@tazascan/api",
   "version": "1.0.0",
-  "description": "Backend API for Project.",
+  "description": "Backend API for TazaScan.",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
-    "test": "vitest run src/services/product.service.test.ts src/services/auth.service.test.ts src/middleware/authentication.test.ts src/scoring/engines/nutri-score.engine.test.ts",
+    "test": "vitest run src/services/product.service.test.ts src/services/product-submission.service.test.ts src/services/auth.service.test.ts src/middleware/authentication.test.ts src/scoring/engines/nutri-score.engine.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -27,6 +27,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "pg": "^8.22.0",

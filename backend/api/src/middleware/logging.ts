@@ -6,7 +6,14 @@ export const loggingMiddleware: RequestHandler = (request, response, next) => {
   response.on('finish', () => {
     const durationMs = Math.round(performance.now() - startedAt);
     console.info(
-      `${request.method} ${request.originalUrl} ${response.statusCode} ${durationMs}ms`
+      JSON.stringify({
+        level: 'info',
+        event: 'request',
+        method: request.method,
+        path: request.originalUrl,
+        statusCode: response.statusCode,
+        durationMs
+      })
     );
   });
 

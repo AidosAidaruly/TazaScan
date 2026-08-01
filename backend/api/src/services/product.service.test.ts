@@ -229,7 +229,7 @@ describe('ProductService', () => {
     const { service } = createService(repository);
 
     await service.update('11111111-1111-4111-8111-111111111111', {
-      nutritionFacts: { sugars: 0 }
+      nutritionFacts: { servingType: 'per100ml', sugars: 0 }
     });
 
     expect(repository.lastScoreResult?.algorithm).toBe('test');

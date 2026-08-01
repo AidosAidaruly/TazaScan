@@ -38,6 +38,13 @@ enum ScoreStatus {
   requires_review
 }
 
+enum ProductSubmissionStatus {
+  pending
+  approved
+  rejected
+  needs_correction
+}
+
 model Product {
   id             String            @id @default(uuid())
   barcode        String            @unique
@@ -69,6 +76,7 @@ model Product {
   dataStatus     ProductDataStatus @default(unverified)
   source         String?
   lastVerifiedAt DateTime?
+  submissions    ProductSubmission[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -79,12 +87,50 @@ model Product {
   @@map("products")
 }
 
+model ProductSubmission {
+  id                   String                  @id @default(uuid())
+  barcode              String?
+  name                 String?
+  brand                String?
+  category             String?
+  ingredients          String[]
+  servingType          ServingType?
+  energyKcal           Float?
+  protein              Float?
+  carbohydrates        Float?
+  sugars               Float?
+  fat                  Float?
+  saturatedFat         Float?
+  fiber                Float?
+  salt                 Float?
+  frontImageUrl        String?
+  ingredientsImageUrl  String?
+  nutritionImageUrl    String?
+  barcodeImageUrl      String?
+  status               ProductSubmissionStatus @default(pending)
+  moderationNote       String?
+  submittedAt          DateTime                @default(now())
+  reviewedAt           DateTime?
+  reviewedByUserId     String?
+  createdProductId     String?
+  anonymousDeviceId    String?
+
+  reviewedByUser       User?                   @relation(fields: [reviewedByUserId], references: [id])
+  createdProduct       Product?                @relation(fields: [createdProductId], references: [id])
+
+  @@index([status])
+  @@index([barcode])
+  @@index([submittedAt])
+  @@map("product_submissions")
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
   role         UserRole @default(user)
   isActive     Boolean  @default(true)
+  reviewedSubmissions ProductSubmission[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

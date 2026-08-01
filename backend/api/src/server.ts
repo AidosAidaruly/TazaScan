@@ -5,11 +5,16 @@ import { prisma } from './prisma/client';
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
-  console.info(`Project API is running on port ${env.PORT}`);
+  console.info(JSON.stringify({
+    level: 'info',
+    event: 'startup',
+    service: 'tazascan-api',
+    port: env.PORT
+  }));
 });
 
 async function shutdown(signal: string) {
-  console.info(`${signal} received. Shutting down API.`);
+  console.info(JSON.stringify({ level: 'info', event: 'shutdown', signal }));
 
   server.close(async () => {
     await prisma.$disconnect();

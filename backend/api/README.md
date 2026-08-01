@@ -1,13 +1,13 @@
-# Project API
+# TazaScan API
 
-Backend API for Project.
+Backend API for TazaScan.
 
 ## Environment
 
 Copy `.env.example` to `.env` and set real local values:
 
 ```text
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/project?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/tazascan?schema=public"
 JWT_SECRET="use-a-long-random-secret"
 JWT_ACCESS_TOKEN_TTL="15m"
 ADMIN_EMAIL="admin@example.com"
@@ -152,3 +152,61 @@ Known limitations:
 - If required nutrition is missing, `scoreStatus` becomes `insufficient_data`.
 - Contradictions such as negative values, sugars greater than carbohydrates, saturated fat greater than fat, or sugar ingredients with 0 g sugars produce `requires_review`.
 - This score is informational only and is not medical advice.
+
+## Product Submissions
+
+Users can submit products for moderation without registration:
+
+```text
+POST /product-submissions
+```
+
+The endpoint accepts `multipart/form-data` with optional product fields and package photos:
+
+```text
+frontImage
+ingredientsImage
+nutritionImage
+barcodeImage
+```
+
+At least one identifying signal is required: barcode, product name, or front package image.
+
+Admin-only moderation endpoints:
+
+```text
+GET /product-submissions
+GET /product-submissions/:id
+PUT /product-submissions/:id/status
+POST /product-submissions/:id/approve
+```
+
+Lifecycle:
+
+```text
+pending -> approved
+pending -> rejected
+pending -> needs_correction
+```
+
+Approval creates a real `Product`, calculates nutrition score, links `createdProductId`, and marks the submission approved inside one database transaction. If product creation fails, the submission is not partially approved.
+
+Local MVP image storage:
+
+- files are saved under `uploads/submissions`
+- filenames are generated UUIDs
+- original filenames are never trusted
+- only `jpeg`, `png`, and `webp` images are accepted
+- executable files are rejected by MIME/type validation
+- submission image URLs are served through admin-authenticated `/product-submissions/uploads/...` routes
+- approved public product images should use `/uploads/products/...` or object storage URLs
+
+Production should move uploads to object storage such as S3, Cloudflare R2, or Supabase Storage. At that point, keep the database fields as public object URLs or signed object references and add image metadata stripping/resizing in the upload pipeline.
+
+Moderation security:
+
+- public submissions are rate-limited
+- user data is unverified until admin approval
+- admins must validate product data before approval
+- duplicate barcode approval returns `409`
+- no user name, email, or phone is collected for this MVP

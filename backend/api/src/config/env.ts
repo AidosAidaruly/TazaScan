@@ -13,7 +13,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().optional(),
   JWT_ACCESS_TOKEN_TTL: z.string().default('15m'),
   ADMIN_EMAIL: z.string().email().optional(),
-  ADMIN_PASSWORD: z.string().min(12).optional()
+  ADMIN_PASSWORD: z.string().min(12).optional(),
+  PUBLIC_UPLOADS_BASE_URL: z.string().url().optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -24,7 +25,14 @@ if (!parsedEnv.success) {
 }
 
 if (parsedEnv.data.NODE_ENV === 'production') {
-  const missingSecrets = ['JWT_SECRET', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'].filter(
+  const missingSecrets = [
+    'JWT_SECRET',
+    'ADMIN_EMAIL',
+    'ADMIN_PASSWORD',
+    'DATABASE_URL',
+    'CORS_ORIGIN',
+    'PUBLIC_UPLOADS_BASE_URL'
+  ].filter(
     (key) => !parsedEnv.data[key as keyof typeof parsedEnv.data]
   );
 
@@ -41,5 +49,6 @@ export const env = {
     'development-only-change-this-secret-before-production',
   corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
     .map((origin) => origin.trim())
-    .filter(Boolean)
+    .filter(Boolean),
+  publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL
 };
