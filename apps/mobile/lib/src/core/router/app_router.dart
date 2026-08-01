@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/features/home/presentation/screens/home_screen.dart';
 import 'package:project/src/features/photo_search/presentation/screens/photo_search_screen.dart';
+import 'package:project/src/features/favorites/presentation/screens/favorites_screen.dart';
+import 'package:project/src/features/history/presentation/screens/history_screen.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/product_details_args.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
+import 'package:project/src/features/profile/presentation/screens/profile_screen.dart';
 import 'package:project/src/features/scanner/presentation/screens/scanner_screen.dart';
 
 abstract final class AppRoutes {
   static const home = '/';
   static const scanner = '/scanner';
   static const photoSearch = '/photo-search';
+  static const favorites = '/favorites';
+  static const history = '/history';
+  static const profile = '/profile';
   static const productDetails = '/product-details';
   static const productLookupError = '/product-lookup-error';
 }
@@ -29,10 +36,27 @@ abstract final class AppRouter {
         builder: (_) => const PhotoSearchScreen(),
         settings: settings,
       ),
+      AppRoutes.favorites => MaterialPageRoute(
+        builder: (_) => const FavoritesScreen(),
+        settings: settings,
+      ),
+      AppRoutes.history => MaterialPageRoute(
+        builder: (_) => const HistoryScreen(),
+        settings: settings,
+      ),
+      AppRoutes.profile => MaterialPageRoute(
+        builder: (_) => const ProfileScreen(),
+        settings: settings,
+      ),
       AppRoutes.productDetails => MaterialPageRoute(
-        builder: (_) => ProductDetailsScreen(
-          product: _readRequiredProductArgument(settings),
-        ),
+        builder: (_) {
+          final args = _readRequiredProductArgument(settings);
+
+          return ProductDetailsScreen(
+            product: args.product,
+            refreshFromNetwork: args.refreshFromNetwork,
+          );
+        },
         settings: settings,
       ),
       AppRoutes.productLookupError => MaterialPageRoute(
@@ -53,11 +77,15 @@ abstract final class AppRouter {
     };
   }
 
-  static Product _readRequiredProductArgument(RouteSettings settings) {
+  static ProductDetailsArgs _readRequiredProductArgument(RouteSettings settings) {
     final argument = settings.arguments;
 
-    if (argument is Product) {
+    if (argument is ProductDetailsArgs) {
       return argument;
+    }
+
+    if (argument is Product) {
+      return ProductDetailsArgs(product: argument);
     }
 
     throw ArgumentError('Route ${settings.name} requires a Product argument.');

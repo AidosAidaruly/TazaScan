@@ -42,6 +42,12 @@ class HomeScreen extends StatelessWidget {
               label: 'Search Product',
               onPressed: () {},
             ),
+            const SizedBox(height: 12),
+            HomeActionButton.outlined(
+              icon: Icons.history_rounded,
+              label: 'History',
+              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.history),
+            ),
             const SizedBox(height: 28),
             Text(
               'Recent scans',

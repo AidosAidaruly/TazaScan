@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/router/app_router.dart';
 
 class HomeBottomNavigation extends StatelessWidget {
   const HomeBottomNavigation({required this.onScanSelected, super.key});
@@ -12,6 +13,16 @@ class HomeBottomNavigation extends StatelessWidget {
       onDestinationSelected: (index) {
         if (index == 1) {
           onScanSelected();
+          return;
+        }
+
+        if (index == 2) {
+          Navigator.of(context).pushNamed(AppRoutes.favorites);
+          return;
+        }
+
+        if (index == 3) {
+          Navigator.of(context).pushNamed(AppRoutes.profile);
         }
       },
       destinations: const [

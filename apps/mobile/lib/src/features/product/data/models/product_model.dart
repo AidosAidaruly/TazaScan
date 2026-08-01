@@ -14,6 +14,7 @@ class ProductModel extends Product {
     required super.updatedAt,
     super.brand,
     super.category,
+    super.imageUrl,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +24,7 @@ class ProductModel extends Product {
       name: json['name'] as String,
       brand: json['brand'] as String?,
       category: json['category'] as String?,
+      imageUrl: json['imageUrl'] as String?,
       ingredients: List<String>.from(json['ingredients'] as List),
       nutritionFacts: Map<String, dynamic>.from(json['nutritionFacts'] as Map),
       healthScore: json['healthScore'] as int,

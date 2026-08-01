@@ -1,17 +1,59 @@
-# project
+# Project Mobile
 
-A new Flutter project.
+Flutter app for the Kazakhstan food product scanner.
 
-## Getting Started
+## Local History and Favorites
 
-This project is a starting point for a Flutter application.
+History and favorites are local-only for the MVP. Users do not need an account yet.
 
-A few resources to get you started if this is your first Flutter project:
+Persistence uses `shared_preferences` because the stored data is small, simple, and bounded:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- history is limited to the latest 100 viewed products
+- favorites are product summaries keyed by product id
+- values are compact JSON strings
+- corrupted local JSON is ignored safely instead of crashing the app
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Local Data Model
+
+Both history and favorites store `CachedProductSummary`:
+
+```text
+product id
+barcode
+name
+brand
+category
+imageUrl
+calculated score
+grade
+createdAt / updatedAt
+viewedAt for history
+```
+
+The summary can create a cached `Product` so Product Details can open without internet.
+
+## Offline Behavior
+
+When a saved product is opened:
+
+1. Product Details renders the cached summary immediately.
+2. The screen tries to refresh fresh product data by barcode.
+3. If refresh succeeds, the UI updates and history is refreshed.
+4. If refresh fails, cached data remains visible with an `Offline data` notice.
+
+## Future Account Sync
+
+When user accounts are added, local history and favorites can be synced to the backend:
+
+- keep local storage as the offline-first cache
+- add authenticated endpoints for history and favorites
+- upload local changes after login
+- resolve conflicts by latest timestamp
+- keep product summaries denormalized for fast offline cards
+
+## Checks
+
+```bash
+dart analyze
+flutter test
+```

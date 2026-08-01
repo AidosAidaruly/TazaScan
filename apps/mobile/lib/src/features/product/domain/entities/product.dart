@@ -13,6 +13,7 @@ class Product {
     required this.updatedAt,
     this.brand,
     this.category,
+    this.imageUrl,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Product {
   final String name;
   final String? brand;
   final String? category;
+  final String? imageUrl;
   final List<String> ingredients;
   final Map<String, dynamic> nutritionFacts;
   final int healthScore;
