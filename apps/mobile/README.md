@@ -51,6 +51,25 @@ When user accounts are added, local history and favorites can be synced to the b
 - resolve conflicts by latest timestamp
 - keep product summaries denormalized for fast offline cards
 
+## Product Submissions
+
+When a product is not found after barcode scan or photo search, the user can open `Help add this product`.
+
+The submission flow:
+
+```text
+Product not found
+-> Help add this product
+-> optional product fields
+-> package photos
+-> review dialog
+-> upload for moderation
+```
+
+Registration is not required. The app does not collect name, email, or phone. Photos are preferred over guessed nutrition values; unknown values are sent as empty and stay unknown on the backend.
+
+Approved submissions later become real products through the admin moderation panel.
+
 ## Checks
 
 ```bash

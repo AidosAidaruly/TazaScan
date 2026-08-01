@@ -88,6 +88,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           arguments: ProductLookupErrorArguments(
             title: title,
             message: message,
+            barcode: barcode,
           ),
         );
     }

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 
 class ProductLookupErrorScreen extends StatelessWidget {
   const ProductLookupErrorScreen({
     required this.title,
     required this.message,
+    this.barcode,
     super.key,
   });
 
   final String title;
   final String message;
+  final String? barcode;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +46,13 @@ class ProductLookupErrorScreen extends StatelessWidget {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Try again'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushNamed(AppRoutes.productSubmission, arguments: barcode),
+                child: const Text('Help add this product'),
               ),
             ],
           ),

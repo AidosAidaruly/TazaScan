@@ -7,6 +7,7 @@ import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/entities/product_details_args.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
+import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/profile_screen.dart';
 import 'package:project/src/features/scanner/presentation/screens/scanner_screen.dart';
 
@@ -19,6 +20,7 @@ abstract final class AppRoutes {
   static const profile = '/profile';
   static const productDetails = '/product-details';
   static const productLookupError = '/product-lookup-error';
+  static const productSubmission = '/product-submission';
 }
 
 abstract final class AppRouter {
@@ -66,8 +68,17 @@ abstract final class AppRouter {
           return ProductLookupErrorScreen(
             title: error.title,
             message: error.message,
+            barcode: error.barcode,
           );
         },
+        settings: settings,
+      ),
+      AppRoutes.productSubmission => MaterialPageRoute(
+        builder: (_) => ProductSubmissionScreen(
+          initialBarcode: settings.arguments is String
+              ? settings.arguments! as String
+              : null,
+        ),
         settings: settings,
       ),
       _ => MaterialPageRoute(
@@ -108,8 +119,10 @@ class ProductLookupErrorArguments {
   const ProductLookupErrorArguments({
     required this.title,
     required this.message,
+    this.barcode,
   });
 
   final String title;
   final String message;
+  final String? barcode;
 }

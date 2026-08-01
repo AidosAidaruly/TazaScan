@@ -71,6 +71,10 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     Navigator.of(context).pushNamed(AppRoutes.productDetails, arguments: product);
   }
 
+  void _openSubmission() {
+    Navigator.of(context).pushNamed(AppRoutes.productSubmission);
+  }
+
   @override
   Widget build(BuildContext context) {
     final result = _result;
@@ -115,6 +119,11 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
             if (result != null && result.matches.isEmpty) ...[
               PhotoSearchEmptyState(
                 message: result.message ?? 'No matching products found',
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _openSubmission,
+                child: const Text('Help add this product'),
               ),
             ],
             if (result != null && result.matches.isNotEmpty) ...[
