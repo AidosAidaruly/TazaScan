@@ -50,16 +50,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear history?'),
-        content: const Text('This removes all local scan history.'),
+        title: const Text('Очистить историю?'),
+        content: const Text('Это удалит всю локальную историю сканирования.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Отмена'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: const Text('Очистить'),
           ),
         ],
       ),
@@ -85,11 +85,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
+        title: const Text('История'),
         actions: [
           if (_entries.isNotEmpty)
             IconButton(
-              tooltip: 'Clear history',
+              tooltip: 'Очистить историю',
               onPressed: _clear,
               icon: const Icon(Icons.delete_sweep_rounded),
             ),
@@ -118,7 +118,7 @@ class _HistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return const Center(child: Text('No history yet.'));
+      return const Center(child: Text('История пока пуста.'));
     }
 
     String? lastDate;
@@ -138,7 +138,7 @@ class _HistoryList extends StatelessWidget {
             product: entry.product,
             onTap: () => onTap(entry),
             trailing: IconButton(
-              tooltip: 'Delete',
+              tooltip: 'Удалить',
               onPressed: () => onDelete(entry),
               icon: const Icon(Icons.delete_outline_rounded),
             ),
@@ -153,8 +153,8 @@ class _HistoryList extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final value = DateTime(date.year, date.month, date.day);
 
-    if (value == today) return 'Today';
-    if (value == today.subtract(const Duration(days: 1))) return 'Yesterday';
+    if (value == today) return 'Сегодня';
+    if (value == today.subtract(const Duration(days: 1))) return 'Вчера';
 
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }

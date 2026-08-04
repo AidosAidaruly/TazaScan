@@ -32,7 +32,10 @@ void main() {
     expect(product.name, 'Coca-Cola Original Taste');
     expect(product.healthScore, 65);
     expect(product.nutritionScore.grade, 'C');
-    expect(product.nutritionScore.negativeReasons, contains('High sugar content.'));
+    expect(
+      product.nutritionScore.negativeReasons,
+      contains('High sugar content.'),
+    );
     expect(product.ingredients, contains('Sugar'));
     expect(product.nutritionFacts['sugarsG'], 10.6);
   });

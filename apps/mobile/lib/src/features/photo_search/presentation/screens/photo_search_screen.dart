@@ -41,7 +41,7 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
       );
 
       if (image == null) {
-        _setError('Photo search cancelled.');
+        _setError('Поиск по фото отменен.');
         return;
       }
 
@@ -55,7 +55,7 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     } on AppException catch (error) {
       _setError(error.message);
     } catch (_) {
-      _setError('Could not read this photo. Try another image.');
+      _setError('Не удалось прочитать это фото. Попробуй другое изображение.');
     }
   }
 
@@ -68,7 +68,9 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
   }
 
   void _openProduct(Product product) {
-    Navigator.of(context).pushNamed(AppRoutes.productDetails, arguments: product);
+    Navigator.of(
+      context,
+    ).pushNamed(AppRoutes.productDetails, arguments: product);
   }
 
   void _openSubmission() {
@@ -80,25 +82,25 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     final result = _result;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Photo Search')),
+      appBar: AppBar(title: const Text('Поиск по фото')),
       body: ResponsivePage(
         child: ListView(
           children: [
             Text(
-              'Find a product by photo',
+              'Найди продукт по фото',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Take a clear photo of the front label or choose one from gallery.',
+              'Сделай четкое фото лицевой стороны упаковки или выбери изображение из галереи.',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 24),
             PhotoSourceButton(
               icon: Icons.photo_camera_rounded,
-              label: 'Take photo',
+              label: 'Сделать фото',
               onPressed: _isLoading
                   ? null
                   : () => _pickAndSearch(ImageSource.camera),
@@ -106,7 +108,7 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
             const SizedBox(height: 12),
             PhotoSourceButton(
               icon: Icons.photo_library_rounded,
-              label: 'Choose from gallery',
+              label: 'Выбрать из галереи',
               onPressed: _isLoading
                   ? null
                   : () => _pickAndSearch(ImageSource.gallery),
@@ -118,17 +120,19 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
             ],
             if (result != null && result.matches.isEmpty) ...[
               PhotoSearchEmptyState(
-                message: result.message ?? 'No matching products found',
+                message: result.message ?? 'Похожие продукты не найдены',
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: _openSubmission,
-                child: const Text('Help add this product'),
+                child: const Text('Добавить продукт'),
               ),
             ],
             if (result != null && result.matches.isNotEmpty) ...[
               Text(
-                result.query == null ? 'Matches' : 'Matches for "${result.query}"',
+                result.query == null
+                    ? 'Совпадения'
+                    : 'Совпадения для «${result.query}»',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),

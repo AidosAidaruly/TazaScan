@@ -18,19 +18,19 @@ class NutritionScoreDetailsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Score explanation',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            'Объяснение оценки',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          _ReasonList(title: 'Positive', items: score.positiveReasons),
-          _ReasonList(title: 'Negative', items: score.negativeReasons),
-          _ReasonList(title: 'Warnings', items: score.warnings),
-          _ReasonList(title: 'Missing data', items: score.missingFields),
+          _ReasonList(title: 'Плюсы', items: score.positiveReasons),
+          _ReasonList(title: 'Минусы', items: score.negativeReasons),
+          _ReasonList(title: 'Предупреждения', items: score.warnings),
+          _ReasonList(title: 'Недостающие данные', items: score.missingFields),
           const SizedBox(height: 12),
           const Text(
-            'This nutrition score is informational only and is not medical advice.',
+            'Эта оценка носит информационный характер и не является медицинской рекомендацией.',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ],
@@ -47,7 +47,7 @@ class _ReasonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayItems = items.isEmpty ? ['None'] : items;
+    final displayItems = items.isEmpty ? ['Нет'] : items;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

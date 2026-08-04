@@ -1,10 +1,10 @@
 # Architecture
 
-This document defines the initial architecture direction for Project.
+This document defines the initial architecture direction for TazaScan.
 
 ## High-Level Architecture
 
-Project is organized as a monorepo with clearly separated applications and services:
+TazaScan is organized as a monorepo with clearly separated applications and services:
 
 ```text
 apps/mobile    Flutter mobile application
@@ -102,4 +102,3 @@ The scoring system should be versioned so future algorithm changes do not corrup
 - Avoid duplicate logic between mobile and backend.
 - Add abstractions only when they reduce real complexity.
 - Write code that a new engineer can understand quickly.
-

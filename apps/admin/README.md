@@ -1,6 +1,6 @@
-# Project Admin
+# TazaScan Admin
 
-Secure browser admin panel for managing Project products.
+Secure browser admin panel for managing TazaScan products.
 
 ## Environment
 
@@ -66,4 +66,3 @@ DELETE /products/:id
 ```
 
 Unknown nutrition values are submitted as `null`, not `0`.
-

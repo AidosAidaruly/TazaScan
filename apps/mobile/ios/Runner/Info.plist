@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Project</string>
+	<string>TazaScan</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,11 +15,11 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Project</string>
+	<string>TazaScan</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Project needs camera access to scan product barcodes and search products by photo.</string>
+	<string>TazaScan needs camera access to scan product barcodes and search products by photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Project needs photo library access so you can search products from existing photos.</string>
+	<string>TazaScan needs photo library access so you can search products from existing photos.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

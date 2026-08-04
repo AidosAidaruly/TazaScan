@@ -20,7 +20,7 @@ class ProductNutritionSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Nutrition facts',
+            'Пищевая ценность',
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -45,8 +45,22 @@ class ProductNutritionSection extends StatelessWidget {
   }
 
   String _formatLabel(String value) {
-    return value
-        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(1)}')
-        .trim();
+    return switch (value) {
+      'energyKcal' => 'Ккал',
+      'protein' => 'Белки',
+      'carbohydrates' => 'Углеводы',
+      'sugars' => 'Сахар',
+      'fat' => 'Жиры',
+      'saturatedFat' => 'Насыщенные жиры',
+      'fiber' => 'Клетчатка',
+      'salt' => 'Соль',
+      _ =>
+        value
+            .replaceAllMapped(
+              RegExp(r'([A-Z])'),
+              (match) => ' ${match.group(1)}',
+            )
+            .trim(),
+    };
   }
 }

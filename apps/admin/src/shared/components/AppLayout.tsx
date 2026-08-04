@@ -13,13 +13,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand-mark">Project</div>
+        <div className="brand-mark">TazaScan</div>
         <nav>
           <NavLink to="/products" exact activeClassName="active">
             Products
           </NavLink>
           <NavLink to="/products/new" activeClassName="active">
             Create Product
+          </NavLink>
+          <NavLink to="/submissions" activeClassName="active">
+            Submissions
           </NavLink>
         </nav>
         <div className="sidebar-footer">

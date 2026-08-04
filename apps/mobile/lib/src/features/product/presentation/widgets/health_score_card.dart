@@ -47,7 +47,7 @@ class _ScoreBadge extends StatelessWidget {
           ),
         ),
         Text(
-          score == null ? 'No score' : '$score/100',
+          score == null ? 'Нет оценки' : '$score/100',
           style: TextStyle(color: colorScheme.onPrimaryContainer),
         ),
       ],
@@ -68,14 +68,17 @@ class _ScoreSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Nutrition Score',
+          'Оценка питания',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: color,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 6),
-        Text('Status: ${nutritionScore.status}', style: TextStyle(color: color)),
+        Text(
+          'Статус: ${nutritionScore.status}',
+          style: TextStyle(color: color),
+        ),
         Text(
           '${nutritionScore.algorithm} - ${nutritionScore.algorithmVersion}',
           style: TextStyle(color: color),

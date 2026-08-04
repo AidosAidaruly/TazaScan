@@ -21,7 +21,9 @@ class FakeProductRepository implements ProductRepository {
 }
 
 void main() {
-  testWidgets('opens cached product details with offline notice', (tester) async {
+  testWidgets('opens cached product details with offline notice', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final cachedProduct = CachedProductSummary.fromProduct(
       createTestProduct(),
@@ -39,7 +41,7 @@ void main() {
 
     expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
     expect(
-      find.text('Offline data. We will refresh details when internet is available.'),
+      find.text('Офлайн-данные. Мы обновим детали, когда появится интернет.'),
       findsOneWidget,
     );
   });

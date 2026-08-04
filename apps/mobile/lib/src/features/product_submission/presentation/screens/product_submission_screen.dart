@@ -17,7 +17,8 @@ class ProductSubmissionScreen extends StatefulWidget {
   final ProductSubmissionRepository? repository;
 
   @override
-  State<ProductSubmissionScreen> createState() => _ProductSubmissionScreenState();
+  State<ProductSubmissionScreen> createState() =>
+      _ProductSubmissionScreenState();
 }
 
 class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
@@ -78,7 +79,7 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
 
     final draft = _draft();
     if (!draft.hasIdentifyingData) {
-      _showError('Add barcode, product name, or front photo.');
+      _showError('Добавь штрихкод, название продукта или фото упаковки.');
       return;
     }
 
@@ -93,7 +94,8 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
     });
 
     try {
-      await (widget.repository ?? const HttpProductSubmissionRepository()).submit(draft);
+      await (widget.repository ?? const HttpProductSubmissionRepository())
+          .submit(draft);
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
@@ -111,9 +113,9 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   void _showError(String message) {
     if (!mounted) return;
     setState(() => _errorMessage = message);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   ProductSubmissionDraft _draft() {
@@ -145,28 +147,23 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Submit for review?'),
+        title: const Text('Отправить на проверку?'),
         content: Text(
           [
-            if (draft.barcode.isNotEmpty) 'Barcode: ${draft.barcode}',
-            if (draft.name.isNotEmpty) 'Name: ${draft.name}',
-            if (draft.brand.isNotEmpty) 'Brand: ${draft.brand}',
-            'Photos: ${[
-              draft.frontImage,
-              draft.ingredientsImage,
-              draft.nutritionImage,
-              draft.barcodeImage,
-            ].where((image) => image != null).length}',
+            if (draft.barcode.isNotEmpty) 'Штрихкод: ${draft.barcode}',
+            if (draft.name.isNotEmpty) 'Название: ${draft.name}',
+            if (draft.brand.isNotEmpty) 'Бренд: ${draft.brand}',
+            'Фото: ${[draft.frontImage, draft.ingredientsImage, draft.nutritionImage, draft.barcodeImage].where((image) => image != null).length}',
           ].join('\n'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Edit'),
+            child: const Text('Изменить'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Submit'),
+            child: const Text('Отправить'),
           ),
         ],
       ),
@@ -177,22 +174,24 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   Widget build(BuildContext context) {
     if (_isSuccess) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Submission sent')),
+        appBar: AppBar(title: const Text('Заявка отправлена')),
         body: const ResponsivePage(
           child: Center(
-            child: Text('Thank you. Your product was sent for moderation.'),
+            child: Text('Спасибо. Продукт отправлен на модерацию.'),
           ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Help add this product')),
+      appBar: AppBar(title: const Text('Добавить продукт')),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(16),
         child: FilledButton(
           onPressed: _isSubmitting ? null : _submit,
-          child: Text(_isSubmitting ? 'Submitting...' : 'Review and submit'),
+          child: Text(
+            _isSubmitting ? 'Отправляем...' : 'Проверить и отправить',
+          ),
         ),
       ),
       body: ResponsivePage(
@@ -200,25 +199,35 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text('Photos are more important than guessed values.'),
+              const Text('Фото важнее примерных значений.'),
               const SizedBox(height: 16),
-              _TextInput(controller: _controllers['barcode']!, label: 'Barcode'),
-              _TextInput(controller: _controllers['name']!, label: 'Product name'),
-              _TextInput(controller: _controllers['brand']!, label: 'Brand'),
-              _TextInput(controller: _controllers['category']!, label: 'Category'),
+              _TextInput(
+                controller: _controllers['barcode']!,
+                label: 'Штрихкод',
+              ),
+              _TextInput(
+                controller: _controllers['name']!,
+                label: 'Название продукта',
+              ),
+              _TextInput(controller: _controllers['brand']!, label: 'Бренд'),
+              _TextInput(
+                controller: _controllers['category']!,
+                label: 'Категория',
+              ),
               _TextInput(
                 controller: _controllers['ingredients']!,
-                label: 'Ingredients',
+                label: 'Состав',
                 maxLines: 4,
               ),
               DropdownButtonFormField<String>(
                 initialValue: _servingType,
-                decoration: const InputDecoration(labelText: 'Serving type'),
+                decoration: const InputDecoration(labelText: 'Тип порции'),
                 items: const [
-                  DropdownMenuItem(value: 'per100g', child: Text('per100g')),
-                  DropdownMenuItem(value: 'per100ml', child: Text('per100ml')),
+                  DropdownMenuItem(value: 'per100g', child: Text('на 100 г')),
+                  DropdownMenuItem(value: 'per100ml', child: Text('на 100 мл')),
                 ],
-                onChanged: (value) => setState(() => _servingType = value ?? 'per100g'),
+                onChanged: (value) =>
+                    setState(() => _servingType = value ?? 'per100g'),
               ),
               const SizedBox(height: 12),
               for (final field in _nutritionFields)
@@ -228,13 +237,32 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
                   keyboardType: TextInputType.number,
                 ),
               const SizedBox(height: 12),
-              _PhotoButton(label: 'Front package photo', image: _frontImage, onTap: () => _pickImage('front')),
-              _PhotoButton(label: 'Ingredients photo', image: _ingredientsImage, onTap: () => _pickImage('ingredients')),
-              _PhotoButton(label: 'Nutrition label photo', image: _nutritionImage, onTap: () => _pickImage('nutrition')),
-              _PhotoButton(label: 'Barcode photo', image: _barcodeImage, onTap: () => _pickImage('barcode')),
+              _PhotoButton(
+                label: 'Фото лицевой стороны',
+                image: _frontImage,
+                onTap: () => _pickImage('front'),
+              ),
+              _PhotoButton(
+                label: 'Фото состава',
+                image: _ingredientsImage,
+                onTap: () => _pickImage('ingredients'),
+              ),
+              _PhotoButton(
+                label: 'Фото пищевой ценности',
+                image: _nutritionImage,
+                onTap: () => _pickImage('nutrition'),
+              ),
+              _PhotoButton(
+                label: 'Фото штрихкода',
+                image: _barcodeImage,
+                onTap: () => _pickImage('barcode'),
+              ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),
-                Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ],
               const SizedBox(height: 16),
               if (_isSubmitting) const LinearProgressIndicator(),
@@ -275,7 +303,11 @@ class _TextInput extends StatelessWidget {
 }
 
 class _PhotoButton extends StatelessWidget {
-  const _PhotoButton({required this.label, required this.image, required this.onTap});
+  const _PhotoButton({
+    required this.label,
+    required this.image,
+    required this.onTap,
+  });
 
   final String label;
   final XFile? image;
@@ -288,7 +320,7 @@ class _PhotoButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: onTap,
         icon: const Icon(Icons.photo_camera_rounded),
-        label: Text(image == null ? label : '$label selected'),
+        label: Text(image == null ? label : '$label выбрано'),
       ),
     );
   }
@@ -311,14 +343,14 @@ const _fieldNames = [
 ];
 
 const _nutritionFields = [
-  _NutritionField('energyKcal', 'Energy kcal'),
-  _NutritionField('protein', 'Protein'),
-  _NutritionField('carbohydrates', 'Carbohydrates'),
-  _NutritionField('sugars', 'Sugars'),
-  _NutritionField('fat', 'Fat'),
-  _NutritionField('saturatedFat', 'Saturated fat'),
-  _NutritionField('fiber', 'Fiber'),
-  _NutritionField('salt', 'Salt'),
+  _NutritionField('energyKcal', 'Ккал'),
+  _NutritionField('protein', 'Белки'),
+  _NutritionField('carbohydrates', 'Углеводы'),
+  _NutritionField('sugars', 'Сахар'),
+  _NutritionField('fat', 'Жиры'),
+  _NutritionField('saturatedFat', 'Насыщенные жиры'),
+  _NutritionField('fiber', 'Клетчатка'),
+  _NutritionField('salt', 'Соль'),
 ];
 
 class _NutritionField {

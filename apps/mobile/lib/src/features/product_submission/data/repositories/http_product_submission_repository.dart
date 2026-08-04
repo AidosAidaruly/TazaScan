@@ -29,19 +29,21 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       await _addFile(request, 'nutritionImage', draft.nutritionImage?.path);
       await _addFile(request, 'barcodeImage', draft.barcodeImage?.path);
 
-      final response = await client.send(request).timeout(
-        const Duration(seconds: 45),
-      );
+      final response = await client
+          .send(request)
+          .timeout(const Duration(seconds: 45));
       final body = await response.stream.bytesToString();
       _handleResponse(response.statusCode, body);
     } on TimeoutException {
-      throw const RequestTimeoutException('Submission took too long. Try again.');
+      throw const RequestTimeoutException(
+        'Отправка заняла слишком много времени. Попробуй снова.',
+      );
     } on SocketException {
-      throw const NetworkException('No internet connection.');
+      throw const NetworkException('Нет подключения к интернету.');
     } on AppException {
       rethrow;
     } catch (_) {
-      throw const UnknownAppException('Could not submit product.');
+      throw const UnknownAppException('Не удалось отправить продукт.');
     } finally {
       if (_httpClient == null) {
         client.close();
@@ -55,7 +57,8 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       if (draft.name.trim().isNotEmpty) 'name': draft.name.trim(),
       if (draft.brand.trim().isNotEmpty) 'brand': draft.brand.trim(),
       if (draft.category.trim().isNotEmpty) 'category': draft.category.trim(),
-      if (draft.ingredients.trim().isNotEmpty) 'ingredients': draft.ingredients.trim(),
+      if (draft.ingredients.trim().isNotEmpty)
+        'ingredients': draft.ingredients.trim(),
       'servingType': draft.servingType,
       ..._optionalNumberFields(draft),
     };
@@ -96,7 +99,7 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
         : jsonDecode(body) as Map<String, dynamic>;
 
     if (statusCode >= 500) {
-      throw const ServerException('Server is unavailable. Try again later.');
+      throw const ServerException('Сервер недоступен. Попробуй позже.');
     }
 
     if (statusCode < 200 || statusCode >= 300) {
@@ -110,6 +113,6 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       return error['message'] as String;
     }
 
-    return 'Submission failed. Check the form and try again.';
+    return 'Отправка не удалась. Проверь форму и попробуй снова.';
   }
 }

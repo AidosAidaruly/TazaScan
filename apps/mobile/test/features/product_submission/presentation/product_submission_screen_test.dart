@@ -33,10 +33,15 @@ void main() {
   testWidgets('validates identifying data', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ProductSubmissionScreen()));
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Review and submit'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Проверить и отправить'),
+    );
     await tester.pump();
 
-    expect(find.text('Add barcode, product name, or front photo.'), findsOneWidget);
+    expect(
+      find.text('Добавь штрихкод, название продукта или фото упаковки.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('submits successfully after review confirmation', (tester) async {
@@ -46,29 +51,33 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextFormField).at(1), 'Coca-Cola');
-    await tester.tap(find.widgetWithText(FilledButton, 'Review and submit'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Проверить и отправить'),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Submit'));
+    await tester.tap(find.text('Отправить'));
     await tester.pumpAndSettle();
 
     expect(repository.lastDraft?.name, 'Coca-Cola');
-    expect(find.textContaining('sent for moderation'), findsOneWidget);
+    expect(find.textContaining('отправлен на модерацию'), findsOneWidget);
   });
 
   testWidgets('shows upload error and allows retry', (tester) async {
     final repository = FakeSubmissionRepository()
-      ..error = const NetworkException('No internet connection.');
+      ..error = const NetworkException('Нет подключения к интернету.');
     await tester.pumpWidget(
       MaterialApp(home: ProductSubmissionScreen(repository: repository)),
     );
 
     await tester.enterText(find.byType(TextFormField).at(1), 'Coca-Cola');
-    await tester.tap(find.widgetWithText(FilledButton, 'Review and submit'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Проверить и отправить'),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Submit'));
+    await tester.tap(find.text('Отправить'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No internet connection.'), findsOneWidget);
-    expect(find.text('Review and submit'), findsOneWidget);
+    expect(find.text('Нет подключения к интернету.'), findsOneWidget);
+    expect(find.text('Проверить и отправить'), findsOneWidget);
   });
 }

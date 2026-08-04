@@ -16,9 +16,7 @@ class LocalFavoritesRepository implements FavoritesRepository {
 
   @override
   Future<bool> isFavorite(String productId) async {
-    return _dataSource
-        .readProducts()
-        .any((product) => product.id == productId);
+    return _dataSource.readProducts().any((product) => product.id == productId);
   }
 
   @override

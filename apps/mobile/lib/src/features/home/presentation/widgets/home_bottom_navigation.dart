@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/core/router/app_router.dart';
+import 'package:project/src/core/widgets/taza_bottom_navigation.dart';
 
 class HomeBottomNavigation extends StatelessWidget {
   const HomeBottomNavigation({required this.onScanSelected, super.key});
@@ -8,7 +9,7 @@ class HomeBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationBar(
+    return TazaBottomNavigation(
       selectedIndex: 0,
       onDestinationSelected: (index) {
         if (index == 1) {
@@ -25,28 +26,6 @@ class HomeBottomNavigation extends StatelessWidget {
           Navigator.of(context).pushNamed(AppRoutes.profile);
         }
       },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.qr_code_scanner_outlined),
-          selectedIcon: Icon(Icons.qr_code_scanner),
-          label: 'Scan',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.favorite_border),
-          selectedIcon: Icon(Icons.favorite),
-          label: 'Favorites',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
     );
   }
 }

@@ -59,7 +59,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites')),
+      appBar: AppBar(title: const Text('Избранное')),
       body: ResponsivePage(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -87,7 +87,7 @@ class _FavoritesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (products.isEmpty) {
-      return const Center(child: Text('No favorites yet.'));
+      return const Center(child: Text('В избранном пока пусто.'));
     }
 
     return ListView(
@@ -97,7 +97,7 @@ class _FavoritesList extends StatelessWidget {
             product: product,
             onTap: () => onTap(product),
             trailing: IconButton(
-              tooltip: 'Remove favorite',
+              tooltip: 'Убрать из избранного',
               onPressed: () => onRemove(product.id),
               icon: const Icon(Icons.favorite_rounded),
             ),

@@ -1,6 +1,6 @@
 # Development Workflow
 
-Project is built incrementally. Each major step should be reviewed before moving to the next one.
+TazaScan is built incrementally. Each major step should be reviewed before moving to the next one.
 
 ## Step Format
 
@@ -48,4 +48,3 @@ docs(architecture): define initial monorepo structure
 feat(mobile): add clean architecture folders
 feat(api): add product module foundation
 ```
-

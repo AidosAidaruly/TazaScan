@@ -59,7 +59,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         !BarcodeValidator.isSupportedProductBarcode(barcode, format)) {
       setState(() {
         _invalidBarcodeMessage =
-            'This barcode is not a supported product code.';
+            'Этот штрихкод не похож на поддерживаемый код продукта.';
       });
       return;
     }
@@ -100,27 +100,27 @@ class _ScannerScreenState extends State<ScannerScreen> {
       return _ProductFound(product);
     } on NotFoundException {
       return const _ProductLookupFailed(
-        title: 'Product not found',
-        message: 'This barcode is not in our database yet.',
+        title: 'Продукт не найден',
+        message: 'Этого штрихкода пока нет в нашей базе.',
       );
     } on NetworkException {
       return const _ProductLookupFailed(
-        title: 'No internet connection',
-        message: 'Check your connection and try scanning again.',
+        title: 'Нет подключения к интернету',
+        message: 'Проверь соединение и попробуй сканировать снова.',
       );
     } on RequestTimeoutException {
       return const _ProductLookupFailed(
-        title: 'Request timed out',
-        message: 'The server took too long to respond.',
+        title: 'Сервер долго отвечает',
+        message: 'Сервер не успел ответить вовремя.',
       );
     } on ServerException {
       return const _ProductLookupFailed(
-        title: 'Server unavailable',
-        message: 'We could not reach the product service. Try again later.',
+        title: 'Сервер недоступен',
+        message: 'Не удалось связаться с сервисом продуктов. Попробуй позже.',
       );
     } on AppException catch (error) {
       return _ProductLookupFailed(
-        title: 'Lookup failed',
+        title: 'Поиск не удался',
         message: error.message,
       );
     }

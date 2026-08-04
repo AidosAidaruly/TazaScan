@@ -28,22 +28,22 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
       request.headers[HttpHeaders.acceptHeader] = 'application/json';
       request.files.add(await http.MultipartFile.fromPath('image', image.path));
 
-      final streamedResponse = await client.send(request).timeout(
-        const Duration(seconds: 35),
-      );
+      final streamedResponse = await client
+          .send(request)
+          .timeout(const Duration(seconds: 35));
       final body = await streamedResponse.stream.bytesToString();
 
       return _handleResponse(streamedResponse.statusCode, body);
     } on TimeoutException {
       throw const RequestTimeoutException(
-        'Photo search took too long. Try another photo.',
+        'Поиск по фото занял слишком много времени. Попробуй другое фото.',
       );
     } on SocketException {
-      throw const NetworkException('No internet connection.');
+      throw const NetworkException('Нет подключения к интернету.');
     } on AppException {
       rethrow;
     } catch (_) {
-      throw const UnknownAppException('Could not search by photo.');
+      throw const UnknownAppException('Не удалось выполнить поиск по фото.');
     } finally {
       if (_httpClient == null) {
         client.close();
@@ -57,7 +57,7 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
         : jsonDecode(body) as Map<String, dynamic>;
 
     if (statusCode >= 500) {
-      throw const ServerException('Server is unavailable. Try again later.');
+      throw const ServerException('Сервер недоступен. Попробуй позже.');
     }
 
     if (statusCode < 200 || statusCode >= 300) {
@@ -74,6 +74,6 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
       return error['message'] as String;
     }
 
-    return 'Photo search failed. Try another photo.';
+    return 'Поиск по фото не удался. Попробуй другое фото.';
   }
 }

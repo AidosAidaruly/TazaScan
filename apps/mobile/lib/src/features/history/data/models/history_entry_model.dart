@@ -2,10 +2,7 @@ import 'package:project/src/features/history/domain/entities/history_entry.dart'
 import 'package:project/src/features/product/data/models/cached_product_summary_model.dart';
 
 class HistoryEntryModel extends HistoryEntry {
-  const HistoryEntryModel({
-    required super.product,
-    required super.viewedAt,
-  });
+  const HistoryEntryModel({required super.product, required super.viewedAt});
 
   factory HistoryEntryModel.fromEntity(HistoryEntry entry) {
     return HistoryEntryModel(product: entry.product, viewedAt: entry.viewedAt);

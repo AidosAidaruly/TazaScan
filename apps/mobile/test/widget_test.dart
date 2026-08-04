@@ -8,47 +8,57 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   testWidgets('shows home screen actions', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ProjectApp());
+    await _pumpTazaScan(tester);
 
-    expect(find.text('Project'), findsOneWidget);
-    expect(find.text('Scan Product'), findsOneWidget);
-    expect(find.text('Photo Search'), findsOneWidget);
-    expect(find.text('Search Product'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('TazaScan', skipOffstage: false), findsWidgets);
+    expect(find.text('Сканировать продукт', skipOffstage: false), findsWidgets);
+    expect(find.text('Поиск по фото', skipOffstage: false), findsWidgets);
+    expect(find.text('Поиск продукта', skipOffstage: false), findsWidgets);
 
-    await tester.scrollUntilVisible(find.text('No recent scans yet'), 200);
-
-    expect(find.text('No recent scans yet'), findsOneWidget);
+    expect(find.text('Пока нет сканов', skipOffstage: false), findsWidgets);
   });
 
-  testWidgets('bottom navigation opens Favorites', (tester) async {
+  testWidgets('bottom navigation opens favorites', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ProjectApp());
+    await _pumpTazaScan(tester);
 
-    await tester.tap(find.text('Favorites'));
+    await tester.tap(find.text('Избранное'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Favorites'), findsWidgets);
-    expect(find.text('No favorites yet.'), findsOneWidget);
+    expect(find.text('Избранное'), findsWidgets);
+    expect(find.text('В избранном пока пусто.'), findsOneWidget);
   });
 
   testWidgets('product not found can open submission flow', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ProjectApp());
+    await _pumpTazaScan(tester);
 
     Navigator.of(tester.element(find.byType(HomeScreen))).pushNamed(
       AppRoutes.productLookupError,
       arguments: const ProductLookupErrorArguments(
-        title: 'Product not found',
-        message: 'This barcode is not in our database yet.',
+        title: 'Продукт не найден',
+        message: 'Этого штрихкода пока нет в нашей базе.',
         barcode: '5449000000996',
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Help add this product'));
+    await tester.tap(find.text('Добавить продукт'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Help add this product'), findsWidgets);
+    expect(find.text('Добавить продукт'), findsWidgets);
     expect(find.widgetWithText(TextFormField, '5449000000996'), findsOneWidget);
   });
+}
+
+Future<void> _pumpTazaScan(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(430, 1100);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(const ProjectApp());
+  await tester.pump(const Duration(milliseconds: 1200));
+  await tester.pumpAndSettle();
 }

@@ -110,10 +110,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Product Details'),
+        title: const Text('Детали продукта'),
         actions: [
           IconButton(
-            tooltip: _isFavorite ? 'Remove favorite' : 'Add favorite',
+            tooltip: _isFavorite
+                ? 'Убрать из избранного'
+                : 'Добавить в избранное',
             onPressed: _toggleFavorite,
             icon: Icon(
               _isFavorite ? Icons.favorite_rounded : Icons.favorite_border,
@@ -154,7 +156,9 @@ class _OfflineNotice extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: const Padding(
         padding: EdgeInsets.all(12),
-        child: Text('Offline data. We will refresh details when internet is available.'),
+        child: Text(
+          'Офлайн-данные. Мы обновим детали, когда появится интернет.',
+        ),
       ),
     );
   }

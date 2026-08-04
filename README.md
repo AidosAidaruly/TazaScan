@@ -1,90 +1,51 @@
-# Project
+# TazaScan
 
-Project is a product scanner app for Kazakhstan. The app helps users scan food barcodes and understand a product's health impact through clear scoring, nutrition analysis, ingredient explanations, alternatives, favorites, and scan history.
+TazaScan is a food product scanner app for Kazakhstan. Users can scan barcodes, search by photo, view nutrition scoring, save local history/favorites, and submit missing products for admin moderation.
 
-The final product targets Android and iOS, with a scalable backend and an admin system for maintaining a growing product database.
-
-## Product Vision
-
-Create the best food product scanner for Kazakhstan.
-
-The product should be simple enough for everyday consumers, but technically strong enough to support hundreds of thousands of products, multilingual content, admin workflows, user submissions, and future AI-powered recommendations.
-
-## Target Platforms
-
-- Android
-- iOS
-
-## Core Technology Stack
-
-- Flutter
-- Dart
-- Node.js
-- Express
-- PostgreSQL
-- Prisma ORM
-- Git
-
-## Monorepo Structure
+## Monorepo
 
 ```text
-Project/
-  apps/
-    mobile/       Flutter mobile app for Android and iOS
-    admin/        Future admin panel for product management
-  backend/
-    api/          Node.js + Express API with Prisma
-  docs/           Architecture, product, and technical documentation
+apps/mobile   Flutter mobile app
+apps/admin    React/Vite admin panel
+backend/api   Node.js/Express/Prisma API
+docs          architecture, release, privacy, and deployment docs
 ```
 
-## Core Features
+## Current Native Identifiers
 
-- Barcode scanning
-- Product search
-- Product details
-- Ingredient list
-- Nutrition facts
-- Health score
-- Simple score explanation
-- Better alternatives
-- Favorites
-- Scan history
-- User authentication
-- Admin panel for product management
-- User submissions for missing products
-- Dark mode
-- English, Russian, and Kazakh languages
+These are documented for MVP release prep and are not changed yet:
 
-## Future Features
+```text
+Android applicationId: kz.project.project
+iOS bundle identifier: kz.project.project
+```
 
-- AI ingredient explanations
-- AI unhealthy ingredient detection
-- AI recommendations
-- Personalized nutrition
-- Notifications
-- Community contributions
-- Product photos
-- Offline caching
-- Premium subscription
+## Development
 
-## Engineering Principles
+Backend:
 
-- Clean Architecture
-- SOLID principles
-- Modular code
-- Small files
-- Reusable components
-- Clear separation of UI, business logic, and data access
-- Production-ready decisions from the start
-- Documentation for architectural choices
+```bash
+cd backend/api
+npm install
+npm run prisma:migrate
+npm run prisma:seed
+npm run dev
+```
 
-## Development Workflow
+Admin:
 
-Development is done step by step. Each step should include:
+```bash
+cd apps/admin
+npm install
+npm run dev
+```
 
-1. What we are building.
-2. Why it matters.
-3. Clean production-ready implementation.
-4. How to test it.
-5. Confirmation before moving to the next major step.
+Mobile:
 
+```bash
+cd apps/mobile
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
+```
+
+Production builds must pass a public HTTPS API URL through `API_BASE_URL`.

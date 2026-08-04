@@ -9,11 +9,11 @@ class ProductInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Section(
-      title: 'Ingredients',
+      title: 'Состав',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _InfoRow(label: 'Barcode', value: product.barcode),
+          _InfoRow(label: 'Штрихкод', value: product.barcode),
           const SizedBox(height: 12),
           Text(product.ingredients.join(', ')),
         ],

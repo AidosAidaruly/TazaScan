@@ -18,9 +18,7 @@ class PhotoSourceButton extends StatelessWidget {
       onPressed: onPressed,
       icon: Icon(icon),
       label: Text(label),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-      ),
+      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
     );
   }
 }

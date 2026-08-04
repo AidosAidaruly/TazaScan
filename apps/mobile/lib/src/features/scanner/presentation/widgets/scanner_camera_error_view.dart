@@ -17,20 +17,20 @@ class ScannerCameraErrorView extends StatelessWidget {
     final errorContent = switch (error.errorCode) {
       MobileScannerErrorCode.permissionDenied => (
         icon: Icons.no_photography_rounded,
-        title: 'Camera permission denied',
-        message: 'Allow camera access in system settings to scan products.',
+        title: 'Нет доступа к камере',
+        message: 'Разреши доступ к камере в настройках системы.',
       ),
       MobileScannerErrorCode.controllerUninitialized ||
       MobileScannerErrorCode.genericError ||
       MobileScannerErrorCode.unsupported => (
         icon: Icons.videocam_off_rounded,
-        title: 'Camera unavailable',
-        message: 'The camera could not be started on this device.',
+        title: 'Камера недоступна',
+        message: 'Не удалось запустить камеру на этом устройстве.',
       ),
       _ => (
         icon: Icons.error_outline_rounded,
-        title: 'Scanner error',
-        message: 'Something went wrong while opening the scanner.',
+        title: 'Ошибка сканера',
+        message: 'Что-то пошло не так при открытии сканера.',
       ),
     };
 
@@ -40,7 +40,7 @@ class ScannerCameraErrorView extends StatelessWidget {
         icon: errorContent.icon,
         title: errorContent.title,
         message: errorContent.message,
-        actionLabel: 'Close',
+        actionLabel: 'Закрыть',
         onActionPressed: onClose,
       ),
     );

@@ -58,7 +58,9 @@ class CachedProductSummary {
         status: 'offline_cached',
         positiveReasons: const [],
         negativeReasons: const [],
-        warnings: const ['Offline data. Connect to refresh details.'],
+        warnings: const [
+          'Офлайн-данные. Подключись к интернету, чтобы обновить детали.',
+        ],
         missingFields: const [],
         algorithm: 'cached summary',
         algorithmVersion: 'local-1',

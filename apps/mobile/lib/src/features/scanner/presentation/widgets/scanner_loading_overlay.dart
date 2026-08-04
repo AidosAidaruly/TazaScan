@@ -23,7 +23,7 @@ class ScannerLoadingOverlay extends StatelessWidget {
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
               Text(
-                'Reading barcode...',
+                'Считываем штрихкод...',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],

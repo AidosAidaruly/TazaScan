@@ -17,7 +17,7 @@ class ProductLookupErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Product Lookup')),
+      appBar: AppBar(title: const Text('Поиск продукта')),
       body: ResponsivePage(
         child: Center(
           child: Column(
@@ -45,14 +45,14 @@ class ProductLookupErrorScreen extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Try again'),
+                child: const Text('Попробовать снова'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: () => Navigator.of(
                   context,
                 ).pushNamed(AppRoutes.productSubmission, arguments: barcode),
-                child: const Text('Help add this product'),
+                child: const Text('Добавить продукт'),
               ),
             ],
           ),

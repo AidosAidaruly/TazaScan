@@ -1,4 +1,4 @@
-# Project Mobile
+# TazaScan Mobile
 
 Flutter app for the Kazakhstan food product scanner.
 

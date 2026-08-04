@@ -35,7 +35,7 @@ export function LoginPage() {
       <form className="login-card" onSubmit={handleSubmit}>
         <div>
           <p className="eyebrow">Admin Panel</p>
-          <h1>Project</h1>
+          <h1>TazaScan</h1>
         </div>
         {error ? <div className="alert error">{error}</div> : null}
         <label className="field">

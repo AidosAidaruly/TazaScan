@@ -19,11 +19,11 @@ class ScannerOverlay extends StatelessWidget {
                 IconButton.filledTonal(
                   onPressed: onCancel,
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Cancel scan',
+                  tooltip: 'Отменить сканирование',
                 ),
                 const Spacer(),
                 Text(
-                  'Scan barcode',
+                  'Сканирование',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -45,7 +45,7 @@ class ScannerOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Place an EAN or UPC barcode inside the frame.',
+              'Помести штрихкод EAN или UPC внутрь рамки.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white.withValues(alpha: 0.88),

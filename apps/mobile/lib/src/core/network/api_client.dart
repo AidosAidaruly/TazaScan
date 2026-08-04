@@ -30,16 +30,16 @@ class ApiClient {
       return _handleResponse(response.statusCode, responseBody);
     } on TimeoutException {
       throw const RequestTimeoutException(
-        'The request took too long. Try again.',
+        'Запрос выполнялся слишком долго. Попробуй снова.',
       );
     } on SocketException {
-      throw const NetworkException('No internet connection.');
+      throw const NetworkException('Нет подключения к интернету.');
     } on HttpException {
-      throw const ServerException('Could not reach the server.');
+      throw const ServerException('Не удалось подключиться к серверу.');
     } on AppException {
       rethrow;
     } catch (_) {
-      throw const UnknownAppException('Something went wrong. Try again.');
+      throw const UnknownAppException('Что-то пошло не так. Попробуй снова.');
     }
   }
 
@@ -49,11 +49,11 @@ class ApiClient {
         : jsonDecode(responseBody) as Map<String, dynamic>;
 
     if (statusCode == HttpStatus.notFound) {
-      throw const NotFoundException('Product not found.');
+      throw const NotFoundException('Продукт не найден.');
     }
 
     if (statusCode >= 500) {
-      throw const ServerException('Server is unavailable. Try again later.');
+      throw const ServerException('Сервер недоступен. Попробуй позже.');
     }
 
     if (statusCode < 200 || statusCode >= 300) {
@@ -70,6 +70,6 @@ class ApiClient {
       return error['message'] as String;
     }
 
-    return 'Request failed. Try again.';
+    return 'Запрос не удался. Попробуй снова.';
   }
 }

@@ -6,6 +6,8 @@ import { CreateProductPage } from '../features/products/pages/CreateProductPage'
 import { EditProductPage } from '../features/products/pages/EditProductPage'
 import { ProductDetailsPage } from '../features/products/pages/ProductDetailsPage'
 import { ProductsListPage } from '../features/products/pages/ProductsListPage'
+import { SubmissionDetailsPage } from '../features/submissions/pages/SubmissionDetailsPage'
+import { SubmissionsListPage } from '../features/submissions/pages/SubmissionsListPage'
 import { AppLayout } from '../shared/components/AppLayout'
 
 export function App() {
@@ -24,6 +26,8 @@ export function App() {
                 <Route path="/products/new" exact component={CreateProductPage} />
                 <Route path="/products/:id/edit" exact component={EditProductPage} />
                 <Route path="/products/:id" exact component={ProductDetailsPage} />
+                <Route path="/submissions" exact component={SubmissionsListPage} />
+                <Route path="/submissions/:id" exact component={SubmissionDetailsPage} />
               </Switch>
             </AppLayout>
           </ProtectedRoute>

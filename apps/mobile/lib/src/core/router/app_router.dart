@@ -9,15 +9,22 @@ import 'package:project/src/features/product/presentation/screens/product_detail
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
 import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/profile_screen.dart';
+import 'package:project/src/features/profile/presentation/screens/about_screen.dart';
+import 'package:project/src/features/profile/presentation/screens/legal_document_screen.dart';
 import 'package:project/src/features/scanner/presentation/screens/scanner_screen.dart';
+import 'package:project/src/features/splash/presentation/screens/splash_screen.dart';
 
 abstract final class AppRoutes {
+  static const splash = '/splash';
   static const home = '/';
   static const scanner = '/scanner';
   static const photoSearch = '/photo-search';
   static const favorites = '/favorites';
   static const history = '/history';
   static const profile = '/profile';
+  static const about = '/about';
+  static const privacy = '/privacy';
+  static const terms = '/terms';
   static const productDetails = '/product-details';
   static const productLookupError = '/product-lookup-error';
   static const productSubmission = '/product-submission';
@@ -26,6 +33,10 @@ abstract final class AppRoutes {
 abstract final class AppRouter {
   static Route<void> onGenerateRoute(RouteSettings settings) {
     return switch (settings.name) {
+      AppRoutes.splash => MaterialPageRoute(
+        builder: (_) => const SplashScreen(),
+        settings: settings,
+      ),
       AppRoutes.home => MaterialPageRoute(
         builder: (_) => const HomeScreen(),
         settings: settings,
@@ -48,6 +59,24 @@ abstract final class AppRouter {
       ),
       AppRoutes.profile => MaterialPageRoute(
         builder: (_) => const ProfileScreen(),
+        settings: settings,
+      ),
+      AppRoutes.about => MaterialPageRoute(
+        builder: (_) => const AboutScreen(),
+        settings: settings,
+      ),
+      AppRoutes.privacy => MaterialPageRoute(
+        builder: (_) => const LegalDocumentScreen(
+          title: 'Политика конфиденциальности',
+          body: _privacySummary,
+        ),
+        settings: settings,
+      ),
+      AppRoutes.terms => MaterialPageRoute(
+        builder: (_) => const LegalDocumentScreen(
+          title: 'Условия использования',
+          body: _termsSummary,
+        ),
         settings: settings,
       ),
       AppRoutes.productDetails => MaterialPageRoute(
@@ -88,7 +117,9 @@ abstract final class AppRouter {
     };
   }
 
-  static ProductDetailsArgs _readRequiredProductArgument(RouteSettings settings) {
+  static ProductDetailsArgs _readRequiredProductArgument(
+    RouteSettings settings,
+  ) {
     final argument = settings.arguments;
 
     if (argument is ProductDetailsArgs) {
@@ -114,6 +145,12 @@ abstract final class AppRouter {
     throw ArgumentError('Route ${settings.name} requires error arguments.');
   }
 }
+
+const _privacySummary =
+    'Черновик MVP. TazaScan использует поиск по штрихкоду, поиск продуктов, загрузку фото упаковки для заявок, а также локальную историю и избранное на этом устройстве. В этой версии MVP мы не собираем твое имя, email или телефон. Загруженные изображения могут сохраняться для модерации. Оценки пищевой ценности носят информационный характер и не являются медицинской рекомендацией.';
+
+const _termsSummary =
+    'Черновик MVP. Данные о продуктах и оценки могут содержать ошибки. Всегда сверяй информацию с упаковкой и обращайся к квалифицированным специалистам по вопросам здоровья. Не загружай оскорбительный, незаконный, вводящий в заблуждение или исполняемый контент. TazaScan может удалить заявки, нарушающие эти условия.';
 
 class ProductLookupErrorArguments {
   const ProductLookupErrorArguments({
