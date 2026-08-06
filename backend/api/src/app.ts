@@ -7,9 +7,12 @@ import { errorHandler } from './middleware/error-handler';
 import { loggingMiddleware } from './middleware/logging';
 import { notFoundHandler } from './middleware/not-found';
 import { apiRouter } from './routes';
+import { ensureProductImageUploadDirectory } from './services/product-image-storage.service';
 
 export function createApp() {
   const app = express();
+
+  void ensureProductImageUploadDirectory();
 
   app.disable('x-powered-by');
   app.use(helmet());

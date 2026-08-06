@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/network/asset_url_resolver.dart';
 import 'package:project/src/core/network/api_client.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
@@ -402,13 +403,14 @@ class _ProductImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final resolvedImageUrl = resolveApiAssetUrl(imageUrl);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
         width: 58,
         height: 58,
-        child: imageUrl == null
+        child: resolvedImageUrl == null
             ? ColoredBox(
                 color: colorScheme.primary.withValues(alpha: 0.12),
                 child: Icon(
@@ -417,7 +419,7 @@ class _ProductImage extends StatelessWidget {
                 ),
               )
             : Image.network(
-                imageUrl!,
+                resolvedImageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => ColoredBox(
                   color: colorScheme.primary.withValues(alpha: 0.12),

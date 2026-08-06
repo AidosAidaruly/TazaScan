@@ -67,6 +67,13 @@ export class ProductRepository {
     });
   }
 
+  updateImageUrl(id: string, imageUrl: string | null) {
+    return prisma.product.update({
+      where: { id },
+      data: { imageUrl }
+    });
+  }
+
   delete(id: string) {
     return prisma.product.delete({
       where: { id }

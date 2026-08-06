@@ -5,6 +5,7 @@ Product createTestProduct({
   String id = 'product-id',
   String barcode = '5449000000996',
   String name = 'Coca-Cola Original Taste',
+  String? imageUrl,
 }) {
   final now = DateTime.parse('2026-08-01T00:00:00.000Z');
 
@@ -14,7 +15,7 @@ Product createTestProduct({
     name: name,
     brand: 'Coca-Cola',
     category: 'Soft Drinks',
-    imageUrl: null,
+    imageUrl: imageUrl,
     ingredients: const ['Carbonated water', 'Sugar'],
     nutritionFacts: const {'energyKcal': 42, 'sugars': 10.6},
     healthScore: 65,

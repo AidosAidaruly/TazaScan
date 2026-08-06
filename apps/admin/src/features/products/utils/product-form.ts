@@ -1,54 +1,54 @@
-import type { ProductDto, ProductPayload } from '../types'
+import type { ProductDto, ProductPayload } from "../types";
 
 export type ProductFormValues = {
-  barcode: string
-  name: string
-  brand: string
-  category: string
-  ingredients: string
-  servingType: 'per100g' | 'per100ml'
-  energyKcal: string
-  protein: string
-  carbohydrates: string
-  sugars: string
-  fat: string
-  saturatedFat: string
-  fiber: string
-  salt: string
-  imageUrl: string
-  dataStatus: 'unverified' | 'community' | 'verified'
-  source: string
-  lastVerifiedAt: string
-}
+  barcode: string;
+  name: string;
+  brand: string;
+  category: string;
+  ingredients: string;
+  servingType: "per100g" | "per100ml";
+  energyKcal: string;
+  protein: string;
+  carbohydrates: string;
+  sugars: string;
+  fat: string;
+  saturatedFat: string;
+  fiber: string;
+  salt: string;
+  imageUrl: string;
+  dataStatus: "unverified" | "community" | "verified";
+  source: string;
+  lastVerifiedAt: string;
+};
 
 export const emptyProductFormValues: ProductFormValues = {
-  barcode: '',
-  name: '',
-  brand: '',
-  category: '',
-  ingredients: '',
-  servingType: 'per100g',
-  energyKcal: '',
-  protein: '',
-  carbohydrates: '',
-  sugars: '',
-  fat: '',
-  saturatedFat: '',
-  fiber: '',
-  salt: '',
-  imageUrl: '',
-  dataStatus: 'unverified',
-  source: '',
-  lastVerifiedAt: '',
-}
+  barcode: "",
+  name: "",
+  brand: "",
+  category: "",
+  ingredients: "",
+  servingType: "per100g",
+  energyKcal: "",
+  protein: "",
+  carbohydrates: "",
+  sugars: "",
+  fat: "",
+  saturatedFat: "",
+  fiber: "",
+  salt: "",
+  imageUrl: "",
+  dataStatus: "unverified",
+  source: "",
+  lastVerifiedAt: "",
+};
 
 export function productToFormValues(product: ProductDto): ProductFormValues {
   return {
     barcode: product.barcode,
     name: product.name,
-    brand: product.brand ?? '',
+    brand: product.brand ?? "",
     category: product.category,
-    ingredients: product.ingredients.join('\n'),
+    ingredients: product.ingredients.join("\n"),
     servingType: product.nutritionFacts.servingType,
     energyKcal: numberToInput(product.nutritionFacts.energyKcal),
     protein: numberToInput(product.nutritionFacts.protein),
@@ -58,11 +58,11 @@ export function productToFormValues(product: ProductDto): ProductFormValues {
     saturatedFat: numberToInput(product.nutritionFacts.saturatedFat),
     fiber: numberToInput(product.nutritionFacts.fiber),
     salt: numberToInput(product.nutritionFacts.salt),
-    imageUrl: product.imageUrl ?? '',
+    imageUrl: product.imageUrl ?? "",
     dataStatus: product.dataStatus,
-    source: product.source ?? '',
-    lastVerifiedAt: product.lastVerifiedAt?.slice(0, 10) ?? '',
-  }
+    source: product.source ?? "",
+    lastVerifiedAt: product.lastVerifiedAt?.slice(0, 10) ?? "",
+  };
 }
 
 export function formValuesToPayload(values: ProductFormValues): ProductPayload {
@@ -72,7 +72,7 @@ export function formValuesToPayload(values: ProductFormValues): ProductPayload {
     brand: optionalText(values.brand),
     category: values.category.trim(),
     ingredients: values.ingredients
-      .split('\n')
+      .split("\n")
       .map((ingredient) => ingredient.trim())
       .filter(Boolean),
     nutritionFacts: {
@@ -86,24 +86,23 @@ export function formValuesToPayload(values: ProductFormValues): ProductPayload {
       fiber: nullableNumber(values.fiber),
       salt: nullableNumber(values.salt),
     },
-    imageUrl: optionalText(values.imageUrl),
     dataStatus: values.dataStatus,
     source: optionalText(values.source),
     lastVerifiedAt: values.lastVerifiedAt
       ? new Date(`${values.lastVerifiedAt}T00:00:00.000Z`).toISOString()
       : null,
-  }
+  };
 }
 
 function nullableNumber(value: string) {
-  return value.trim() === '' ? null : Number(value)
+  return value.trim() === "" ? null : Number(value);
 }
 
 function optionalText(value: string) {
-  const trimmed = value.trim()
-  return trimmed === '' ? null : trimmed
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }
 
 function numberToInput(value: number | null) {
-  return value === null ? '' : String(value)
+  return value === null ? "" : String(value);
 }

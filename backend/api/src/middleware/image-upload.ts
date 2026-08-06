@@ -22,10 +22,25 @@ const upload = multer({
 export const uploadProductImage: RequestHandler = (request, response, next) => {
   upload.single('image')(request, response, (error: unknown) => {
     if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        next(new HttpError(413, 'Image file is too large', error.message));
+        return;
+      }
+
       next(new HttpError(400, 'Invalid image upload', error.message));
       return;
     }
 
-    next(error);
+    if (error) {
+      next(error);
+      return;
+    }
+
+    if (request.file && request.file.size === 0) {
+      next(new HttpError(400, 'Product image is required'));
+      return;
+    }
+
+    next();
   });
 };

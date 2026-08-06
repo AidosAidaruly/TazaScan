@@ -52,6 +52,24 @@ export const updateProduct: RequestHandler = async (request, response) => {
   });
 };
 
+export const uploadProductImage: RequestHandler = async (request, response) => {
+  const id = requireParam(request, 'id');
+  const product = await productService.uploadImage(id, request.file);
+
+  response.status(200).json({
+    data: product
+  });
+};
+
+export const removeProductImage: RequestHandler = async (request, response) => {
+  const id = requireParam(request, 'id');
+  const product = await productService.removeImage(id);
+
+  response.status(200).json({
+    data: product
+  });
+};
+
 export const deleteProduct: RequestHandler = async (request, response) => {
   const id = requireParam(request, 'id');
   await productService.delete(id);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/network/asset_url_resolver.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 
 class ProductHeroCard extends StatelessWidget {
@@ -9,21 +10,34 @@ class ProductHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final imageUrl = resolveApiAssetUrl(product.imageUrl);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 190,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Icon(
-            Icons.inventory_2_outlined,
-            size: 72,
-            color: colorScheme.primary,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            height: 190,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+            ),
+            child: imageUrl == null
+                ? Icon(
+                    Icons.inventory_2_outlined,
+                    size: 72,
+                    color: colorScheme.primary,
+                  )
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(
+                      Icons.inventory_2_outlined,
+                      size: 72,
+                      color: colorScheme.primary,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 20),

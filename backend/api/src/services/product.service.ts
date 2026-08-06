@@ -6,6 +6,7 @@ import type { PaginatedResponse } from '../types/pagination';
 import type { ProductDto } from '../types/product';
 import { toProductDto } from '../types/product';
 import { HttpError } from '../utils/http-error';
+import { ProductImageStorageService } from './product-image-storage.service';
 
 type ProductRepositoryContract = {
   list(filters: ListProductsQuery): Promise<[Product[], number]>;
@@ -13,6 +14,7 @@ type ProductRepositoryContract = {
   findByBarcode(barcode: string): Promise<Product | null>;
   create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   update(id: string, data: UpdateProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
+  updateImageUrl(id: string, imageUrl: string | null): Promise<Product>;
   delete(id: string): Promise<Product>;
 };
 
@@ -21,7 +23,8 @@ type NumericNutritionField = Exclude<keyof ProductBody['nutritionFacts'], 'servi
 export class ProductService {
   constructor(
     private readonly productRepository: ProductRepositoryContract,
-    private readonly scoreEngine: ScoreEngine
+    private readonly scoreEngine: ScoreEngine,
+    private readonly imageStorage = new ProductImageStorageService()
   ) {}
 
   async list(filters: ListProductsQuery): Promise<PaginatedResponse<ProductDto>> {
@@ -106,6 +109,29 @@ export class ProductService {
   async delete(id: string) {
     await this.ensureExists(id);
     await this.productRepository.delete(id);
+  }
+
+  async uploadImage(id: string, file: Express.Multer.File | undefined) {
+    const existingProduct = await this.ensureExists(id);
+    const storedImage = await this.imageStorage.store(file);
+
+    try {
+      const product = await this.productRepository.updateImageUrl(id, storedImage.imageUrl);
+      await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
+
+      return toProductDto(product);
+    } catch (error) {
+      await this.imageStorage.deleteLocalImage(storedImage.imageUrl);
+      throw error;
+    }
+  }
+
+  async removeImage(id: string) {
+    const existingProduct = await this.ensureExists(id);
+    const product = await this.productRepository.updateImageUrl(id, null);
+    await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
+
+    return toProductDto(product);
   }
 
   private async ensureExists(id: string) {

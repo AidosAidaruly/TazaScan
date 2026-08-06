@@ -5,6 +5,8 @@ import {
   getProductByBarcode,
   getProductById,
   listProducts,
+  removeProductImage,
+  uploadProductImage as uploadProductImageController,
   updateProduct
 } from '../controllers/product.controller';
 import { searchProductsByPhoto } from '../controllers/photo-search.controller';
@@ -55,6 +57,23 @@ productRouter.post(
   authorizeRole('admin'),
   validate(productBodySchema),
   asyncHandler(createProduct)
+);
+
+productRouter.post(
+  '/:id/image',
+  authenticate,
+  authorizeRole('admin'),
+  validate(productIdParamsSchema, 'params'),
+  uploadProductImage,
+  asyncHandler(uploadProductImageController)
+);
+
+productRouter.delete(
+  '/:id/image',
+  authenticate,
+  authorizeRole('admin'),
+  validate(productIdParamsSchema, 'params'),
+  asyncHandler(removeProductImage)
 );
 
 productRouter.put(

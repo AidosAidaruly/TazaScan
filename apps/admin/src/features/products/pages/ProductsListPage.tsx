@@ -1,24 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useHistory } from 'react-router-dom'
-import { ApiClient } from '../../../core/api/api-client'
-import { useAuth } from '../../../core/auth/use-auth'
-import { ApiError } from '../../../core/errors/api-error'
-import { PageLoader } from '../../../shared/components/PageLoader'
-import { formatDate } from '../../../shared/utils/date'
-import { ProductsApi } from '../api/products-api'
-import type { ProductDto, ProductListResponse } from '../types'
+import { useEffect, useMemo, useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { ApiClient } from "../../../core/api/api-client";
+import { useAuth } from "../../../core/auth/use-auth";
+import { ApiError } from "../../../core/errors/api-error";
+import { PageLoader } from "../../../shared/components/PageLoader";
+import { resolveAssetUrl } from "../../../shared/utils/asset-url";
+import { formatDate } from "../../../shared/utils/date";
+import { ProductsApi } from "../api/products-api";
+import type { ProductDto, ProductListResponse } from "../types";
 
-const productsApi = new ProductsApi(new ApiClient())
+const productsApi = new ProductsApi(new ApiClient());
 
 export function ProductsListPage() {
-  const { token, logout } = useAuth()
-  const history = useHistory()
-  const [products, setProducts] = useState<ProductDto[]>([])
-  const [pagination, setPagination] = useState<ProductListResponse['pagination'] | null>(null)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState({ name: '', brand: '', barcode: '' })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { token, logout } = useAuth();
+  const history = useHistory();
+  const [products, setProducts] = useState<ProductDto[]>([]);
+  const [pagination, setPagination] = useState<
+    ProductListResponse["pagination"] | null
+  >(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState({ name: "", brand: "", barcode: "" });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const activeSearch = useMemo(
     () => ({
@@ -27,60 +30,70 @@ export function ProductsListPage() {
       barcode: search.barcode.trim() || undefined,
     }),
     [search],
-  )
+  );
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     async function loadProducts() {
-      setIsLoading(true)
-      setError('')
+      setIsLoading(true);
+      setError("");
 
       try {
         const response = await productsApi.list({
           page,
           pageSize: 10,
           ...activeSearch,
-        })
+        });
 
         if (isMounted) {
-          setProducts(response.data)
-          setPagination(response.pagination)
+          setProducts(response.data);
+          setPagination(response.pagination);
         }
       } catch (loadError) {
         if (isMounted) {
-          setError(loadError instanceof ApiError ? loadError.message : 'Could not load products')
+          setError(
+            loadError instanceof ApiError
+              ? loadError.message
+              : "Could not load products",
+          );
         }
       } finally {
         if (isMounted) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
     }
 
-    void loadProducts()
+    void loadProducts();
 
     return () => {
-      isMounted = false
-    }
-  }, [activeSearch, page])
+      isMounted = false;
+    };
+  }, [activeSearch, page]);
 
   async function handleDelete(product: ProductDto) {
     if (!token || !confirm(`Delete ${product.name}?`)) {
-      return
+      return;
     }
 
     try {
-      await productsApi.delete(product.id, token)
-      setProducts((current) => current.filter((item) => item.id !== product.id))
+      await productsApi.delete(product.id, token);
+      setProducts((current) =>
+        current.filter((item) => item.id !== product.id),
+      );
     } catch (deleteError) {
       if (deleteError instanceof ApiError && deleteError.statusCode === 401) {
-        logout()
-        history.replace('/login')
-        return
+        logout();
+        history.replace("/login");
+        return;
       }
 
-      setError(deleteError instanceof ApiError ? deleteError.message : 'Could not delete product')
+      setError(
+        deleteError instanceof ApiError
+          ? deleteError.message
+          : "Could not delete product",
+      );
     }
   }
 
@@ -101,24 +114,27 @@ export function ProductsListPage() {
           placeholder="Search name"
           value={search.name}
           onChange={(event) => {
-            setPage(1)
-            setSearch((current) => ({ ...current, name: event.target.value }))
+            setPage(1);
+            setSearch((current) => ({ ...current, name: event.target.value }));
           }}
         />
         <input
           placeholder="Search brand"
           value={search.brand}
           onChange={(event) => {
-            setPage(1)
-            setSearch((current) => ({ ...current, brand: event.target.value }))
+            setPage(1);
+            setSearch((current) => ({ ...current, brand: event.target.value }));
           }}
         />
         <input
           placeholder="Search barcode"
           value={search.barcode}
           onChange={(event) => {
-            setPage(1)
-            setSearch((current) => ({ ...current, barcode: event.target.value }))
+            setPage(1);
+            setSearch((current) => ({
+              ...current,
+              barcode: event.target.value,
+            }));
           }}
         />
       </div>
@@ -134,6 +150,7 @@ export function ProductsListPage() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Image</th>
                 <th>Brand</th>
                 <th>Barcode</th>
                 <th>Category</th>
@@ -149,7 +166,10 @@ export function ProductsListPage() {
                   <td>
                     <Link to={`/products/${product.id}`}>{product.name}</Link>
                   </td>
-                  <td>{product.brand ?? '-'}</td>
+                  <td>
+                    <ProductThumbnail product={product} />
+                  </td>
+                  <td>{product.brand ?? "-"}</td>
                   <td>{product.barcode}</td>
                   <td>{product.category}</td>
                   <td>
@@ -158,7 +178,8 @@ export function ProductsListPage() {
                     </span>
                   </td>
                   <td>
-                    {product.nutritionScore.grade ?? '-'} / {product.nutritionScore.score ?? '-'}
+                    {product.nutritionScore.grade ?? "-"} /{" "}
+                    {product.nutritionScore.score ?? "-"}
                     <br />
                     <small>{product.nutritionScore.status}</small>
                   </td>
@@ -166,7 +187,10 @@ export function ProductsListPage() {
                   <td>
                     <div className="table-actions">
                       <Link to={`/products/${product.id}/edit`}>Edit</Link>
-                      <button type="button" onClick={() => void handleDelete(product)}>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(product)}
+                      >
                         Delete
                       </button>
                     </div>
@@ -180,7 +204,10 @@ export function ProductsListPage() {
 
       {pagination ? (
         <div className="pagination">
-          <button disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
             Previous
           </button>
           <span>
@@ -195,5 +222,15 @@ export function ProductsListPage() {
         </div>
       ) : null}
     </section>
-  )
+  );
+}
+
+function ProductThumbnail({ product }: { product: ProductDto }) {
+  const imageUrl = resolveAssetUrl(product.imageUrl);
+
+  return (
+    <div className="product-thumbnail">
+      {imageUrl ? <img src={imageUrl} alt={product.name} /> : <span>Pkg</span>}
+    </div>
+  );
 }

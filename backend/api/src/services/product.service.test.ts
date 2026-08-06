@@ -106,6 +106,7 @@ class FakeProductRepository {
   deletedIds: string[] = [];
   lastListFilters: unknown;
   lastScoreResult: ScoreResult | null = null;
+  failImageUpdate = false;
 
   list(filters: ListProductsQuery) {
     this.lastListFilters = filters;
@@ -151,6 +152,17 @@ class FakeProductRepository {
     return Promise.resolve(product);
   }
 
+  updateImageUrl(id: string, imageUrl: string | null) {
+    if (this.failImageUpdate) {
+      return Promise.reject(new Error('DB failure'));
+    }
+
+    const existing = this.products.find((product) => product.id === id);
+    const product = createProduct({ ...existing, id, imageUrl });
+    this.products = this.products.map((item) => (item.id === id ? product : item));
+    return Promise.resolve(product);
+  }
+
   delete(id: string) {
     this.deletedIds.push(id);
     this.products = this.products.filter((product) => product.id !== id);
@@ -160,12 +172,31 @@ class FakeProductRepository {
 
 function createService(repository = new FakeProductRepository()) {
   const scoreEngine = new FakeScoreEngine();
+  const imageStorage = new FakeProductImageStorage();
 
   return {
     repository,
+    imageStorage,
     scoreEngine,
-    service: new ProductService(repository, scoreEngine)
+    service: new ProductService(repository, scoreEngine, imageStorage)
   };
+}
+
+class FakeProductImageStorage {
+  deletedImages: Array<string | null | undefined> = [];
+  storedUrl = '/uploads/products/new-image.webp';
+
+  store() {
+    return Promise.resolve({
+      imageUrl: this.storedUrl,
+      absolutePath: 'unused'
+    });
+  }
+
+  deleteLocalImage(imageUrl: string | null | undefined) {
+    this.deletedImages.push(imageUrl);
+    return Promise.resolve();
+  }
 }
 
 describe('ProductService', () => {
@@ -244,6 +275,51 @@ describe('ProductService', () => {
     await service.delete('11111111-1111-4111-8111-111111111111');
 
     expect(repository.deletedIds).toContain('11111111-1111-4111-8111-111111111111');
+  });
+
+  it('uploads a product image and deletes old local image after DB update', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({ imageUrl: '/uploads/products/old-image.webp' })
+    ];
+    const { imageStorage, service } = createService(repository);
+
+    const product = await service.uploadImage(
+      '11111111-1111-4111-8111-111111111111',
+      undefined
+    );
+
+    expect(product.imageUrl).toBe('/uploads/products/new-image.webp');
+    expect(imageStorage.deletedImages).toEqual(['/uploads/products/old-image.webp']);
+  });
+
+  it('removes product image', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({ imageUrl: '/uploads/products/old-image.webp' })
+    ];
+    const { imageStorage, service } = createService(repository);
+
+    const product = await service.removeImage('11111111-1111-4111-8111-111111111111');
+
+    expect(product.imageUrl).toBeNull();
+    expect(imageStorage.deletedImages).toEqual(['/uploads/products/old-image.webp']);
+  });
+
+  it('deletes newly stored image if DB image update fails', async () => {
+    const repository = new FakeProductRepository();
+    repository.failImageUpdate = true;
+    repository.products = [
+      createProduct({ imageUrl: '/uploads/products/old-image.webp' })
+    ];
+    const { imageStorage, service } = createService(repository);
+
+    await expect(
+      service.uploadImage('11111111-1111-4111-8111-111111111111', undefined)
+    ).rejects.toThrow('DB failure');
+
+    expect(imageStorage.deletedImages).toEqual(['/uploads/products/new-image.webp']);
+    expect(repository.products[0]?.imageUrl).toBe('/uploads/products/old-image.webp');
   });
 
   it('returns pagination metadata', async () => {

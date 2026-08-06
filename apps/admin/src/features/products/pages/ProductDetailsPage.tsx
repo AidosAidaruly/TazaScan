@@ -1,59 +1,66 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ApiClient } from '../../../core/api/api-client'
-import { ApiError } from '../../../core/errors/api-error'
-import { PageLoader } from '../../../shared/components/PageLoader'
-import { formatDate } from '../../../shared/utils/date'
-import { ProductsApi } from '../api/products-api'
-import type { ProductDto } from '../types'
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ApiClient } from "../../../core/api/api-client";
+import { ApiError } from "../../../core/errors/api-error";
+import { PageLoader } from "../../../shared/components/PageLoader";
+import { resolveAssetUrl } from "../../../shared/utils/asset-url";
+import { formatDate } from "../../../shared/utils/date";
+import { ProductsApi } from "../api/products-api";
+import type { ProductDto } from "../types";
 
-const productsApi = new ProductsApi(new ApiClient())
+const productsApi = new ProductsApi(new ApiClient());
 
 export function ProductDetailsPage() {
-  const { id } = useParams<{ id: string }>()
-  const [product, setProduct] = useState<ProductDto | null>(null)
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const { id } = useParams<{ id: string }>();
+  const [product, setProduct] = useState<ProductDto | null>(null);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
 
     async function loadProduct() {
       if (!id) {
-        return
+        return;
       }
 
       try {
-        const response = await productsApi.findById(id)
+        const response = await productsApi.findById(id);
 
         if (isMounted) {
-          setProduct(response.data)
+          setProduct(response.data);
         }
       } catch (loadError) {
         if (isMounted) {
-          setError(loadError instanceof ApiError ? loadError.message : 'Could not load product')
+          setError(
+            loadError instanceof ApiError
+              ? loadError.message
+              : "Could not load product",
+          );
         }
       } finally {
         if (isMounted) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
     }
 
-    void loadProduct()
+    void loadProduct();
 
     return () => {
-      isMounted = false
-    }
-  }, [id])
+      isMounted = false;
+    };
+  }, [id]);
 
   if (isLoading) {
-    return <PageLoader label="Loading product..." />
+    return <PageLoader label="Loading product..." />;
   }
 
   if (error || !product) {
-    return <div className="alert error">{error || 'Product not found'}</div>
+    return <div className="alert error">{error || "Product not found"}</div>;
   }
+
+  const imageUrl = resolveAssetUrl(product.imageUrl);
 
   return (
     <section className="page">
@@ -68,11 +75,17 @@ export function ProductDetailsPage() {
       </div>
 
       <div className="details-grid">
-        <div className="image-placeholder">Product image</div>
+        <div className="image-placeholder">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.name} />
+          ) : (
+            <span>Product image</span>
+          )}
+        </div>
         <div className="details-card">
           <dl>
             <dt>Brand</dt>
-            <dd>{product.brand ?? '-'}</dd>
+            <dd>{product.brand ?? "-"}</dd>
             <dt>Category</dt>
             <dd>{product.category}</dd>
             <dt>Barcode</dt>
@@ -80,14 +93,15 @@ export function ProductDetailsPage() {
             <dt>Data status</dt>
             <dd>{product.dataStatus}</dd>
             <dt>Calculated score</dt>
-            <dd>{product.nutritionScore.score ?? '-'}</dd>
+            <dd>{product.nutritionScore.score ?? "-"}</dd>
             <dt>Grade</dt>
-            <dd>{product.nutritionScore.grade ?? '-'}</dd>
+            <dd>{product.nutritionScore.grade ?? "-"}</dd>
             <dt>Calculation status</dt>
             <dd>{product.nutritionScore.status}</dd>
             <dt>Algorithm</dt>
             <dd>
-              {product.nutritionScore.algorithm} {product.nutritionScore.algorithmVersion}
+              {product.nutritionScore.algorithm}{" "}
+              {product.nutritionScore.algorithmVersion}
             </dd>
             <dt>Last verified</dt>
             <dd>{formatDate(product.lastVerifiedAt)}</dd>
@@ -100,18 +114,18 @@ export function ProductDetailsPage() {
         <dl className="nutrition-grid">
           <div>
             <dt>Missing fields</dt>
-            <dd>{product.nutritionScore.missingFields.join(', ') || 'None'}</dd>
+            <dd>{product.nutritionScore.missingFields.join(", ") || "None"}</dd>
           </div>
           <div>
             <dt>Warnings</dt>
-            <dd>{product.nutritionScore.warnings.join(', ') || 'None'}</dd>
+            <dd>{product.nutritionScore.warnings.join(", ") || "None"}</dd>
           </div>
         </dl>
       </section>
 
       <section className="details-card">
         <h2>Ingredients</h2>
-        <p>{product.ingredients.join(', ') || 'No ingredients recorded.'}</p>
+        <p>{product.ingredients.join(", ") || "No ingredients recorded."}</p>
       </section>
 
       <section className="details-card">
@@ -120,11 +134,11 @@ export function ProductDetailsPage() {
           {Object.entries(product.nutritionFacts).map(([key, value]) => (
             <div key={key}>
               <dt>{key}</dt>
-              <dd>{value ?? 'Unknown'}</dd>
+              <dd>{value ?? "Unknown"}</dd>
             </div>
           ))}
         </dl>
       </section>
     </section>
-  )
+  );
 }
