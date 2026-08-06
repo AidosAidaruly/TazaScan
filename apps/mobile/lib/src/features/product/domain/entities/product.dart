@@ -11,6 +11,7 @@ class Product {
     required this.nutritionScore,
     required this.createdAt,
     required this.updatedAt,
+    this.dataStatus = 'unverified',
     this.brand,
     this.category,
     this.imageUrl,
@@ -22,6 +23,7 @@ class Product {
   final String? brand;
   final String? category;
   final String? imageUrl;
+  final String dataStatus;
   final List<String> ingredients;
   final Map<String, dynamic> nutritionFacts;
   final int healthScore;

@@ -17,10 +17,9 @@ const productSubmissionService = new ProductSubmissionService(
   new NutriScoreEngine()
 );
 
-export const listProductSubmissions: RequestHandler = async (request, response) => {
-  const result = await productSubmissionService.list(
-    request.query as unknown as ListSubmissionsQuery
-  );
+export const listProductSubmissions: RequestHandler = async (_request, response) => {
+  const query = response.locals.validated.query as ListSubmissionsQuery;
+  const result = await productSubmissionService.list(query);
 
   response.status(200).json({
     data: result.items,

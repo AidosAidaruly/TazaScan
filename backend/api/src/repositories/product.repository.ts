@@ -75,6 +75,15 @@ export class ProductRepository {
 
   private buildWhere(filters: ListProductsQuery): Prisma.ProductWhereInput {
     return {
+      ...(filters.q
+        ? {
+            OR: [
+              { name: { contains: filters.q, mode: 'insensitive' } },
+              { brand: { contains: filters.q, mode: 'insensitive' } },
+              { barcode: { contains: filters.q } }
+            ]
+          }
+        : {}),
       ...(filters.name
         ? { name: { contains: filters.name, mode: 'insensitive' } }
         : {}),

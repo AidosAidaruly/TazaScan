@@ -12,6 +12,7 @@ class ProductModel extends Product {
     required super.nutritionScore,
     required super.createdAt,
     required super.updatedAt,
+    required super.dataStatus,
     super.brand,
     super.category,
     super.imageUrl,
@@ -35,6 +36,7 @@ class ProductModel extends Product {
       ),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      dataStatus: json['dataStatus'] as String? ?? 'unverified',
     );
   }
 }

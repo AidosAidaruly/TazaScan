@@ -20,6 +20,10 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).pushNamed(AppRoutes.photoSearch);
   }
 
+  void _openProductSearch(BuildContext context) {
+    Navigator.of(context).pushNamed(AppRoutes.productSearch);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -68,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                       icon: Icons.search_rounded,
                       title: 'Поиск продукта',
                       subtitle: 'Найти по названию или штрихкоду',
-                      onTap: () {},
+                      onTap: () => _openProductSearch(context),
                     ),
                     const SizedBox(height: 18),
                     TazaListCard(

@@ -20,6 +20,10 @@ final class RequestTimeoutException extends AppException {
   const RequestTimeoutException(super.message);
 }
 
+final class InvalidResponseException extends AppException {
+  const InvalidResponseException(super.message);
+}
+
 final class UnknownAppException extends AppException {
   const UnknownAppException(super.message);
 }

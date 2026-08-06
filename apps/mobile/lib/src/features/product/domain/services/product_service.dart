@@ -9,4 +9,18 @@ class ProductService {
   Future<Product> findByBarcode(String barcode) {
     return _productRepository.findByBarcode(barcode);
   }
+
+  Future<List<Product>> search({
+    String? name,
+    String? brand,
+    String? barcode,
+    int pageSize = 20,
+  }) {
+    return _productRepository.search(
+      name: name,
+      brand: brand,
+      barcode: barcode,
+      pageSize: pageSize,
+    );
+  }
 }

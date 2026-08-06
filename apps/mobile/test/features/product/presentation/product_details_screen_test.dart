@@ -18,6 +18,16 @@ class FakeProductRepository implements ProductRepository {
   Future<Product> findByBarcode(String barcode) async {
     return product;
   }
+
+  @override
+  Future<List<Product>> search({
+    String? name,
+    String? brand,
+    String? barcode,
+    int pageSize = 20,
+  }) async {
+    return [product];
+  }
 }
 
 void main() {

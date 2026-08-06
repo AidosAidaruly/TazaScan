@@ -7,8 +7,9 @@ import { requireParam } from '../utils/request';
 
 const productService = new ProductService(new ProductRepository(), new NutriScoreEngine());
 
-export const listProducts: RequestHandler = async (request, response) => {
-  const result = await productService.list(request.query as unknown as ListProductsQuery);
+export const listProducts: RequestHandler = async (_request, response) => {
+  const query = response.locals.validated.query as ListProductsQuery;
+  const result = await productService.list(query);
 
   response.status(200).json({
     data: result.items,

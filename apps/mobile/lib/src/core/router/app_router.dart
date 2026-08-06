@@ -8,6 +8,7 @@ import 'package:project/src/features/product/domain/entities/product_details_arg
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
 import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
+import 'package:project/src/features/product_search/presentation/screens/product_search_screen.dart';
 import 'package:project/src/features/profile/domain/legal_texts.dart';
 import 'package:project/src/features/profile/presentation/screens/profile_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/about_screen.dart';
@@ -20,6 +21,7 @@ abstract final class AppRoutes {
   static const home = '/';
   static const scanner = '/scanner';
   static const photoSearch = '/photo-search';
+  static const productSearch = '/product-search';
   static const favorites = '/favorites';
   static const history = '/history';
   static const profile = '/profile';
@@ -48,6 +50,10 @@ abstract final class AppRouter {
       ),
       AppRoutes.photoSearch => MaterialPageRoute(
         builder: (_) => const PhotoSearchScreen(),
+        settings: settings,
+      ),
+      AppRoutes.productSearch => MaterialPageRoute(
+        builder: (_) => const ProductSearchScreen(),
         settings: settings,
       ),
       AppRoutes.favorites => MaterialPageRoute(

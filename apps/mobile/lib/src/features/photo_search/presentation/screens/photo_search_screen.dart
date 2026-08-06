@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/errors/app_exception.dart';
@@ -80,6 +82,8 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final result = _result;
+    final isDesktop =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Поиск по фото')),
@@ -98,17 +102,19 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 24),
-            PhotoSourceButton(
-              icon: Icons.photo_camera_rounded,
-              label: 'Сделать фото',
-              onPressed: _isLoading
-                  ? null
-                  : () => _pickAndSearch(ImageSource.camera),
-            ),
-            const SizedBox(height: 12),
+            if (!isDesktop) ...[
+              PhotoSourceButton(
+                icon: Icons.photo_camera_rounded,
+                label: 'Сделать фото',
+                onPressed: _isLoading
+                    ? null
+                    : () => _pickAndSearch(ImageSource.camera),
+              ),
+              const SizedBox(height: 12),
+            ],
             PhotoSourceButton(
               icon: Icons.photo_library_rounded,
-              label: 'Выбрать из галереи',
+              label: isDesktop ? 'Выбрать файл' : 'Выбрать из галереи',
               onPressed: _isLoading
                   ? null
                   : () => _pickAndSearch(ImageSource.gallery),

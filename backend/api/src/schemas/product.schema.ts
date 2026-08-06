@@ -16,6 +16,7 @@ export const barcodeParamsSchema = z.object({
 export const listProductsQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
+  q: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1).optional(),
   brand: z.string().trim().min(1).optional(),
   barcode: z.string().trim().min(1).optional()

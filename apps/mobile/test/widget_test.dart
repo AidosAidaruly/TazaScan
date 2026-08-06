@@ -19,6 +19,23 @@ void main() {
     expect(find.text('Пока нет сканов', skipOffstage: false), findsWidgets);
   });
 
+  testWidgets('tapping product search card opens search screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pumpTazaScan(tester);
+
+    await tester.tap(find.text('Поиск продукта').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.text('Название, бренд или штрихкод'), findsOneWidget);
+    expect(
+      find.text('Начни вводить название, бренд или штрихкод.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('bottom navigation opens favorites', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await _pumpTazaScan(tester);
