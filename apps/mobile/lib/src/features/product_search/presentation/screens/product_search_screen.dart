@@ -26,6 +26,8 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String _lastSubmittedQuery = '';
+  String _lastCompletedQuery = '';
+  int _searchGeneration = 0;
   List<Product> _results = const [];
   List<String> _recentQueries = const [];
 
@@ -44,17 +46,19 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
     _debounce?.cancel();
     final query = value.trim();
 
-    if (query.isEmpty) {
+    if (query.length < 2) {
+      _searchGeneration++;
       setState(() {
         _results = const [];
         _errorMessage = null;
         _isLoading = false;
         _lastSubmittedQuery = '';
+        _lastCompletedQuery = '';
       });
       return;
     }
 
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 350), () {
       _search(query);
     });
   }
@@ -63,16 +67,25 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
     final query = (rawQuery ?? _controller.text).trim();
     _debounce?.cancel();
 
-    if (query.isEmpty) {
+    if (query.length < 2) {
+      _searchGeneration++;
       setState(() {
         _results = const [];
         _errorMessage = null;
         _isLoading = false;
         _lastSubmittedQuery = '';
+        _lastCompletedQuery = '';
       });
       return;
     }
 
+    if (query == _lastSubmittedQuery &&
+        (_isLoading ||
+            (_errorMessage == null && _lastCompletedQuery == query))) {
+      return;
+    }
+
+    final generation = ++_searchGeneration;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -80,53 +93,42 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
     });
 
     try {
-      final products = await _runSearch(query);
-      if (!mounted) return;
+      final products = await _service.search(name: query, pageSize: 20);
+      if (!mounted || generation != _searchGeneration) return;
 
       setState(() {
         _results = products;
         _isLoading = false;
+        _lastCompletedQuery = query;
         _recentQueries = _updatedRecentQueries(query);
       });
     } on AppException catch (error) {
-      _showError(error.message);
+      _showError(error.message, generation);
     } catch (_) {
-      _showError('Не удалось выполнить поиск. Попробуй снова.');
+      _showError('Не удалось выполнить поиск. Попробуй снова.', generation);
     }
   }
 
-  Future<List<Product>> _runSearch(String query) async {
-    if (_isBarcodeLike(query)) {
-      try {
-        return [await _service.findByBarcode(query)];
-      } on NotFoundException {
-        return _service.search(barcode: query, pageSize: 20);
-      }
-    }
-
-    final byName = await _service.search(name: query, pageSize: 20);
-    final byBrand = await _service.search(brand: query, pageSize: 20);
-
-    return _mergeProducts([...byName, ...byBrand]);
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
+  void _showError(String message, int generation) {
+    if (!mounted || generation != _searchGeneration) return;
 
     setState(() {
       _errorMessage = message;
       _isLoading = false;
+      _lastCompletedQuery = _lastSubmittedQuery;
     });
   }
 
   void _clear() {
     _debounce?.cancel();
+    _searchGeneration++;
     _controller.clear();
     setState(() {
       _results = const [];
       _errorMessage = null;
       _isLoading = false;
       _lastSubmittedQuery = '';
+      _lastCompletedQuery = '';
     });
   }
 
@@ -149,29 +151,10 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
     ].take(5).toList();
   }
 
-  List<Product> _mergeProducts(List<Product> products) {
-    final seen = <String>{};
-    final merged = <Product>[];
-
-    for (final product in products) {
-      if (seen.add(product.id)) {
-        merged.add(product);
-      }
-    }
-
-    return merged;
-  }
-
-  bool _isBarcodeLike(String value) {
-    final digitsOnly = RegExp(r'^\d+$').hasMatch(value);
-    return digitsOnly &&
-        (value.length == 8 || value.length == 12 || value.length == 13);
-  }
-
   @override
   Widget build(BuildContext context) {
     final hasQuery = _controller.text.trim().isNotEmpty;
-    final hasSearched = _lastSubmittedQuery.isNotEmpty;
+    final hasSearched = _lastCompletedQuery.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Поиск продукта')),
@@ -183,6 +166,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
               onChanged: _onQueryChanged,
               onSubmitted: _search,
               onClear: hasQuery ? _clear : null,
+              isLoading: _isLoading,
             ),
             const SizedBox(height: 18),
             if (_recentQueries.isNotEmpty && !hasQuery) ...[
@@ -195,15 +179,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
               ),
               const SizedBox(height: 18),
             ],
-            if (_isLoading) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 16),
-              const _SearchMessage(
-                icon: Icons.search_rounded,
-                title: 'Ищем продукт...',
-                message: 'Проверяем название, бренд и штрихкод.',
-              ),
-            ] else if (_errorMessage != null) ...[
+            if (_errorMessage != null) ...[
               _SearchMessage(
                 icon: Icons.wifi_off_rounded,
                 title: 'Поиск не удался',
@@ -217,7 +193,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                 title: 'Начни поиск',
                 message: 'Начни вводить название, бренд или штрихкод.',
               ),
-            ] else if (hasSearched && _results.isEmpty) ...[
+            ] else if (!_isLoading && hasSearched && _results.isEmpty) ...[
               _SearchMessage(
                 icon: Icons.search_off_rounded,
                 title: 'Ничего не найдено.',
@@ -247,12 +223,14 @@ class _SearchField extends StatelessWidget {
     required this.onChanged,
     required this.onSubmitted,
     required this.onClear,
+    required this.isLoading,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final VoidCallback? onClear;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -266,13 +244,7 @@ class _SearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: 'Название, бренд или штрихкод',
         prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: onClear == null
-            ? null
-            : IconButton(
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-                tooltip: 'Очистить',
-              ),
+        suffixIcon: _SearchFieldSuffix(isLoading: isLoading, onClear: onClear),
         filled: true,
         fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
@@ -286,6 +258,37 @@ class _SearchField extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SearchFieldSuffix extends StatelessWidget {
+  const _SearchFieldSuffix({required this.isLoading, required this.onClear});
+
+  final bool isLoading;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (onClear == null) {
+      return const SizedBox.shrink();
+    }
+
+    return IconButton(
+      onPressed: onClear,
+      icon: const Icon(Icons.close_rounded),
+      tooltip: 'Очистить',
     );
   }
 }

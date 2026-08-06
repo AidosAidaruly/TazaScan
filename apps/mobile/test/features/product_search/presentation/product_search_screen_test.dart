@@ -13,14 +13,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../test_product_factory.dart';
 
 class FakeSearchRepository implements ProductRepository {
-  FakeSearchRepository({List<Product>? products, this.delay, this.error})
+  FakeSearchRepository({List<Product>? products, this.error})
     : products = products ?? [createTestProduct()];
 
   final List<Product> products;
-  final Completer<void>? delay;
   AppException? error;
   final searches = <({String? name, String? brand, String? barcode})>[];
   final barcodeLookups = <String>[];
+  final pendingSearches = <String, Completer<List<Product>>>{};
 
   @override
   Future<Product> findByBarcode(String barcode) async {
@@ -40,8 +40,12 @@ class FakeSearchRepository implements ProductRepository {
     int pageSize = 20,
   }) async {
     searches.add((name: name, brand: brand, barcode: barcode));
-    if (delay != null) await delay!.future;
     if (error != null) throw error!;
+
+    final pending = pendingSearches[name];
+    if (pending != null) {
+      return pending.future;
+    }
 
     return products.where((product) {
       if (name != null) {
@@ -61,84 +65,92 @@ class FakeSearchRepository implements ProductRepository {
 }
 
 void main() {
-  testWidgets('typing text triggers search by name and brand', (tester) async {
+  testWidgets('debounces search while typing', (tester) async {
     final repository = FakeSearchRepository();
     await _pumpSearch(tester, repository);
 
-    await tester.enterText(find.byType(TextField), 'cola');
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.enterText(find.byType(TextField), 'Co');
+    await tester.pump(const Duration(milliseconds: 349));
+
+    expect(repository.searches, isEmpty);
+
+    await tester.pump(const Duration(milliseconds: 1));
     await tester.pumpAndSettle();
 
-    expect(repository.searches.any((search) => search.name == 'cola'), isTrue);
-    expect(repository.searches.any((search) => search.brand == 'cola'), isTrue);
-    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+    expect(repository.searches, hasLength(1));
+    expect(repository.searches.single.name, 'Co');
   });
 
-  testWidgets('searching by name returns matching product', (tester) async {
+  testWidgets('cancels previous in-flight search result', (tester) async {
+    final repository = FakeSearchRepository();
+    final first = Completer<List<Product>>();
+    final second = Completer<List<Product>>();
+    repository.pendingSearches['Co'] = first;
+    repository.pendingSearches['Coca'] = second;
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'Co');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'Coca');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    second.complete([createTestProduct(name: 'Coca Fresh')]);
+    await tester.pumpAndSettle();
+
+    first.complete([createTestProduct(name: 'Old Cola')]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coca Fresh'), findsOneWidget);
+    expect(find.text('Old Cola'), findsNothing);
+    expect(repository.searches.map((search) => search.name), ['Co', 'Coca']);
+  });
+
+  testWidgets('does not search empty query', (tester) async {
     final repository = FakeSearchRepository();
     await _pumpSearch(tester, repository);
 
-    await tester.enterText(find.byType(TextField), 'Original');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump(const Duration(milliseconds: 400));
 
-    expect(
-      repository.searches.any((search) => search.name == 'Original'),
-      isTrue,
-    );
-    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+    expect(repository.searches, isEmpty);
   });
 
-  testWidgets('searching by brand returns matching product', (tester) async {
-    final repository = FakeSearchRepository();
-    await _pumpSearch(tester, repository);
-
-    await tester.enterText(find.byType(TextField), 'Coca-Cola');
-    await tester.pump(const Duration(milliseconds: 450));
-    await tester.pumpAndSettle();
-
-    expect(
-      repository.searches.any((search) => search.brand == 'Coca-Cola'),
-      isTrue,
-    );
-    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
-  });
-
-  testWidgets('searching by barcode prioritizes exact barcode lookup', (
+  testWidgets('does not search query shorter than two characters', (
     tester,
   ) async {
     final repository = FakeSearchRepository();
     await _pumpSearch(tester, repository);
 
-    await tester.enterText(find.byType(TextField), '5449000000996');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'C');
+    await tester.pump(const Duration(milliseconds: 400));
 
-    expect(repository.barcodeLookups, ['5449000000996']);
-    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+    expect(repository.searches, isEmpty);
   });
 
-  testWidgets('shows loading state', (tester) async {
-    final delay = Completer<void>();
-    final repository = FakeSearchRepository(delay: delay);
+  testWidgets('successful search updates result list', (tester) async {
+    final repository = FakeSearchRepository();
     await _pumpSearch(tester, repository);
 
     await tester.enterText(find.byType(TextField), 'cola');
-    await tester.pump(const Duration(milliseconds: 450));
-    await tester.pump();
-
-    expect(find.text('Ищем продукт...'), findsOneWidget);
-
-    delay.complete();
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
+
+    expect(repository.searches, hasLength(1));
+    expect(repository.searches.single.name, 'cola');
+    expect(repository.searches.single.brand, isNull);
+    expect(repository.searches.single.barcode, isNull);
+    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
   });
 
-  testWidgets('shows empty result and opens submission flow', (tester) async {
+  testWidgets('shows no results state', (tester) async {
     final repository = FakeSearchRepository(products: const []);
     await _pumpSearch(tester, repository);
 
     await tester.enterText(find.byType(TextField), 'unknown');
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
     expect(find.text('Ничего не найдено.'), findsOneWidget);
@@ -146,6 +158,15 @@ void main() {
       find.text('Не нашли продукт? Помогите добавить его.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('opens submission flow from no results state', (tester) async {
+    final repository = FakeSearchRepository(products: const []);
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'unknown');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Добавить продукт'));
     await tester.pumpAndSettle();
@@ -159,7 +180,7 @@ void main() {
     await _pumpSearch(tester, repository);
 
     await tester.enterText(find.byType(TextField), 'cola');
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
     expect(find.text('Поиск не удался'), findsOneWidget);
@@ -178,7 +199,7 @@ void main() {
     await _pumpSearch(tester, repository);
 
     await tester.enterText(find.byType(TextField), 'cola');
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Coca-Cola Original Taste'));
