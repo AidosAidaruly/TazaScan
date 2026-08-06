@@ -8,6 +8,7 @@ import 'package:project/src/features/product/domain/entities/product_details_arg
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
 import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
+import 'package:project/src/features/profile/domain/legal_texts.dart';
 import 'package:project/src/features/profile/presentation/screens/profile_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/about_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/legal_document_screen.dart';
@@ -68,14 +69,14 @@ abstract final class AppRouter {
       AppRoutes.privacy => MaterialPageRoute(
         builder: (_) => const LegalDocumentScreen(
           title: 'Политика конфиденциальности',
-          body: _privacySummary,
+          body: privacyPolicyText,
         ),
         settings: settings,
       ),
       AppRoutes.terms => MaterialPageRoute(
         builder: (_) => const LegalDocumentScreen(
           title: 'Условия использования',
-          body: _termsSummary,
+          body: termsOfUseText,
         ),
         settings: settings,
       ),
@@ -145,12 +146,6 @@ abstract final class AppRouter {
     throw ArgumentError('Route ${settings.name} requires error arguments.');
   }
 }
-
-const _privacySummary =
-    'Черновик MVP. TazaScan использует поиск по штрихкоду, поиск продуктов, загрузку фото упаковки для заявок, а также локальную историю и избранное на этом устройстве. В этой версии MVP мы не собираем твое имя, email или телефон. Загруженные изображения могут сохраняться для модерации. Оценки пищевой ценности носят информационный характер и не являются медицинской рекомендацией.';
-
-const _termsSummary =
-    'Черновик MVP. Данные о продуктах и оценки могут содержать ошибки. Всегда сверяй информацию с упаковкой и обращайся к квалифицированным специалистам по вопросам здоровья. Не загружай оскорбительный, незаконный, вводящий в заблуждение или исполняемый контент. TazaScan может удалить заявки, нарушающие эти условия.';
 
 class ProductLookupErrorArguments {
   const ProductLookupErrorArguments({
