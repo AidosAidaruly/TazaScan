@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
+import 'package:project/src/features/product/presentation/widgets/insight_section.dart';
 
 class NutritionScoreDetailsSection extends StatelessWidget {
   const NutritionScoreDetailsSection({required this.score, super.key});
@@ -8,57 +10,42 @@ class NutritionScoreDetailsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Объяснение оценки',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          _ReasonList(title: 'Плюсы', items: score.positiveReasons),
-          _ReasonList(title: 'Минусы', items: score.negativeReasons),
-          _ReasonList(title: 'Предупреждения', items: score.warnings),
-          _ReasonList(title: 'Недостающие данные', items: score.missingFields),
-          const SizedBox(height: 12),
-          const Text(
-            'Эта оценка носит информационный характер и не является медицинской рекомендацией.',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final attentionItems = [...score.negativeReasons, ...score.warnings];
+    final hasInsights =
+        score.positiveReasons.isNotEmpty ||
+        attentionItems.isNotEmpty ||
+        score.missingFields.isNotEmpty;
 
-class _ReasonList extends StatelessWidget {
-  const _ReasonList({required this.title, required this.items});
+    if (!hasInsights) {
+      return const TazaSurfaceCard(
+        padding: EdgeInsets.all(18),
+        child: Text('Дополнительных замечаний нет.'),
+      );
+    }
 
-  final String title;
-  final List<String> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final displayItems = items.isEmpty ? ['Нет'] : items;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          for (final item in displayItems) Text('• $item'),
-        ],
-      ),
+    return Column(
+      children: [
+        InsightSection(
+          title: 'Что хорошо',
+          items: score.positiveReasons,
+          icon: Icons.check_circle_rounded,
+          color: const Color(0xFF24C78E),
+        ),
+        if (score.positiveReasons.isNotEmpty) const SizedBox(height: 12),
+        InsightSection(
+          title: 'На что обратить внимание',
+          items: attentionItems,
+          icon: Icons.warning_rounded,
+          color: const Color(0xFFF59E42),
+        ),
+        if (attentionItems.isNotEmpty) const SizedBox(height: 12),
+        InsightSection(
+          title: 'Недостающие данные',
+          items: score.missingFields,
+          icon: Icons.info_rounded,
+          color: const Color(0xFFA7B4C5),
+        ),
+      ],
     );
   }
 }

@@ -9,11 +9,13 @@ import 'package:project/src/features/history/data/repositories/local_history_rep
 import 'package:project/src/features/product/data/repositories/http_product_repository.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
-import 'package:project/src/features/product/presentation/widgets/health_score_card.dart';
+import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
+import 'package:project/src/features/product/presentation/widgets/product_disclaimer.dart';
 import 'package:project/src/features/product/presentation/widgets/product_hero_card.dart';
 import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
+import 'package:project/src/features/product/presentation/widgets/product_score_summary_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
@@ -132,13 +134,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
             ProductHeroCard(product: _product),
             const SizedBox(height: 16),
-            HealthScoreCard(nutritionScore: _product.nutritionScore),
-            const SizedBox(height: 16),
+            ProductScoreSummaryCard(product: _product),
+            const SizedBox(height: 24),
+            ProductNutritionSection(product: _product),
+            const SizedBox(height: 24),
             NutritionScoreDetailsSection(score: _product.nutritionScore),
             const SizedBox(height: 16),
             ProductInfoSection(product: _product),
             const SizedBox(height: 16),
-            ProductNutritionSection(product: _product),
+            ExpandableTechnicalDetails(score: _product.nutritionScore),
+            const SizedBox(height: 18),
+            const ProductDisclaimer(),
           ],
         ),
       ),
