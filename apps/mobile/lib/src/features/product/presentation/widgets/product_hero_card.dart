@@ -20,7 +20,7 @@ class ProductHeroCard extends StatelessWidget {
     );
 
     return TazaSurfaceCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -32,7 +32,7 @@ class ProductHeroCard extends StatelessWidget {
                 return Column(
                   children: [
                     _ImagePanel(imageUrl: imageUrl, productName: product.name),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 10),
                     ScoreRing(
                       score:
                           product.nutritionScore.score ?? product.healthScore,
@@ -44,22 +44,22 @@ class ProductHeroCard extends StatelessWidget {
 
               return Row(
                 children: [
-                  ScoreRing(
-                    score: product.nutritionScore.score ?? product.healthScore,
-                    grade: product.nutritionScore.grade,
-                  ),
-                  const SizedBox(width: 18),
                   Expanded(
                     child: _ImagePanel(
                       imageUrl: imageUrl,
                       productName: product.name,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  ScoreRing(
+                    score: product.nutritionScore.score ?? product.healthScore,
+                    grade: product.nutritionScore.grade,
+                  ),
                 ],
               );
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Text(
             product.name,
             style: textTheme.headlineSmall?.copyWith(
@@ -67,17 +67,17 @@ class ProductHeroCard extends StatelessWidget {
               height: 1.04,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             [product.brand, product.category].whereType<String>().join(' • '),
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 10,
-            runSpacing: 10,
+            runSpacing: 8,
             children: [
               _Badge(
                 label: 'Оценка ${product.nutritionScore.grade ?? 'нет'}',
@@ -122,9 +122,9 @@ class _ImagePanel extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      height: 210,
+      height: 202,
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(24),

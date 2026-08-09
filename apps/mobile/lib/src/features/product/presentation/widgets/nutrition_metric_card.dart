@@ -25,16 +25,28 @@ class NutritionMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _toneColor(tone);
     final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return TazaSurfaceCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 7),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: color.withValues(
+                    alpha: tone == MetricTone.negative ? 0.16 : 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 15, color: color),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   label,
@@ -47,16 +59,29 @@ class NutritionMetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
-            value == null ? 'Нет данных' : '${_formatValue(value!)} $unit',
-            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            value == null ? '—' : '${_formatValue(value!)} $unit',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 7),
           Text(
             interpretation,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: tone == MetricTone.unknown
+                  ? colorScheme.onSurfaceVariant
+                  : color,
+              height: 1.15,
+              fontWeight: tone == MetricTone.negative
+                  ? FontWeight.w800
+                  : FontWeight.w600,
             ),
           ),
         ],
