@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class ExpandableTechnicalDetails extends StatelessWidget {
-  const ExpandableTechnicalDetails({required this.score, super.key});
+  const ExpandableTechnicalDetails({
+    required this.score,
+    this.barcode,
+    super.key,
+  });
 
   final NutritionScore score;
+  final String? barcode;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +34,8 @@ class ExpandableTechnicalDetails extends StatelessWidget {
         _TechRow(label: 'Версия', value: score.algorithmVersion),
         _TechRow(label: 'Дата расчёта', value: _formatDate(score.calculatedAt)),
         _TechRow(label: 'Статус', value: _statusLabel(score.status)),
+        if (barcode != null && barcode!.trim().isNotEmpty)
+          _TechRow(label: 'Штрихкод', value: barcode!),
         const SizedBox(height: 10),
         Text(
           'Расчёт основан на доступных данных продукта и может измениться после проверки информации.',
@@ -45,13 +53,11 @@ class ExpandableTechnicalDetails extends StatelessWidget {
   }
 
   static String _statusLabel(String status) {
-    return switch (status) {
-      'calculated' => 'Рассчитано',
-      'insufficient_data' => 'Недостаточно данных',
-      'requires_review' => 'Требуется проверка',
-      'offline_cached' => 'Сохранённые данные',
-      _ => 'Неизвестно',
-    };
+    if (status == 'offline_cached') {
+      return 'Сохранённые данные';
+    }
+
+    return ProductPresentationLocalization.dataStatus(status);
   }
 }
 

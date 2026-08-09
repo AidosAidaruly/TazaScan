@@ -142,7 +142,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             const SizedBox(height: 16),
             ProductInfoSection(product: _product),
             const SizedBox(height: 16),
-            ExpandableTechnicalDetails(score: _product.nutritionScore),
+            ExpandableTechnicalDetails(
+              score: _product.nutritionScore,
+              barcode: _product.barcode,
+            ),
             const SizedBox(height: 18),
             const ProductDisclaimer(),
           ],

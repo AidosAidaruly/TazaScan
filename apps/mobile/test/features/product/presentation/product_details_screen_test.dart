@@ -7,7 +7,9 @@ import 'package:project/src/features/product/domain/repositories/product_reposit
 import 'package:project/src/features/product/domain/services/product_service.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
+import 'package:project/src/features/product/presentation/widgets/ingredient_explanation_row.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
+import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -148,12 +150,343 @@ void main() {
     expect(find.text('На что обратить внимание'), findsNothing);
   });
 
+  testWidgets('translates high sugar insight and hides raw English reason', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      NutritionScoreDetailsSection(
+        score: _score(negativeReasons: const ['High sugar content.']),
+      ),
+    );
+
+    expect(find.text('Высокое содержание сахара'), findsOneWidget);
+    expect(find.text('High sugar content.'), findsNothing);
+  });
+
+  testWidgets('shows complete ingredient list in original order', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const [
+            'Carbonated water',
+            'Sugar',
+            'Colour caramel E150d',
+            'Phosphoric acid',
+            'Natural flavourings',
+            'Caffeine',
+          ],
+        ),
+      ),
+    );
+
+    expect(
+      find.textContaining(
+        'Газированная вода, Сахар, Карамельный краситель E150d, '
+        'Фосфорная кислота (E338), Натуральные ароматизаторы, Кофеин.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('6 ингредиентов'), findsOneWidget);
+  });
+
+  testWidgets('shows dynamic ingredient summary', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const ['Sugar', 'Caffeine', 'E150d', 'E338'],
+          nutritionFacts: const {'sugars': 10.6},
+        ),
+      ),
+    );
+
+    expect(find.text('Кратко о составе'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Содержит добавленный сахар, содержит кофеин и обнаружено 2 пищевые добавки.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Информация об аллергенах не указана.'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('shows sugar and caffeine explanations', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const ['Sugar', 'Caffeine'],
+          nutritionFacts: const {'sugars': 10.6},
+        ),
+      ),
+    );
+
+    expect(find.text('Источник добавленных сахаров.'), findsOneWidget);
+    expect(
+      find.text('Высокое содержание сахара учитывается в пищевой оценке.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Стимулирующее вещество, естественно присутствующее или добавляемое в некоторые напитки.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Содержит добавленный сахар'), findsOneWidget);
+    expect(find.textContaining('содержит кофеин'), findsOneWidget);
+  });
+
+  testWidgets('handles additive pluralization for 1, 2 and 5 additives', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(ingredients: const ['E150d']),
+      ),
+    );
+    expect(
+      find.textContaining('Обнаружена 1 пищевая добавка.'),
+      findsOneWidget,
+    );
+
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(ingredients: const ['E150d', 'E338']),
+      ),
+    );
+    expect(
+      find.textContaining('Обнаружено 2 пищевые добавки.'),
+      findsOneWidget,
+    );
+
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const ['E150d', 'E338', 'E330', 'E202', 'E211'],
+        ),
+      ),
+    );
+    expect(
+      find.textContaining('Обнаружено 5 пищевых добавок.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows neutral E150d and E338 additive mapping', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const ['Colour caramel E150d', 'E338'],
+        ),
+      ),
+    );
+
+    expect(find.text('Карамельный краситель E150d'), findsWidgets);
+    expect(find.text('Фосфорная кислота (E338)'), findsWidgets);
+    expect(find.text('Пищевой краситель.'), findsOneWidget);
+    expect(find.text('Регулятор кислотности.'), findsOneWidget);
+    expect(find.textContaining('E150d', findRichText: true), findsWidgets);
+    expect(find.textContaining('E338', findRichText: true), findsWidgets);
+    expect(find.textContaining('опас'), findsNothing);
+  });
+
+  testWidgets('unknown ingredient falls back without invented explanation', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(ingredients: const ['Mystery extract']),
+      ),
+    );
+
+    expect(find.textContaining('Mystery extract'), findsOneWidget);
+    expect(find.text('Что в составе'), findsNothing);
+    expect(find.textContaining('Источник'), findsNothing);
+    expect(find.textContaining('Регулятор'), findsNothing);
+  });
+
+  testWidgets('E-number is not automatically treated as danger', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(ingredients: const ['E150d']),
+      ),
+    );
+
+    final additiveIcon = tester.widget<Icon>(
+      find.byIcon(Icons.science_rounded),
+    );
+    expect(additiveIcon.color, const Color(0xFF1677FF));
+    expect(find.textContaining('опас'), findsNothing);
+  });
+
+  testWidgets('shows allergen unavailable message', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(product: createTestProduct()),
+    );
+
+    expect(find.text('Аллергены'), findsOneWidget);
+    expect(
+      find.textContaining('При аллергии всегда проверяйте упаковку продукта.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Информация об аллергенах не указана.'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('shows missing ingredient list message', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(product: createTestProduct(ingredients: const [])),
+    );
+
+    expect(find.text('Состав пока не указан.'), findsOneWidget);
+    expect(find.text('Что в составе'), findsNothing);
+  });
+
+  testWidgets('long ingredient list can expand and collapse', (tester) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const [
+            'Ingredient 1',
+            'Ingredient 2',
+            'Ingredient 3',
+            'Ingredient 4',
+            'Ingredient 5',
+            'Ingredient 6',
+            'Ingredient 7',
+            'Ingredient 8',
+            'Ingredient 9',
+            'Ingredient 10',
+            'Ingredient 11',
+            'Ingredient 12',
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('Показать полностью'), findsOneWidget);
+    expect(find.textContaining('Ingredient 11'), findsNothing);
+
+    await tester.tap(find.text('Показать полностью'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Скрыть'), findsOneWidget);
+    expect(find.textContaining('Ingredient 11'), findsOneWidget);
+  });
+
+  testWidgets('shows maximum five explanation rows before expanding', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(
+          ingredients: const [
+            'Carbonated water',
+            'Natural flavourings',
+            'E150d',
+            'E338',
+            'Caffeine',
+            'Sugar',
+          ],
+          nutritionFacts: const {'sugars': 10.6},
+        ),
+      ),
+    );
+
+    expect(find.byType(IngredientExplanationRow), findsNWidgets(5));
+    expect(find.text('Показать все'), findsOneWidget);
+    expect(find.text('Источник добавленных сахаров.'), findsOneWidget);
+    expect(
+      find.text('Используются для формирования вкуса и аромата продукта.'),
+      findsNothing,
+    );
+
+    await tester.ensureVisible(find.text('Показать все'));
+    await tester.tap(find.text('Показать все'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IngredientExplanationRow), findsNWidgets(6));
+    expect(find.text('Скрыть'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Скрыть'));
+    await tester.tap(find.text('Скрыть'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IngredientExplanationRow), findsNWidgets(5));
+  });
+
+  testWidgets('barcode is not displayed inside ingredients section', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(product: createTestProduct(barcode: '5449000000996')),
+    );
+
+    expect(find.textContaining('Штрихкод'), findsNothing);
+    expect(find.textContaining('5449000000996'), findsNothing);
+  });
+
+  testWidgets('uses green for low saturated fat and warning for low fiber', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductNutritionSection(
+        product: createTestProduct(
+          nutritionFacts: const {
+            'energyKcal': 42,
+            'protein': 0,
+            'carbohydrates': 10.6,
+            'sugars': 10.6,
+            'fat': 0,
+            'saturatedFat': 0,
+            'fiber': 0,
+            'salt': 0,
+          },
+        ),
+      ),
+    );
+
+    final saturatedFatIcon = tester.widget<Icon>(
+      find.byIcon(Icons.opacity_rounded),
+    );
+    final fiberIcon = tester.widget<Icon>(find.byIcon(Icons.spa_rounded));
+
+    expect(saturatedFatIcon.color, const Color(0xFF24C78E));
+    expect(fiberIcon.color, const Color(0xFFF4C542));
+  });
+
   testWidgets(
     'technical section is collapsed by default and translates status',
     (tester) async {
       await _pumpSection(
         tester,
-        ExpandableTechnicalDetails(score: _score(status: 'requires_review')),
+        ExpandableTechnicalDetails(
+          score: _score(status: 'requires_review'),
+          barcode: '5449000000996',
+        ),
       );
 
       expect(find.text('Как рассчитана оценка'), findsOneWidget);
@@ -164,8 +497,25 @@ void main() {
 
       expect(find.text('Требуется проверка'), findsOneWidget);
       expect(find.text('Nutri-Score nutritional foundation'), findsOneWidget);
+      expect(find.text('Штрихкод'), findsOneWidget);
+      expect(find.text('5449000000996'), findsOneWidget);
     },
   );
+
+  testWidgets('shows safe fallback for unknown technical status', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ExpandableTechnicalDetails(score: _score(status: 'unknown_status_code')),
+    );
+
+    await tester.tap(find.text('Как рассчитана оценка'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Неизвестно'), findsOneWidget);
+    expect(find.text('unknown_status_code'), findsNothing);
+  });
 }
 
 Future<void> _pumpDetails(
