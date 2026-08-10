@@ -19,6 +19,15 @@ enum ProductDataStatus {
   verified
 }
 
+enum OfficialNutriScoreCategory {
+  general_food
+  beverage
+  water
+  cheese
+  fats_oils_nuts_seeds
+  red_meat
+}
+
 enum UserRole {
   admin
   user
@@ -61,6 +70,9 @@ model Product {
   saturatedFat   Float?
   fiber          Float?
   salt           Float?
+  officialNutriScoreCategory OfficialNutriScoreCategory?
+  fruitVegetableLegumePercent Float?
+  containsNonSugarSweeteners Boolean?
   healthScore    Int               @default(0)
   calculatedScore Int?
   calculatedGrade ScoreGrade?

@@ -5,6 +5,9 @@ import {
   getProductByBarcode,
   getProductById,
   listProducts,
+  previewProductScore,
+  previewOfficialNutriScore,
+  previewTazaScore,
   removeProductImage,
   uploadProductImage as uploadProductImageController,
   updateProduct
@@ -19,8 +22,10 @@ import { validate } from '../middleware/validate';
 import {
   barcodeParamsSchema,
   listProductsQuerySchema,
+  officialNutriScorePreviewBodySchema,
   productBodySchema,
   productIdParamsSchema,
+  tazaScorePreviewBodySchema,
   updateProductBodySchema
 } from '../schemas/product.schema';
 
@@ -43,6 +48,28 @@ productRouter.post(
   ocrRateLimit,
   uploadProductImage,
   asyncHandler(searchProductsByPhoto)
+);
+
+productRouter.post(
+  '/nutri-score-preview',
+  authenticate,
+  authorizeRole('admin'),
+  validate(officialNutriScorePreviewBodySchema),
+  asyncHandler(previewOfficialNutriScore)
+);
+
+productRouter.post(
+  '/taza-score-preview',
+  authenticate,
+  authorizeRole('admin'),
+  validate(tazaScorePreviewBodySchema),
+  asyncHandler(previewTazaScore)
+);
+
+productRouter.get(
+  '/:id/score-preview',
+  validate(productIdParamsSchema, 'params'),
+  asyncHandler(previewProductScore)
 );
 
 productRouter.get(

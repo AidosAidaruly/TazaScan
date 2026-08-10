@@ -74,4 +74,17 @@ void main() {
 
     expect(find.text('Оценка A'), findsOneWidget);
   });
+
+  testWidgets('translates known category labels for presentation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ProductHeroCard(product: createTestProduct())),
+      ),
+    );
+
+    expect(find.textContaining('Газированные напитки'), findsOneWidget);
+    expect(find.textContaining('Soft Drinks'), findsNothing);
+  });
 }

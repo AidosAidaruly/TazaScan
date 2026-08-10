@@ -2,7 +2,9 @@ import { ApiClient } from "../../../core/api/api-client";
 import type {
   ProductListResponse,
   ProductPayload,
+  OfficialNutriScorePreviewResponse,
   ProductResponse,
+  TazaScorePreviewResponse,
 } from "../types";
 
 export type ProductListParams = {
@@ -45,6 +47,28 @@ export class ProductsApi {
       body: payload,
       token,
     });
+  }
+
+  previewOfficialNutriScore(payload: ProductPayload, token: string) {
+    return this.apiClient.request<OfficialNutriScorePreviewResponse>(
+      "/products/nutri-score-preview",
+      {
+        method: "POST",
+        body: payload,
+        token,
+      },
+    );
+  }
+
+  previewTazaScore(payload: ProductPayload, token: string) {
+    return this.apiClient.request<TazaScorePreviewResponse>(
+      "/products/taza-score-preview",
+      {
+        method: "POST",
+        body: payload,
+        token,
+      },
+    );
   }
 
   update(id: string, payload: Partial<ProductPayload>, token: string) {

@@ -84,6 +84,119 @@ describe("ProductsApi", () => {
     expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
   });
 
+  it("previews official Nutri-Score with bearer token", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        await createMockResponse({
+          data: {
+            rawScore: 13,
+            grade: "E",
+            status: "calculated",
+            reasonCodes: [],
+            missingFields: [],
+            warnings: [],
+            algorithm: "official-nutri-score",
+            algorithmVersion: "v2-2023",
+            category: "beverage",
+            componentPoints: {},
+            calculatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        }),
+      );
+
+    await api().previewOfficialNutriScore(
+      {
+        barcode: "5449000000996",
+        name: "Coca-Cola",
+        category: "Soft Drinks",
+        ingredients: [],
+        nutritionFacts: {
+          servingType: "per100ml",
+          energyKcal: 42,
+          protein: 0,
+          carbohydrates: 10.6,
+          sugars: 10.6,
+          fat: 0,
+          saturatedFat: 0,
+          fiber: null,
+          salt: 0,
+        },
+        officialNutriScoreCategory: "beverage",
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false,
+        dataStatus: "verified",
+      },
+      "token",
+    );
+
+    const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/products/nutri-score-preview",
+    );
+    expect(init.method).toBe("POST");
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
+  });
+
+  it("previews TazaScore with bearer token", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        await createMockResponse({
+          data: {
+            score: 27,
+            status: "calculated",
+            nutritionComponent: { score: 17, maxScore: 90 },
+            ingredientComponent: { score: 10, maxScore: 10 },
+            confidence: { level: "high" },
+            reasonCodes: [],
+            positiveReasons: [],
+            negativeReasons: [],
+            missingFields: [],
+            warnings: [],
+            methodologyVersion: "taza-score-v1",
+            officialNutriScore: {
+              status: "calculated",
+              rawScore: 13,
+              grade: "E",
+            },
+          },
+        }),
+      );
+
+    await api().previewTazaScore(
+      {
+        barcode: "5449000000996",
+        name: "Coca-Cola",
+        category: "Soft Drinks",
+        ingredients: [],
+        nutritionFacts: {
+          servingType: "per100ml",
+          energyKcal: 42,
+          protein: 0,
+          carbohydrates: 10.6,
+          sugars: 10.6,
+          fat: 0,
+          saturatedFat: 0,
+          fiber: 0,
+          salt: 0,
+        },
+        officialNutriScoreCategory: "beverage",
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false,
+        dataStatus: "verified",
+      },
+      "token",
+    );
+
+    const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/products/taza-score-preview",
+    );
+    expect(init.method).toBe("POST");
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
+  });
+
   it("deletes a product with bearer token", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:project/src/core/errors/app_exception.dart';
 import 'package:project/src/features/product/domain/entities/cached_product_summary.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/domain/repositories/product_repository.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
@@ -11,18 +13,47 @@ import 'package:project/src/features/product/presentation/widgets/ingredient_exp
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
+import 'package:project/src/features/product/presentation/widgets/product_score_summary_card.dart';
+import 'package:project/src/features/product/presentation/widgets/taza_score_beta_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_product_factory.dart';
+
+const testTazaScorePreview = TazaScorePreviewData(
+  status: TazaScorePreviewStatus.calculated,
+  score: 27,
+  nutritionComponent: 17,
+  ingredientComponent: 10,
+  nutriScoreGrade: 'E',
+  confidence: TazaScoreConfidence.high,
+  reasonLabels: ['Высокое содержание сахара'],
+  methodologyVersion: 'taza-score-v1',
+  ingredientAnalysisLabel: 'Информационный анализ',
+  processingLabel: 'Пока не учитывается в TazaScore',
+);
 
 class FakeProductRepository implements ProductRepository {
   FakeProductRepository(this.product);
 
   final Product product;
+  int previewRequestCount = 0;
+  Object? previewError;
+  TazaScorePreviewData previewData = testTazaScorePreview;
 
   @override
   Future<Product> findByBarcode(String barcode) async {
     return product;
+  }
+
+  @override
+  Future<TazaScorePreviewData> previewScore(String productId) async {
+    previewRequestCount += 1;
+    final error = previewError;
+    if (error != null) {
+      throw error;
+    }
+
+    return previewData;
   }
 
   @override
@@ -75,6 +106,101 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fresh product name'), findsOneWidget);
+  });
+
+  testWidgets('legacy score UI remains the default Product Details mode', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    await _pumpDetails(tester, createTestProduct());
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -320));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProductScoreSummaryCard), findsOneWidget);
+    expect(find.byType(TazaScoreBetaCard), findsNothing);
+    expect(find.text('TazaScore Beta'), findsNothing);
+  });
+
+  testWidgets(
+    'beta preview renders consumer TazaScore without legacy details',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+
+      await _pumpDetails(
+        tester,
+        createTestProduct(nutritionScore: _score(score: 69, grade: 'C')),
+        enableTazaScorePreview: true,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TazaScoreBetaCard), findsOneWidget);
+      expect(find.byType(ProductScoreSummaryCard), findsNothing);
+      expect(find.text('TazaScore Beta'), findsOneWidget);
+      expect(find.text('27'), findsOneWidget);
+      expect(find.text('Nutri-Score'), findsOneWidget);
+      expect(find.text('E'), findsOneWidget);
+      expect(find.text('69/100 + C'), findsNothing);
+      expect(find.text('Legacy'), findsNothing);
+    },
+  );
+
+  testWidgets('beta flag enabled fetches real preview once', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = FakeProductRepository(createTestProduct());
+
+    await _pumpDetails(
+      tester,
+      createTestProduct(),
+      repository: repository,
+      enableTazaScorePreview: true,
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.previewRequestCount, 1);
+    expect(find.text('27'), findsOneWidget);
+  });
+
+  testWidgets('beta flag disabled does not request score preview', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = FakeProductRepository(createTestProduct());
+
+    await _pumpDetails(tester, createTestProduct(), repository: repository);
+    await tester.pumpAndSettle();
+
+    expect(repository.previewRequestCount, 0);
+    expect(find.byType(TazaScoreBetaCard), findsNothing);
+  });
+
+  testWidgets('beta preview shows network error and retries', (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final repository = FakeProductRepository(createTestProduct())
+      ..previewError = const ServerException('Сервер недоступен.');
+
+    await _pumpDetails(
+      tester,
+      createTestProduct(),
+      repository: repository,
+      enableTazaScorePreview: true,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Не удалось загрузить новую оценку'), findsOneWidget);
+    expect(repository.previewRequestCount, 1);
+
+    repository.previewError = null;
+    await tester.tap(find.text('Повторить'));
+    await tester.pumpAndSettle();
+
+    expect(repository.previewRequestCount, 2);
+    expect(find.text('27'), findsOneWidget);
   });
 
   testWidgets('renders complete nutrition as consumer cards', (tester) async {
@@ -523,15 +649,19 @@ Future<void> _pumpDetails(
   Product product, {
   bool refreshFromNetwork = false,
   Product? freshProduct,
+  FakeProductRepository? repository,
+  bool enableTazaScorePreview = false,
 }) async {
+  final productRepository =
+      repository ?? FakeProductRepository(freshProduct ?? product);
+
   await tester.pumpWidget(
     MaterialApp(
       home: ProductDetailsScreen(
         product: product,
         refreshFromNetwork: refreshFromNetwork,
-        productService: ProductService(
-          FakeProductRepository(freshProduct ?? product),
-        ),
+        productService: ProductService(productRepository),
+        enableTazaScorePreview: enableTazaScorePreview,
       ),
     ),
   );
@@ -546,6 +676,8 @@ Future<void> _pumpSection(WidgetTester tester, Widget child) async {
 }
 
 NutritionScore _score({
+  int? score = 65,
+  String? grade = 'C',
   String status = 'calculated',
   List<String> positiveReasons = const [],
   List<String> negativeReasons = const ['High sugar content.'],
@@ -553,8 +685,8 @@ NutritionScore _score({
   List<String> missingFields = const [],
 }) {
   return NutritionScore(
-    score: 65,
-    grade: 'C',
+    score: score,
+    grade: grade,
     status: status,
     positiveReasons: positiveReasons,
     negativeReasons: negativeReasons,

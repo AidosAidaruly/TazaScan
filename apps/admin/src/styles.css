@@ -304,6 +304,45 @@ th {
   margin: 0;
 }
 
+.technical-section {
+  background: #fbfdfb;
+}
+
+.section-note {
+  margin: 8px 0 0;
+  color: #557065;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preview-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.nutri-score-preview {
+  display: inline-grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #edf2ee;
+  color: #293a31;
+  font-size: 13px;
+}
+
+.nutri-score-preview strong {
+  color: #17201b;
+}
+
+.preview-reasons {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

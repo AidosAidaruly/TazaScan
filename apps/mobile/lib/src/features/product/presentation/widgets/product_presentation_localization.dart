@@ -86,6 +86,24 @@ const _ingredientLabels = {
 };
 
 const _insightLabels = {
+  'high_sugar': 'Высокое содержание сахара',
+  'high_salt': 'Высокое содержание соли',
+  'high_saturated_fat': 'Высокое содержание насыщенных жиров',
+  'high_energy': 'Высокая энергетическая ценность',
+  'contains_non_sugar_sweeteners': 'Содержит некалорийные подсластители',
+  'non_sugar_sweeteners': 'Содержит некалорийные подсластители',
+  'low_favorable_components': 'Мало благоприятных пищевых компонентов',
+  'low_favorable_nutritional_components':
+      'Мало благоприятных пищевых компонентов',
+  'high_fiber': 'Высокое содержание клетчатки',
+  'high_protein': 'Высокое содержание белка',
+  'fruit_vegetable_legume_content': 'Есть доля фруктов, овощей или бобовых',
+  'official_nutri_score_foundation': 'Оценка основана на методике Nutri-Score',
+  'conservative_additive_assessment': 'Добавки учтены информационно',
+  'verified_product_data': 'Данные продукта проверены',
+  'community_product_data': 'Данные добавлены сообществом',
+  'unverified_product_data': 'Данные продукта требуют проверки',
+  'missing_tazascore_input': 'Недостаточно данных для TazaScore',
   'high sugar content.': 'Высокое содержание сахара',
   'high sugar content': 'Высокое содержание сахара',
   'high sugars content.': 'Высокое содержание сахара',
@@ -114,4 +132,8 @@ const _missingFieldLabels = {
   'saturated_fat': 'Насыщенные жиры',
   'fiber': 'Клетчатка',
   'salt': 'Соль',
+  'fruitvegetablelegumepercent': 'Доля фруктов, овощей и бобовых',
+  'fruit_vegetable_legume_percent': 'Доля фруктов, овощей и бобовых',
+  'containsnonsugarsweeteners': 'Наличие некалорийных подсластителей',
+  'contains_non_sugar_sweeteners': 'Наличие некалорийных подсластителей',
 };

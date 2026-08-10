@@ -206,7 +206,7 @@ class ProductNutritionSection extends StatelessWidget {
                 MetricTone.unknown,
               ),
       'energyKcal' => const _MetricInterpretation(
-        'Калорийность',
+        'Информация о калорийности',
         MetricTone.unknown,
       ),
       'carbohydrates' => const _MetricInterpretation(

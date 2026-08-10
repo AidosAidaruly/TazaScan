@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:project/src/core/errors/app_exception.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/domain/repositories/product_repository.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
 import 'package:project/src/features/product_search/presentation/screens/product_search_screen.dart';
@@ -30,6 +31,11 @@ class FakeSearchRepository implements ProductRepository {
       (product) => product.barcode == barcode,
       orElse: () => throw const NotFoundException('Продукт не найден.'),
     );
+  }
+
+  @override
+  Future<TazaScorePreviewData> previewScore(String productId) {
+    throw UnimplementedError('Product search tests do not use score preview.');
   }
 
   @override

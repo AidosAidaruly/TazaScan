@@ -15,6 +15,9 @@ export type ProductFormValues = {
   saturatedFat: string;
   fiber: string;
   salt: string;
+  officialNutriScoreCategory: string;
+  fruitVegetableLegumePercent: string;
+  containsNonSugarSweeteners: "unknown" | "true" | "false";
   imageUrl: string;
   dataStatus: "unverified" | "community" | "verified";
   source: string;
@@ -36,6 +39,9 @@ export const emptyProductFormValues: ProductFormValues = {
   saturatedFat: "",
   fiber: "",
   salt: "",
+  officialNutriScoreCategory: "",
+  fruitVegetableLegumePercent: "",
+  containsNonSugarSweeteners: "unknown",
   imageUrl: "",
   dataStatus: "unverified",
   source: "",
@@ -58,6 +64,13 @@ export function productToFormValues(product: ProductDto): ProductFormValues {
     saturatedFat: numberToInput(product.nutritionFacts.saturatedFat),
     fiber: numberToInput(product.nutritionFacts.fiber),
     salt: numberToInput(product.nutritionFacts.salt),
+    officialNutriScoreCategory: product.officialNutriScoreCategory ?? "",
+    fruitVegetableLegumePercent: numberToInput(
+      product.fruitVegetableLegumePercent,
+    ),
+    containsNonSugarSweeteners: booleanToInput(
+      product.containsNonSugarSweeteners,
+    ),
     imageUrl: product.imageUrl ?? "",
     dataStatus: product.dataStatus,
     source: product.source ?? "",
@@ -86,6 +99,16 @@ export function formValuesToPayload(values: ProductFormValues): ProductPayload {
       fiber: nullableNumber(values.fiber),
       salt: nullableNumber(values.salt),
     },
+    officialNutriScoreCategory:
+      values.officialNutriScoreCategory === ""
+        ? null
+        : (values.officialNutriScoreCategory as ProductPayload["officialNutriScoreCategory"]),
+    fruitVegetableLegumePercent: nullableNumber(
+      values.fruitVegetableLegumePercent,
+    ),
+    containsNonSugarSweeteners: nullableBoolean(
+      values.containsNonSugarSweeteners,
+    ),
     dataStatus: values.dataStatus,
     source: optionalText(values.source),
     lastVerifiedAt: values.lastVerifiedAt
@@ -105,4 +128,14 @@ function optionalText(value: string) {
 
 function numberToInput(value: number | null) {
   return value === null ? "" : String(value);
+}
+
+function booleanToInput(value: boolean | null) {
+  if (value === null) return "unknown";
+  return value ? "true" : "false";
+}
+
+function nullableBoolean(value: "unknown" | "true" | "false") {
+  if (value === "unknown") return null;
+  return value === "true";
 }

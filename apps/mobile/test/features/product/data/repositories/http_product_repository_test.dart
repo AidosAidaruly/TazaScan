@@ -97,6 +97,117 @@ void main() {
       throwsA(isA<RequestTimeoutException>()),
     );
   });
+
+  test('parses valid score preview response', () async {
+    final repository = _repositoryFor(
+      (_) async =>
+          http.Response(jsonEncode({'data': _scorePreviewJson()}), 200),
+    );
+
+    final preview = await repository.previewScore(
+      '11111111-1111-4111-8111-111111111111',
+    );
+
+    expect(preview.score, 27);
+    expect(preview.nutriScoreGrade, 'E');
+    expect(preview.nutritionComponent, 17);
+    expect(preview.ingredientComponent, 10);
+    expect(preview.reasonLabels, contains('Высокое содержание сахара'));
+  });
+
+  test(
+    'prioritizes consumer score reason codes before generic details',
+    () async {
+      final repository = _repositoryFor(
+        (_) async => http.Response(
+          jsonEncode({
+            'data': _scorePreviewJson(
+              reasonCodes: [
+                'CONSERVATIVE_ADDITIVE_ASSESSMENT',
+                'HIGH_ENERGY',
+                'OFFICIAL_NUTRI_SCORE_FOUNDATION',
+                'HIGH_SUGAR',
+                'HIGH_SALT',
+                'HIGH_SATURATED_FAT',
+              ],
+            ),
+          }),
+          200,
+        ),
+      );
+
+      final preview = await repository.previewScore(
+        '11111111-1111-4111-8111-111111111111',
+      );
+
+      expect(preview.reasonLabels, [
+        'Высокое содержание сахара',
+        'Высокое содержание соли',
+        'Высокое содержание насыщенных жиров',
+      ]);
+      expect(preview.technicalReasonLabels, [
+        'Добавки учтены информационно',
+        'Оценка основана на методике Nutri-Score',
+      ]);
+    },
+  );
+
+  test('unknown reason codes fall back to no consumer reasons', () async {
+    final repository = _repositoryFor(
+      (_) async => http.Response(
+        jsonEncode({
+          'data': _scorePreviewJson(reasonCodes: ['UNKNOWN_INTERNAL_CODE']),
+        }),
+        200,
+      ),
+    );
+
+    final preview = await repository.previewScore(
+      '11111111-1111-4111-8111-111111111111',
+    );
+
+    expect(preview.reasonLabels, isEmpty);
+    expect(preview.technicalReasonLabels, [
+      'Оценка рассчитана на основе доступных данных продукта.',
+    ]);
+  });
+
+  test(
+    'parses insufficient score preview response without fake score',
+    () async {
+      final repository = _repositoryFor(
+        (_) async => http.Response(
+          jsonEncode({
+            'data': _scorePreviewJson(
+              status: 'insufficient_data',
+              score: null,
+              grade: null,
+              missingFields: ['energyKcalOrEnergyKj', 'sugars'],
+            ),
+          }),
+          200,
+        ),
+      );
+
+      final preview = await repository.previewScore(
+        '11111111-1111-4111-8111-111111111111',
+      );
+
+      expect(preview.score, isNull);
+      expect(preview.missingFields, contains('Сахар'));
+    },
+  );
+
+  test('maps malformed score preview response to invalid response', () async {
+    final repository = _repositoryFor(
+      (_) async => http.Response(jsonEncode({'data': []}), 200),
+    );
+
+    expect(
+      repository.previewScore('11111111-1111-4111-8111-111111111111'),
+      throwsA(isA<InvalidResponseException>()),
+    );
+  });
 }
 
 HttpProductRepository _repositoryFor(
@@ -138,5 +249,40 @@ Map<String, dynamic> _productJson({required String name}) {
     'createdAt': '2026-08-01T00:00:00.000Z',
     'updatedAt': '2026-08-01T00:00:00.000Z',
     'dataStatus': 'verified',
+  };
+}
+
+Map<String, dynamic> _scorePreviewJson({
+  String status = 'calculated',
+  int? score = 27,
+  String? grade = 'E',
+  List<String> reasonCodes = const ['HIGH_SUGAR'],
+  List<String> missingFields = const [],
+}) {
+  return {
+    'tazaScore': {
+      'score': score,
+      'status': status,
+      'nutritionComponent': {
+        'score': status == 'calculated' ? 17 : null,
+        'maxScore': 90,
+      },
+      'ingredientComponent': {
+        'score': status == 'calculated' ? 10 : null,
+        'maxScore': 10,
+      },
+      'confidence': {'level': 'high'},
+      'reasonCodes': reasonCodes,
+      'positiveReasons': [],
+      'negativeReasons': [],
+      'warnings': [],
+      'missingFields': missingFields,
+      'methodologyVersion': 'taza-score-v1',
+    },
+    'nutriScore': {
+      'status': status,
+      'rawScore': status == 'calculated' ? 13 : null,
+      'grade': grade,
+    },
   };
 }

@@ -97,6 +97,27 @@ export function CreateProductPage() {
     }
   }
 
+  async function handlePreviewOfficialNutriScore(payload: ProductPayload) {
+    if (!token) {
+      throw new Error("Admin session expired");
+    }
+
+    const response = await productsApi.previewOfficialNutriScore(
+      payload,
+      token,
+    );
+    return response.data;
+  }
+
+  async function handlePreviewTazaScore(payload: ProductPayload) {
+    if (!token) {
+      throw new Error("Admin session expired");
+    }
+
+    const response = await productsApi.previewTazaScore(payload, token);
+    return response.data;
+  }
+
   return (
     <section className="page">
       <div className="page-header">
@@ -124,6 +145,8 @@ export function CreateProductPage() {
         isSubmitting={isSubmitting}
         fieldErrors={fieldErrors}
         onSubmit={handleSubmit}
+        onPreviewOfficialNutriScore={handlePreviewOfficialNutriScore}
+        onPreviewTazaScore={handlePreviewTazaScore}
       />
     </section>
   );

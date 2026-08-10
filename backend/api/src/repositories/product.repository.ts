@@ -124,6 +124,9 @@ export class ProductRepository {
     this.assignDefined(productData, 'salt', data.nutritionFacts.salt);
     this.assignDefined(productData, 'manualScoreOverride', data.manualScoreOverride);
     this.assignDefined(productData, 'manualOverrideReason', data.manualOverrideReason);
+    this.assignDefined(productData, 'officialNutriScoreCategory', data.officialNutriScoreCategory);
+    this.assignDefined(productData, 'fruitVegetableLegumePercent', data.fruitVegetableLegumePercent);
+    this.assignDefined(productData, 'containsNonSugarSweeteners', data.containsNonSugarSweeteners);
     this.assignDefined(productData, 'imageUrl', data.imageUrl);
     this.assignDefined(productData, 'source', data.source);
     this.assignDefined(
@@ -158,6 +161,9 @@ export class ProductRepository {
       'manualOverrideReason',
       data.manualOverrideReason
     );
+    this.assignDefined(productData, 'officialNutriScoreCategory', data.officialNutriScoreCategory);
+    this.assignDefined(productData, 'fruitVegetableLegumePercent', data.fruitVegetableLegumePercent);
+    this.assignDefined(productData, 'containsNonSugarSweeteners', data.containsNonSugarSweeteners);
     if (data.manualScoreOverride !== undefined || data.manualOverrideReason !== undefined) {
       productData.manualOverrideAt = data.manualScoreOverride === null ? null : new Date();
     }

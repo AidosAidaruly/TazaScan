@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
-    "test": "vitest run src/services/product.service.test.ts src/services/product-submission.service.test.ts src/services/auth.service.test.ts src/middleware/authentication.test.ts src/middleware/image-upload.test.ts src/scoring/engines/nutri-score.engine.test.ts",
+    "test": "vitest run src/services/product.service.test.ts src/services/product-submission.service.test.ts src/services/auth.service.test.ts src/middleware/authentication.test.ts src/middleware/image-upload.test.ts src/scoring/engines/nutri-score.engine.test.ts src/scoring/engines/official-nutri-score.engine.test.ts src/scoring/engines/taza-score.engine.test.ts src/scoring/engines/taza-score.validation.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

@@ -2,6 +2,18 @@ import { z } from 'zod';
 import { isSupportedProductBarcode } from '../utils/barcode';
 
 const nullableNumberSchema = z.number().finite().nullable().optional();
+const officialNutriScoreCategorySchema = z
+  .enum(['general_food', 'beverage', 'water', 'cheese', 'fats_oils_nuts_seeds', 'red_meat'])
+  .nullable()
+  .optional();
+const fruitVegetableLegumePercentSchema = z.number().finite().min(0).max(100).nullable().optional();
+const containsNonSugarSweetenersSchema = z.boolean().nullable().optional();
+const optionalPreviewCategorySchema = z
+  .string()
+  .trim()
+  .transform((value) => (value === '' ? undefined : value))
+  .nullable()
+  .optional();
 
 export const productIdParamsSchema = z.object({
   id: z.string().uuid()
@@ -43,6 +55,9 @@ export const productBodySchema = z.object({
   }),
   manualScoreOverride: z.number().int().min(0).max(100).nullable().optional(),
   manualOverrideReason: z.string().trim().min(1).nullable().optional(),
+  officialNutriScoreCategory: officialNutriScoreCategorySchema,
+  fruitVegetableLegumePercent: fruitVegetableLegumePercentSchema,
+  containsNonSugarSweeteners: containsNonSugarSweetenersSchema,
   imageUrl: z.string().url().nullable().optional(),
   dataStatus: z.enum(['unverified', 'community', 'verified']).default('unverified'),
   source: z.string().trim().min(1).nullable().optional(),
@@ -56,6 +71,33 @@ export const updateProductBodySchema = productBodySchema.partial().refine(
   }
 );
 
+export const officialNutriScorePreviewBodySchema = z.object({
+  category: optionalPreviewCategorySchema,
+  ingredients: z.array(z.string().trim().min(1)).default([]),
+  nutritionFacts: z
+    .object({
+      servingType: z.enum(['per100g', 'per100ml']).default('per100g'),
+      energyKcal: nullableNumberSchema,
+      protein: nullableNumberSchema,
+      carbohydrates: nullableNumberSchema,
+      sugars: nullableNumberSchema,
+      fat: nullableNumberSchema,
+      saturatedFat: nullableNumberSchema,
+      fiber: nullableNumberSchema,
+      salt: nullableNumberSchema
+    })
+    .default({ servingType: 'per100g' }),
+  officialNutriScoreCategory: officialNutriScoreCategorySchema,
+  fruitVegetableLegumePercent: fruitVegetableLegumePercentSchema,
+  containsNonSugarSweeteners: containsNonSugarSweetenersSchema
+});
+
+export const tazaScorePreviewBodySchema = officialNutriScorePreviewBodySchema.extend({
+  dataStatus: z.enum(['unverified', 'community', 'verified']).default('unverified')
+});
+
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
 export type ProductBody = z.infer<typeof productBodySchema>;
 export type UpdateProductBody = z.infer<typeof updateProductBodySchema>;
+export type OfficialNutriScorePreviewBody = z.infer<typeof officialNutriScorePreviewBodySchema>;
+export type TazaScorePreviewBody = z.infer<typeof tazaScorePreviewBodySchema>;

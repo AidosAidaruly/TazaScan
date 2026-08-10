@@ -18,8 +18,12 @@ import {
   formValuesToPayload,
   type ProductFormValues,
 } from "../utils/product-form";
-import type { FieldErrors } from "../../../core/errors/api-error";
-import type { ProductPayload } from "../types";
+import { ApiError, type FieldErrors } from "../../../core/errors/api-error";
+import type {
+  OfficialNutriScorePreviewResponse,
+  ProductPayload,
+  TazaScorePreviewResponse,
+} from "../types";
 
 type ProductFormProps = {
   initialValues?: ProductFormValues;
@@ -28,6 +32,12 @@ type ProductFormProps = {
   isSubmitting: boolean;
   isImageRemoving?: boolean;
   onSubmit: (payload: ProductPayload, imageFile: File | null) => Promise<void>;
+  onPreviewOfficialNutriScore?: (
+    payload: ProductPayload,
+  ) => Promise<OfficialNutriScorePreviewResponse["data"]>;
+  onPreviewTazaScore?: (
+    payload: ProductPayload,
+  ) => Promise<TazaScorePreviewResponse["data"]>;
   onRemoveImage?: () => Promise<void>;
 };
 
@@ -42,6 +52,16 @@ const nutritionFields = [
   ["salt", "Salt"],
 ] as const;
 
+const officialNutriScoreCategories = [
+  ["", "Unknown"],
+  ["general_food", "General food"],
+  ["beverage", "Beverage"],
+  ["water", "Water"],
+  ["cheese", "Cheese"],
+  ["fats_oils_nuts_seeds", "Fats, oils, nuts, seeds"],
+  ["red_meat", "Red meat"],
+] as const;
+
 export function ProductForm({
   initialValues = emptyProductFormValues,
   fieldErrors = {},
@@ -49,11 +69,23 @@ export function ProductForm({
   isSubmitting,
   isImageRemoving = false,
   onSubmit,
+  onPreviewOfficialNutriScore,
+  onPreviewTazaScore,
   onRemoveImage,
 }: ProductFormProps) {
   const [values, setValues] = useState<ProductFormValues>(initialValues);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [localErrors, setLocalErrors] = useState<FieldErrors>({});
+  const [preview, setPreview] = useState<
+    OfficialNutriScorePreviewResponse["data"] | null
+  >(null);
+  const [tazaScorePreview, setTazaScorePreview] = useState<
+    TazaScorePreviewResponse["data"] | null
+  >(null);
+  const [previewError, setPreviewError] = useState("");
+  const [tazaScorePreviewError, setTazaScorePreviewError] = useState("");
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isTazaScorePreviewing, setIsTazaScorePreviewing] = useState(false);
   const errors = useMemo(
     () => ({ ...fieldErrors, ...localErrors }),
     [fieldErrors, localErrors],
@@ -62,6 +94,10 @@ export function ProductForm({
   useEffect(() => {
     setValues(initialValues);
     setImageFile(null);
+    setPreview(null);
+    setTazaScorePreview(null);
+    setPreviewError("");
+    setTazaScorePreviewError("");
   }, [initialValues]);
 
   async function handleSubmit(event: FormEvent) {
@@ -78,6 +114,46 @@ export function ProductForm({
 
   function updateValue(name: keyof ProductFormValues, value: string) {
     setValues((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handlePreviewOfficialNutriScore() {
+    if (!onPreviewOfficialNutriScore || isPreviewing) {
+      return;
+    }
+
+    setIsPreviewing(true);
+    setPreview(null);
+    setPreviewError("");
+
+    try {
+      const result = await onPreviewOfficialNutriScore(
+        formValuesToPayload(values),
+      );
+      setPreview(result);
+    } catch (error) {
+      setPreviewError(readPreviewError(error));
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
+
+  async function handlePreviewTazaScore() {
+    if (!onPreviewTazaScore || isTazaScorePreviewing) {
+      return;
+    }
+
+    setIsTazaScorePreviewing(true);
+    setTazaScorePreview(null);
+    setTazaScorePreviewError("");
+
+    try {
+      const result = await onPreviewTazaScore(formValuesToPayload(values));
+      setTazaScorePreview(result);
+    } catch (error) {
+      setTazaScorePreviewError(readPreviewError(error));
+    } finally {
+      setIsTazaScorePreviewing(false);
+    }
   }
 
   return (
@@ -149,6 +225,97 @@ export function ProductForm({
         </div>
       </section>
 
+      <section className="form-section technical-section">
+        <div>
+          <h2>Nutri-Score данные</h2>
+          <p className="section-note">
+            Technical inputs for the standards-based Nutri-Score preview. Empty
+            fields stay unknown. Enter 0 or No only when the package/source
+            explicitly supports that value.
+          </p>
+        </div>
+        <div className="form-grid">
+          <SelectField
+            label="Nutri-Score category"
+            value={values.officialNutriScoreCategory}
+            onChange={(value) =>
+              updateValue("officialNutriScoreCategory", value)
+            }
+            error={errors.officialNutriScoreCategory}
+          >
+            {officialNutriScoreCategories.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="Fruit / vegetable / legume (%) — leave blank if unknown"
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={values.fruitVegetableLegumePercent}
+            error={errors.fruitVegetableLegumePercent}
+            onChange={(event) =>
+              updateValue("fruitVegetableLegumePercent", event.target.value)
+            }
+          />
+          <SelectField
+            label="Non-sugar sweeteners — do not infer absence"
+            value={values.containsNonSugarSweeteners}
+            onChange={(value) =>
+              updateValue(
+                "containsNonSugarSweeteners",
+                value as ProductFormValues["containsNonSugarSweeteners"],
+              )
+            }
+            error={errors.containsNonSugarSweeteners}
+          >
+            <option value="unknown">Unknown</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </SelectField>
+        </div>
+        {values.officialNutriScoreCategory === "beverage" ? (
+          <p className="section-note">
+            For beverages, fruit/vegetable/legume percentage and sweetener
+            status are required for an exact standards-based preview. Unknown is
+            different from 0% or No.
+          </p>
+        ) : null}
+        <div className="preview-panel">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!onPreviewOfficialNutriScore || isPreviewing}
+            onClick={() => void handlePreviewOfficialNutriScore()}
+          >
+            {isPreviewing ? "Calculating..." : "Preview Nutri-Score"}
+          </button>
+          {previewError ? (
+            <span className="field-error">{previewError}</span>
+          ) : null}
+          {preview ? <NutriScorePreview result={preview} /> : null}
+        </div>
+        <div className="preview-panel">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!onPreviewTazaScore || isTazaScorePreviewing}
+            onClick={() => void handlePreviewTazaScore()}
+          >
+            {isTazaScorePreviewing ? "Calculating..." : "Preview TazaScore"}
+          </button>
+          {tazaScorePreviewError ? (
+            <span className="field-error">{tazaScorePreviewError}</span>
+          ) : null}
+          {tazaScorePreview ? (
+            <TazaScorePreview result={tazaScorePreview} />
+          ) : null}
+        </div>
+      </section>
+
       <section className="form-section">
         <h2>Status</h2>
         <div className="form-grid">
@@ -208,6 +375,121 @@ export function ProductForm({
       </div>
     </form>
   );
+}
+
+type NutriScorePreviewProps = {
+  result: OfficialNutriScorePreviewResponse["data"];
+};
+
+function NutriScorePreview({ result }: NutriScorePreviewProps) {
+  if (result.status !== "calculated") {
+    return (
+      <div className="nutri-score-preview" aria-label="Nutri-Score preview">
+        <strong>Insufficient data</strong>
+        <span>
+          Missing:{" "}
+          {result.missingFields.length > 0
+            ? result.missingFields.join(", ")
+            : "unknown"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="nutri-score-preview" aria-label="Nutri-Score preview">
+      <strong>Grade {result.grade}</strong>
+      <span>Raw score: {result.rawScore}</span>
+      <span>Category: {result.category ?? "unknown"}</span>
+    </div>
+  );
+}
+
+type TazaScorePreviewProps = {
+  result: TazaScorePreviewResponse["data"];
+};
+
+function TazaScorePreview({ result }: TazaScorePreviewProps) {
+  if (result.status !== "calculated") {
+    return (
+      <div className="nutri-score-preview" aria-label="TazaScore preview">
+        <strong>Недостаточно данных</strong>
+        <span>
+          Missing:{" "}
+          {result.missingFields.length > 0
+            ? result.missingFields.join(", ")
+            : "unknown"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="nutri-score-preview" aria-label="TazaScore preview">
+      <strong>TazaScore {result.score} / 100</strong>
+      <span>Nutri-Score: {result.officialNutriScore.grade ?? "—"}</span>
+      <span>
+        Nutrition: {result.nutritionComponent.score} /{" "}
+        {result.nutritionComponent.maxScore}
+      </span>
+      <span>
+        Ingredients: {result.ingredientComponent.score} /{" "}
+        {result.ingredientComponent.maxScore}
+      </span>
+      <span>Data confidence: {readConfidenceLabel(result.confidence.level)}</span>
+      {result.negativeReasons.length > 0 ? (
+        <ul className="preview-reasons">
+          {result.negativeReasons.map((reason) => (
+            <li key={reason}>{readReasonLabel(reason)}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function readConfidenceLabel(level: TazaScorePreviewResponse["data"]["confidence"]["level"]) {
+  if (level === "high") return "High";
+  if (level === "medium") return "Medium";
+  return "Low";
+}
+
+function readReasonLabel(reason: string) {
+  const labels: Record<string, string> = {
+    "High sugar according to the official nutritional foundation.":
+      "Высокое содержание сахара",
+    "High energy density according to the official nutritional foundation.":
+      "Высокая энергетическая плотность",
+    "High salt according to the official nutritional foundation.":
+      "Высокое содержание соли",
+    "High saturated fat according to the official nutritional foundation.":
+      "Высокое содержание насыщенных жиров",
+    "Low favorable nutritional components in the official foundation.":
+      "Мало положительных нутриционных компонентов",
+    "Contains non-sugar sweeteners considered by the beverage Nutri-Score method.":
+      "Содержит некалорийные подсластители",
+    "Ingredient information is missing or unknown.":
+      "Информация о составе отсутствует",
+    "Sweetener status is unknown for a beverage.":
+      "Неизвестно наличие подсластителей",
+    "Product data confidence is low.": "Низкая уверенность в данных",
+  };
+
+  return labels[reason] ?? reason;
+}
+
+function readPreviewError(error: unknown) {
+  if (error instanceof ApiError) {
+    const details = Object.entries(error.fieldErrors)
+      .map(([field, message]) => `${field}: ${message}`)
+      .join("; ");
+
+    return details ? `${error.message}: ${details}` : error.message;
+  }
+
+  return error instanceof Error
+    ? error.message
+    : "Could not calculate Nutri-Score preview";
 }
 
 type ProductImageFieldProps = {

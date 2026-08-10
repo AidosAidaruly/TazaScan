@@ -1,5 +1,7 @@
 import type { Product } from '../generated/prisma/client';
+import type { OfficialNutriScoreResult } from '../scoring/types/official-nutri-score-result';
 import type { ScoreResult } from '../scoring/types/score-result';
+import type { TazaScoreResult } from '../scoring/types/taza-score-result';
 
 export type NutritionFactsDto = {
   servingType: Product['servingType'];
@@ -26,12 +28,22 @@ export type ProductDto = {
   manualScoreOverride: number | null;
   manualOverrideReason: string | null;
   manualOverrideAt: string | null;
+  officialNutriScoreCategory: Product['officialNutriScoreCategory'];
+  fruitVegetableLegumePercent: number | null;
+  containsNonSugarSweeteners: boolean | null;
   imageUrl: string | null;
   dataStatus: Product['dataStatus'];
   source: string | null;
   lastVerifiedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type OfficialNutriScorePreviewDto = OfficialNutriScoreResult;
+
+export type ProductScorePreviewDto = {
+  tazaScore: TazaScoreResult;
+  nutriScore: OfficialNutriScoreResult;
 };
 
 export function toProductDto(product: Product): ProductDto {
@@ -60,6 +72,9 @@ export function toProductDto(product: Product): ProductDto {
     manualScoreOverride: product.manualScoreOverride,
     manualOverrideReason: product.manualOverrideReason,
     manualOverrideAt: product.manualOverrideAt?.toISOString() ?? null,
+    officialNutriScoreCategory: product.officialNutriScoreCategory,
+    fruitVegetableLegumePercent: product.fruitVegetableLegumePercent,
+    containsNonSugarSweeteners: product.containsNonSugarSweeteners,
     imageUrl: product.imageUrl,
     dataStatus: product.dataStatus,
     source: product.source,

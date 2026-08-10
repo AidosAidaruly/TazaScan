@@ -1,6 +1,12 @@
 import type { RequestHandler } from 'express';
 import { ProductRepository } from '../repositories/product.repository';
-import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type {
+  ListProductsQuery,
+  OfficialNutriScorePreviewBody,
+  ProductBody,
+  TazaScorePreviewBody,
+  UpdateProductBody
+} from '../schemas/product.schema';
 import { NutriScoreEngine } from '../scoring/engines/nutri-score.engine';
 import { ProductService } from '../services/product.service';
 import { requireParam } from '../utils/request';
@@ -35,11 +41,38 @@ export const getProductByBarcode: RequestHandler = async (request, response) => 
   });
 };
 
+export const previewProductScore: RequestHandler = async (request, response) => {
+  const id = requireParam(request, 'id');
+  const result = await productService.previewProductScore(id);
+
+  response.status(200).json({
+    data: result
+  });
+};
+
 export const createProduct: RequestHandler = async (request, response) => {
   const product = await productService.create(request.body as ProductBody);
 
   response.status(201).json({
     data: product
+  });
+};
+
+export const previewOfficialNutriScore: RequestHandler = async (request, response) => {
+  const result = productService.previewOfficialNutriScore(
+    request.body as OfficialNutriScorePreviewBody
+  );
+
+  response.status(200).json({
+    data: result
+  });
+};
+
+export const previewTazaScore: RequestHandler = async (request, response) => {
+  const result = productService.previewTazaScore(request.body as TazaScorePreviewBody);
+
+  response.status(200).json({
+    data: result
   });
 };
 

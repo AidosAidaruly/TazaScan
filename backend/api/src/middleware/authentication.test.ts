@@ -33,6 +33,14 @@ function createTestApp(user?: AuthUser) {
       response.status(201).json({ data: { id: 'product-id' } });
     }
   );
+  app.post(
+    '/products/taza-score-preview',
+    createAuthenticate(authService, new TokenService()),
+    authorizeRole('admin'),
+    (_request, response) => {
+      response.status(200).json({ data: { status: 'calculated', score: 41 } });
+    }
+  );
   app.put(
     '/products/:id',
     createAuthenticate(authService, new TokenService()),
@@ -118,6 +126,36 @@ describe('authentication middleware', () => {
 
     expect(response.status).toBe(403);
     expect(response.body.error.message).toBe('Insufficient role');
+  });
+
+  it('keeps TazaScore preview admin-only', async () => {
+    const unauthenticated = await request(createTestApp())
+      .post('/products/taza-score-preview')
+      .send({});
+    const ordinaryUser = await request(
+      createTestApp({
+        id: 'user-id',
+        email: 'user@example.com',
+        role: 'user'
+      })
+    )
+      .post('/products/taza-score-preview')
+      .set('Authorization', `Bearer ${signToken({ sub: 'user-id', role: 'user' })}`)
+      .send({});
+    const admin = await request(
+      createTestApp({
+        id: 'user-id',
+        email: 'admin@example.com',
+        role: 'admin'
+      })
+    )
+      .post('/products/taza-score-preview')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .send({});
+
+    expect(unauthenticated.status).toBe(401);
+    expect(ordinaryUser.status).toBe(403);
+    expect(admin.status).toBe(200);
   });
 
   it('rejects unauthenticated update and delete', async () => {

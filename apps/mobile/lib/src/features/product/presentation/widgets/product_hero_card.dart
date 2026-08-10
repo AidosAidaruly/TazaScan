@@ -3,12 +3,18 @@ import 'package:project/src/core/network/asset_url_resolver.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/widgets/product_grade_colors.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 import 'package:project/src/features/product/presentation/widgets/score_ring.dart';
 
 class ProductHeroCard extends StatelessWidget {
-  const ProductHeroCard({required this.product, super.key});
+  const ProductHeroCard({
+    required this.product,
+    this.showScore = true,
+    super.key,
+  });
 
   final Product product;
+  final bool showScore;
 
   @override
   Widget build(BuildContext context) {
@@ -32,12 +38,14 @@ class ProductHeroCard extends StatelessWidget {
                 return Column(
                   children: [
                     _ImagePanel(imageUrl: imageUrl, productName: product.name),
-                    const SizedBox(height: 10),
-                    ScoreRing(
-                      score:
-                          product.nutritionScore.score ?? product.healthScore,
-                      grade: product.nutritionScore.grade,
-                    ),
+                    if (showScore) ...[
+                      const SizedBox(height: 10),
+                      ScoreRing(
+                        score:
+                            product.nutritionScore.score ?? product.healthScore,
+                        grade: product.nutritionScore.grade,
+                      ),
+                    ],
                   ],
                 );
               }
@@ -50,11 +58,14 @@ class ProductHeroCard extends StatelessWidget {
                       productName: product.name,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  ScoreRing(
-                    score: product.nutritionScore.score ?? product.healthScore,
-                    grade: product.nutritionScore.grade,
-                  ),
+                  if (showScore) ...[
+                    const SizedBox(width: 12),
+                    ScoreRing(
+                      score:
+                          product.nutritionScore.score ?? product.healthScore,
+                      grade: product.nutritionScore.grade,
+                    ),
+                  ],
                 ],
               );
             },
@@ -69,7 +80,10 @@ class ProductHeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            [product.brand, product.category].whereType<String>().join(' • '),
+            [
+              product.brand,
+              ProductPresentationLocalization.category(product.category),
+            ].where((value) => value != null && value.isNotEmpty).join(' • '),
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -95,11 +109,7 @@ class ProductHeroCard extends StatelessWidget {
   }
 
   String _dataStatusLabel(String status) {
-    return switch (status) {
-      'verified' => 'Проверено',
-      'community' => 'Сообщество',
-      _ => 'Не проверено',
-    };
+    return ProductPresentationLocalization.dataStatus(status);
   }
 
   Color _dataStatusColor(String status) {

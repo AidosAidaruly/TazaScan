@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class ProductScoreSummaryCard extends StatelessWidget {
   const ProductScoreSummaryCard({required this.product, super.key});
@@ -13,7 +14,7 @@ class ProductScoreSummaryCard extends StatelessWidget {
       ...product.nutritionScore.negativeReasons,
       ...product.nutritionScore.warnings,
       ...product.nutritionScore.positiveReasons,
-    ].take(3).toList();
+    ].map(ProductPresentationLocalization.insight).take(3).toList();
 
     return TazaSurfaceCard(
       padding: const EdgeInsets.all(18),

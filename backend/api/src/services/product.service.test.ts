@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../generated/prisma/client';
-import type { ListProductsQuery } from '../schemas/product.schema';
-import { productBodySchema } from '../schemas/product.schema';
+import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import {
+  officialNutriScorePreviewBodySchema,
+  productBodySchema,
+  tazaScorePreviewBodySchema
+} from '../schemas/product.schema';
 import type { ScoreEngine } from '../scoring/contracts/score-engine';
 import type { ScoreInput, ScoreResult } from '../scoring/types/score-result';
 import { ProductService } from './product.service';
@@ -25,6 +29,9 @@ function createProduct(overrides: Partial<Product> = {}): Product {
     saturatedFat: 0,
     fiber: null,
     salt: 0,
+    officialNutriScoreCategory: null,
+    fruitVegetableLegumePercent: null,
+    containsNonSugarSweeteners: null,
     healthScore: 65,
     calculatedScore: 65,
     calculatedGrade: 'D',
@@ -72,7 +79,7 @@ function createProductBody(overrides = {}) {
       sugars: 10.6,
       fat: 0,
       saturatedFat: 0,
-      fiber: null,
+      fiber: 0,
       salt: 0
     },
     dataStatus: 'verified',
@@ -105,6 +112,8 @@ class FakeProductRepository {
   products: Product[] = [];
   deletedIds: string[] = [];
   lastListFilters: unknown;
+  lastCreateData: ProductBody | null = null;
+  lastUpdateData: UpdateProductBody | null = null;
   lastScoreResult: ScoreResult | null = null;
   failImageUpdate = false;
 
@@ -138,16 +147,33 @@ class FakeProductRepository {
     );
   }
 
-  create(_data: unknown, _scoreResult: ScoreResult) {
-    this.lastScoreResult = _scoreResult;
-    const product = createProduct();
+  create(data: ProductBody, scoreResult: ScoreResult) {
+    this.lastCreateData = data;
+    this.lastScoreResult = scoreResult;
+    const product = createProduct({
+      officialNutriScoreCategory: data.officialNutriScoreCategory ?? null,
+      fruitVegetableLegumePercent: data.fruitVegetableLegumePercent ?? null,
+      containsNonSugarSweeteners: data.containsNonSugarSweeteners ?? null
+    });
     this.products.push(product);
     return Promise.resolve(product);
   }
 
-  update(id: string, _data: unknown, _scoreResult: ScoreResult) {
-    this.lastScoreResult = _scoreResult;
-    const product = createProduct({ id, name: 'Updated product' });
+  update(id: string, data: UpdateProductBody, scoreResult: ScoreResult) {
+    this.lastUpdateData = data;
+    this.lastScoreResult = scoreResult;
+    const existing = this.products.find((item) => item.id === id);
+    const product = createProduct({
+      ...existing,
+      id,
+      name: data.name ?? 'Updated product',
+      officialNutriScoreCategory:
+        data.officialNutriScoreCategory ?? existing?.officialNutriScoreCategory ?? null,
+      fruitVegetableLegumePercent:
+        data.fruitVegetableLegumePercent ?? existing?.fruitVegetableLegumePercent ?? null,
+      containsNonSugarSweeteners:
+        data.containsNonSugarSweeteners ?? existing?.containsNonSugarSweeteners ?? null
+    });
     this.products = this.products.map((item) => (item.id === id ? product : item));
     return Promise.resolve(product);
   }
@@ -210,6 +236,18 @@ describe('ProductService', () => {
     expect(product.nutritionScore.status).toBe('calculated');
   });
 
+  it('keeps existing products valid when official Nutri-Score fields are null', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [createProduct()];
+    const { service } = createService(repository);
+
+    const product = await service.getById('11111111-1111-4111-8111-111111111111');
+
+    expect(product.officialNutriScoreCategory).toBeNull();
+    expect(product.fruitVegetableLegumePercent).toBeNull();
+    expect(product.containsNonSugarSweeteners).toBeNull();
+  });
+
   it('returns 409 for duplicate barcode', async () => {
     const repository = new FakeProductRepository();
     repository.products = [createProduct()];
@@ -229,6 +267,59 @@ describe('ProductService', () => {
     );
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid official Nutri-Score percentage', () => {
+    const result = productBodySchema.safeParse(
+      createProductBody({ fruitVegetableLegumePercent: 101 })
+    );
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unsupported official Nutri-Score category', () => {
+    const result = productBodySchema.safeParse(
+      createProductBody({ officialNutriScoreCategory: 'dessert' })
+    );
+
+    expect(result.success).toBe(false);
+  });
+
+  it('preserves 0 percent FVL and false sweetener flag in parsed payload', () => {
+    const result = productBodySchema.parse(
+      createProductBody({
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false
+      })
+    );
+
+    expect(result.fruitVegetableLegumePercent).toBe(0);
+    expect(result.containsNonSugarSweeteners).toBe(false);
+  });
+
+  it('creates a product with structured official Nutri-Score data', async () => {
+    const repository = new FakeProductRepository();
+    const { service } = createService(repository);
+
+    const product = await service.create(
+      productBodySchema.parse(
+        createProductBody({
+          officialNutriScoreCategory: 'beverage',
+          fruitVegetableLegumePercent: 0,
+          containsNonSugarSweeteners: false
+        })
+      )
+    );
+
+    expect(repository.lastCreateData).toMatchObject({
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false
+    });
+    expect(product.officialNutriScoreCategory).toBe('beverage');
+    expect(product.fruitVegetableLegumePercent).toBe(0);
+    expect(product.containsNonSugarSweeteners).toBe(false);
   });
 
   it('finds a product by ID', async () => {
@@ -254,6 +345,218 @@ describe('ProductService', () => {
     expect(scoreEngine.inputs[0]?.category).toBe('Soft Drinks');
   });
 
+  it('previews official Nutri-Score without modifying legacy calculated score', () => {
+    const repository = new FakeProductRepository();
+    const { service } = createService(repository);
+
+    const preview = service.previewOfficialNutriScore(
+      productBodySchema.parse(
+        createProductBody({
+          officialNutriScoreCategory: 'beverage',
+          fruitVegetableLegumePercent: 0,
+          containsNonSugarSweeteners: false
+        })
+      )
+    );
+
+    expect(preview.status).toBe('calculated');
+    expect(preview.rawScore).toBe(13);
+    expect(preview.grade).toBe('E');
+    expect(repository.lastScoreResult).toBeNull();
+  });
+
+  it('accepts preview validation with beverage, 0 percent FVL, and false sweetener flag', () => {
+    const { service } = createService();
+    const previewBody = officialNutriScorePreviewBodySchema.parse({
+      category: '',
+      ingredients: ['Carbonated water', 'Sugar'],
+      nutritionFacts: {
+        servingType: 'per100ml',
+        energyKcal: 42,
+        protein: 0,
+        carbohydrates: 10.6,
+        sugars: 10.6,
+        fat: 0,
+        saturatedFat: 0,
+        fiber: 0,
+        salt: 0
+      },
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false
+    });
+
+    const preview = service.previewOfficialNutriScore(previewBody);
+
+    expect(preview.status).toBe('calculated');
+    expect(preview.rawScore).toBe(13);
+    expect(preview.grade).toBe('E');
+  });
+
+  it('previews missing official Nutri-Score data without guessing values', () => {
+    const { service } = createService();
+
+    const preview = service.previewOfficialNutriScore(
+      officialNutriScorePreviewBodySchema.parse({
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false
+      })
+    );
+
+    expect(preview.status).toBe('insufficient_data');
+    expect(preview.rawScore).toBeNull();
+    expect(preview.missingFields).toContain('energyKcalOrEnergyKj');
+    expect(preview.missingFields).toContain('sugars');
+  });
+
+  it('previews TazaScore without persisting or triggering legacy scoring', () => {
+    const repository = new FakeProductRepository();
+    const { service } = createService(repository);
+
+    const preview = service.previewTazaScore(
+      tazaScorePreviewBodySchema.parse({
+        category: 'Soft Drinks',
+        ingredients: [
+          'Carbonated water',
+          'Sugar',
+          'Colour caramel E150d',
+          'Phosphoric acid',
+          'Natural flavourings',
+          'Caffeine'
+        ],
+        nutritionFacts: {
+          servingType: 'per100ml',
+          energyKcal: 42,
+          protein: 0,
+          carbohydrates: 10.6,
+          sugars: 10.6,
+          fat: 0,
+          saturatedFat: 0,
+          fiber: 0,
+          salt: 0
+        },
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false,
+        dataStatus: 'verified'
+      })
+    );
+
+    expect(preview.status).toBe('calculated');
+    expect(preview.score).toBe(27);
+    expect(preview.nutritionComponent.score).toBe(17);
+    expect(preview.ingredientComponent.score).toBe(10);
+    expect(preview.confidence.level).toBe('high');
+    expect(preview.officialNutriScore).toMatchObject({
+      status: 'calculated',
+      rawScore: 13,
+      grade: 'E'
+    });
+    expect(repository.lastScoreResult).toBeNull();
+    expect(repository.lastCreateData).toBeNull();
+    expect(repository.lastUpdateData).toBeNull();
+  });
+
+  it('previews stored product score without persisting legacy fields', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false,
+        fiber: 0,
+        calculatedScore: 69,
+        calculatedGrade: 'C',
+        healthScore: 69
+      })
+    ];
+    const { service } = createService(repository);
+
+    const preview = await service.previewProductScore(
+      '11111111-1111-4111-8111-111111111111'
+    );
+
+    expect(preview.tazaScore.status).toBe('calculated');
+    expect(preview.tazaScore.score).toBe(27);
+    expect(preview.tazaScore.nutritionComponent.score).toBe(17);
+    expect(preview.tazaScore.ingredientComponent.score).toBe(10);
+    expect(preview.tazaScore.confidence.level).toBe('high');
+    expect(preview.nutriScore).toMatchObject({
+      status: 'calculated',
+      rawScore: 13,
+      grade: 'E'
+    });
+    expect(repository.products[0].calculatedScore).toBe(69);
+    expect(repository.products[0].calculatedGrade).toBe('C');
+    expect(repository.lastScoreResult).toBeNull();
+    expect(repository.lastCreateData).toBeNull();
+    expect(repository.lastUpdateData).toBeNull();
+  });
+
+  it('returns insufficient data for stored product score preview', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        officialNutriScoreCategory: 'beverage',
+        energyKcal: null,
+        sugars: null,
+        fiber: null
+      })
+    ];
+    const { service } = createService(repository);
+
+    const preview = await service.previewProductScore(
+      '11111111-1111-4111-8111-111111111111'
+    );
+
+    expect(preview.tazaScore.status).toBe('insufficient_data');
+    expect(preview.tazaScore.score).toBeNull();
+    expect(preview.tazaScore.missingFields).toContain('energyKcalOrEnergyKj');
+    expect(preview.tazaScore.missingFields).toContain('sugars');
+    expect(preview.nutriScore.status).toBe('insufficient_data');
+    expect(repository.lastScoreResult).toBeNull();
+  });
+
+  it('preserves zero fruit percentage and false sweetener flag in TazaScore preview', () => {
+    const body = tazaScorePreviewBodySchema.parse({
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false,
+      nutritionFacts: {
+        servingType: 'per100ml',
+        energyKcal: 42,
+        protein: 0,
+        carbohydrates: 10.6,
+        sugars: 10.6,
+        fat: 0,
+        saturatedFat: 0,
+        fiber: 0,
+        salt: 0
+      }
+    });
+
+    expect(body.fruitVegetableLegumePercent).toBe(0);
+    expect(body.containsNonSugarSweeteners).toBe(false);
+  });
+
+  it('returns insufficient data for TazaScore preview when critical nutrition is missing', () => {
+    const { service } = createService();
+
+    const preview = service.previewTazaScore(
+      tazaScorePreviewBodySchema.parse({
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false
+      })
+    );
+
+    expect(preview.status).toBe('insufficient_data');
+    expect(preview.score).toBeNull();
+    expect(preview.missingFields).toContain('energyKcalOrEnergyKj');
+    expect(preview.missingFields).toContain('sugars');
+  });
+
   it('automatically recalculates after update', async () => {
     const repository = new FakeProductRepository();
     repository.products = [createProduct()];
@@ -265,6 +568,27 @@ describe('ProductService', () => {
 
     expect(repository.lastScoreResult?.algorithm).toBe('test');
     expect(repository.lastScoreResult?.status).toBe('calculated');
+  });
+
+  it('keeps legacy scoring unchanged when structured Nutri-Score fields are saved', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [createProduct()];
+    const { service } = createService(repository);
+
+    await service.update('11111111-1111-4111-8111-111111111111', {
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false
+    });
+
+    expect(repository.lastUpdateData).toMatchObject({
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false
+    });
+    expect(repository.lastScoreResult?.algorithm).toBe('test');
+    expect(repository.lastScoreResult?.score).toBe(65);
+    expect(repository.lastScoreResult?.grade).toBe('D');
   });
 
   it('deletes a product', async () => {

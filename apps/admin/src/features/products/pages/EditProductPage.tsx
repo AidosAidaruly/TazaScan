@@ -131,6 +131,27 @@ export function EditProductPage() {
     }
   }
 
+  async function handlePreviewOfficialNutriScore(payload: ProductPayload) {
+    if (!token) {
+      throw new Error("Admin session expired");
+    }
+
+    const response = await productsApi.previewOfficialNutriScore(
+      payload,
+      token,
+    );
+    return response.data;
+  }
+
+  async function handlePreviewTazaScore(payload: ProductPayload) {
+    if (!token) {
+      throw new Error("Admin session expired");
+    }
+
+    const response = await productsApi.previewTazaScore(payload, token);
+    return response.data;
+  }
+
   if (isLoading) {
     return <PageLoader label="Loading product..." />;
   }
@@ -152,6 +173,8 @@ export function EditProductPage() {
           isImageRemoving={isImageRemoving}
           fieldErrors={fieldErrors}
           onSubmit={handleSubmit}
+          onPreviewOfficialNutriScore={handlePreviewOfficialNutriScore}
+          onPreviewTazaScore={handlePreviewTazaScore}
           onRemoveImage={handleRemoveImage}
         />
       ) : null}

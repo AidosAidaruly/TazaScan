@@ -1,9 +1,19 @@
 import type { Product } from '../generated/prisma/client';
-import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type {
+  ListProductsQuery,
+  OfficialNutriScorePreviewBody,
+  ProductBody,
+  TazaScorePreviewBody,
+  UpdateProductBody
+} from '../schemas/product.schema';
 import type { ScoreEngine } from '../scoring/contracts/score-engine';
+import { OfficialNutriScoreEngine } from '../scoring/engines/official-nutri-score.engine';
+import { TazaScoreEngine } from '../scoring/engines/taza-score.engine';
+import type { OfficialNutriScoreInput } from '../scoring/types/official-nutri-score-result';
+import type { TazaScoreInput } from '../scoring/types/taza-score-result';
 import type { ScoreInput } from '../scoring/types/score-result';
 import type { PaginatedResponse } from '../types/pagination';
-import type { ProductDto } from '../types/product';
+import type { ProductDto, ProductScorePreviewDto } from '../types/product';
 import { toProductDto } from '../types/product';
 import { HttpError } from '../utils/http-error';
 import { ProductImageStorageService } from './product-image-storage.service';
@@ -21,6 +31,9 @@ type ProductRepositoryContract = {
 type NumericNutritionField = Exclude<keyof ProductBody['nutritionFacts'], 'servingType'>;
 
 export class ProductService {
+  private readonly officialNutriScoreEngine = new OfficialNutriScoreEngine();
+  private readonly tazaScoreEngine = new TazaScoreEngine();
+
   constructor(
     private readonly productRepository: ProductRepositoryContract,
     private readonly scoreEngine: ScoreEngine,
@@ -67,6 +80,24 @@ export class ProductService {
     const product = await this.productRepository.create(data, scoreResult);
 
     return toProductDto(product);
+  }
+
+  previewOfficialNutriScore(data: OfficialNutriScorePreviewBody) {
+    return this.officialNutriScoreEngine.calculate(this.toOfficialNutriScoreInput(data));
+  }
+
+  previewTazaScore(data: TazaScorePreviewBody) {
+    return this.tazaScoreEngine.calculate(this.toTazaScoreInput(data));
+  }
+
+  async previewProductScore(id: string): Promise<ProductScorePreviewDto> {
+    const product = await this.ensureExists(id);
+    const tazaScore = this.tazaScoreEngine.calculate(this.productToTazaScoreInput(product));
+
+    return {
+      tazaScore,
+      nutriScore: tazaScore.officialNutriScore
+    };
   }
 
   async update(id: string, data: UpdateProductBody) {
@@ -166,6 +197,70 @@ export class ProductService {
       category: data.category,
       ingredients: data.ingredients
     };
+  }
+
+  private toOfficialNutriScoreInput(data: OfficialNutriScorePreviewBody): OfficialNutriScoreInput {
+    const input: OfficialNutriScoreInput = {
+      servingType: data.nutritionFacts.servingType,
+      energyKcal: data.nutritionFacts.energyKcal ?? null,
+      energyKj: null,
+      protein: data.nutritionFacts.protein ?? null,
+      carbohydrates: data.nutritionFacts.carbohydrates ?? null,
+      sugars: data.nutritionFacts.sugars ?? null,
+      fat: data.nutritionFacts.fat ?? null,
+      saturatedFat: data.nutritionFacts.saturatedFat ?? null,
+      fiber: data.nutritionFacts.fiber ?? null,
+      salt: data.nutritionFacts.salt ?? null,
+      fruitVegetableLegumePercent: data.fruitVegetableLegumePercent ?? null,
+      containsNonSugarSweeteners: data.containsNonSugarSweeteners ?? null,
+      ingredients: data.ingredients
+    };
+
+    if (data.category) {
+      input.legacyCategoryLabel = data.category;
+    }
+
+    if (data.officialNutriScoreCategory) {
+      input.category = data.officialNutriScoreCategory;
+    }
+
+    return input;
+  }
+
+  private toTazaScoreInput(data: TazaScorePreviewBody): TazaScoreInput {
+    return {
+      ...this.toOfficialNutriScoreInput(data),
+      dataStatus: data.dataStatus
+    };
+  }
+
+  private productToTazaScoreInput(product: Product): TazaScoreInput {
+    const input: TazaScoreInput = {
+      servingType: product.servingType,
+      energyKcal: product.energyKcal,
+      energyKj: null,
+      protein: product.protein,
+      carbohydrates: product.carbohydrates,
+      sugars: product.sugars,
+      fat: product.fat,
+      saturatedFat: product.saturatedFat,
+      fiber: product.fiber,
+      salt: product.salt,
+      fruitVegetableLegumePercent: product.fruitVegetableLegumePercent,
+      containsNonSugarSweeteners: product.containsNonSugarSweeteners,
+      ingredients: product.ingredients,
+      dataStatus: product.dataStatus
+    };
+
+    if (product.category) {
+      input.legacyCategoryLabel = product.category;
+    }
+
+    if (product.officialNutriScoreCategory) {
+      input.category = product.officialNutriScoreCategory;
+    }
+
+    return input;
   }
 
   private readNutritionValue(
