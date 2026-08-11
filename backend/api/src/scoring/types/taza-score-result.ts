@@ -11,6 +11,7 @@ export type TazaScoreConfidenceLevel = 'high' | 'medium' | 'low';
 export type TazaScoreReasonCode =
   | OfficialNutriScoreReasonCode
   | 'OFFICIAL_NUTRI_SCORE_FOUNDATION'
+  | 'PARTIAL_NUTRITION_FOUNDATION'
   | 'LOW_FAVORABLE_NUTRITIONAL_COMPONENTS'
   | 'CONSERVATIVE_ADDITIVE_ASSESSMENT'
   | 'UNKNOWN_INGREDIENTS'
@@ -18,7 +19,11 @@ export type TazaScoreReasonCode =
   | 'VERIFIED_PRODUCT_DATA'
   | 'COMMUNITY_PRODUCT_DATA'
   | 'UNVERIFIED_PRODUCT_DATA'
-  | 'MISSING_TAZASCORE_INPUT';
+  | 'MISSING_TAZASCORE_INPUT'
+  | 'PARTIAL_DATA_CONFIDENCE_LIMIT'
+  | 'LOW_NUTRITION_COVERAGE'
+  | 'MISSING_CRITICAL_NEGATIVE_FIELD'
+  | 'PARTIAL_SCORE_CAP_APPLIED';
 
 export type TazaScoreInput = OfficialNutriScoreInput & {
   dataStatus?: TazaScoreDataStatus;
@@ -30,6 +35,8 @@ export type TazaScoreComponent = {
   status: TazaScoreStatus;
   reasonCodes: TazaScoreReasonCode[];
   missingFields: string[];
+  usedFields?: string[];
+  nutritionCoverage?: number;
 };
 
 export type TazaScoreIngredientComponent = TazaScoreComponent & {
@@ -53,6 +60,12 @@ export type TazaScoreResult = {
   positiveReasons: string[];
   negativeReasons: string[];
   missingFields: string[];
+  usedFields: string[];
+  nutritionCoverage: number;
+  missingCriticalFields: string[];
+  scoreBeforeSafeguard: number | null;
+  scoreCap: number | null;
+  safeguardsApplied: string[];
   warnings: string[];
   methodology: 'TazaScore';
   methodologyVersion: 'taza-score-v1';

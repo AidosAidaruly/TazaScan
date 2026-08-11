@@ -39,7 +39,19 @@ class ProductPresentationLocalization {
   }
 
   static String missingField(String value) {
-    return _mapKnown(value, _missingFieldLabels) ?? insight(value);
+    return switch (_normalizeField(value)) {
+      'energykcal' || 'energykcalorenergykj' || 'energykj' => 'Энергия',
+      'protein' => 'Белки',
+      'carbohydrates' => 'Углеводы',
+      'sugars' => 'Сахар',
+      'fat' => 'Жиры',
+      'saturatedfat' || 'saturatedfatapproximation' => 'Насыщенные жиры',
+      'fiber' => 'Клетчатка',
+      'salt' => 'Соль',
+      'fruitvegetablelegumepercent' => 'Доля фруктов/овощей/бобовых',
+      'containsnonsugarsweeteners' => 'Некалорийные подсластители',
+      _ => _mapKnown(value, _missingFieldLabels) ?? insight(value),
+    };
   }
 
   static String? _mapKnown(String? value, Map<String, String> labels) {
@@ -61,6 +73,14 @@ class ProductPresentationLocalization {
 
   static String _normalize(String? value) {
     return value?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ') ?? '';
+  }
+
+  static String _normalizeField(String? value) {
+    return value
+            ?.trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9]'), '') ??
+        '';
   }
 }
 
@@ -104,6 +124,11 @@ const _insightLabels = {
   'community_product_data': 'Данные добавлены сообществом',
   'unverified_product_data': 'Данные продукта требуют проверки',
   'missing_tazascore_input': 'Недостаточно данных для TazaScore',
+  'partial_nutrition_foundation': 'Оценка рассчитана по неполным данным продукта',
+  'partial_data_confidence_limit': 'Данные продукта неполные',
+  'low_nutrition_coverage': 'Покрытие данных ограничено',
+  'missing_critical_negative_field': 'Не хватает важных данных о составе питания',
+  'partial_score_cap_applied': 'Применено ограничение от завышенной оценки',
   'high sugar content.': 'Высокое содержание сахара',
   'high sugar content': 'Высокое содержание сахара',
   'high sugars content.': 'Высокое содержание сахара',

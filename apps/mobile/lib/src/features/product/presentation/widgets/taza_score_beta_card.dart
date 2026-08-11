@@ -36,7 +36,6 @@ class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
     final data = widget.data;
     final score = data?.score;
     final scoreColor = _scoreColor(score);
-    final grade = data?.nutriScoreGrade;
 
     return TazaSurfaceCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -85,9 +84,14 @@ class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
               ),
             ),
             const SizedBox(height: 16),
-            _NutriScoreRow(grade: grade),
+            _NutriScoreRow(grade: data.nutriScoreGrade),
+            if (data.isPartialData) ...[
+              const SizedBox(height: 10),
+              _ConfidenceInline(confidence: data.confidence),
+            ],
             const SizedBox(height: 10),
             _CollapsedReasons(reasons: data.reasonLabels),
+            _CollapsedNotices(data: data),
           ],
           if (data != null) ...[
             const SizedBox(height: 10),
@@ -119,6 +123,38 @@ class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
     if (score >= 45) return const Color(0xFFF4C542);
     if (score >= 25) return const Color(0xFFF59E42);
     return const Color(0xFFF45B69);
+  }
+}
+
+class _CollapsedNotices extends StatelessWidget {
+  const _CollapsedNotices({required this.data});
+
+  final TazaScorePreviewData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final notices = <String>[
+      if (data.isPartialData) 'Оценка рассчитана по неполным данным продукта.',
+      if (data.hasSafeguardApplied)
+        'Итоговая оценка ограничена из-за отсутствующих важных данных.',
+      if (data.confidence == TazaScoreConfidence.low)
+        'Данных недостаточно для высокой точности оценки.',
+    ];
+
+    if (notices.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        children: [
+          for (final notice in notices)
+            _NoticeRow(
+              text: notice,
+              stronger: data.confidence == TazaScoreConfidence.low,
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -161,6 +197,63 @@ class _CollapsedReasons extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _NoticeRow extends StatelessWidget {
+  const _NoticeRow({required this.text, this.stronger = false});
+
+  final String text;
+  final bool stronger;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            stronger
+                ? Icons.error_outline_rounded
+                : Icons.info_outline_rounded,
+            size: 16,
+            color: stronger
+                ? const Color(0xFFF59E42)
+                : colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: stronger
+                    ? const Color(0xFFF4C542)
+                    : colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfidenceInline extends StatelessWidget {
+  const _ConfidenceInline({required this.confidence});
+
+  final TazaScoreConfidence confidence;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoRow(
+      label: 'Достоверность',
+      value: _confidenceLabel(confidence),
     );
   }
 }
@@ -227,6 +320,23 @@ class _ExpandedDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Breakdown(data: data),
+          if (data.missingFields.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _FieldList(title: 'Не хватает данных', values: data.missingFields),
+          ],
+          if (data.hasSafeguardApplied) ...[
+            const SizedBox(height: 8),
+            const _NoticeRow(
+              text: 'Для защиты от завышенной оценки применено ограничение.',
+            ),
+            if (data.scoreBeforeSafeguard != null)
+              _InfoRow(
+                label: 'До ограничения',
+                value: '${data.scoreBeforeSafeguard}',
+              ),
+            if (data.score != null)
+              _InfoRow(label: 'После ограничения', value: '${data.score}'),
+          ],
           if (data.technicalReasonLabels.isNotEmpty) ...[
             const SizedBox(height: 10),
             for (final reason in data.technicalReasonLabels)
@@ -246,6 +356,54 @@ class _ExpandedDetails extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _FieldList extends StatelessWidget {
+  const _FieldList({required this.title, required this.values});
+
+  final String title;
+  final List<String> values;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final value in values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.remove_rounded,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -361,7 +519,7 @@ class _NutriScoreRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final gradeLabel = grade?.toUpperCase() ?? '—';
+    final gradeLabel = grade?.toUpperCase();
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -381,7 +539,19 @@ class _NutriScoreRow extends StatelessWidget {
                 ),
               ),
             ),
-            _GradeBadge(grade: gradeLabel),
+            if (gradeLabel == null)
+              Flexible(
+                child: Text(
+                  'Недоступен из-за неполных данных',
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              )
+            else
+              _GradeBadge(grade: gradeLabel),
           ],
         ),
       ),
@@ -402,6 +572,11 @@ class _Breakdown extends StatelessWidget {
           label: 'Достоверность данных',
           value: _confidenceLabel(data.confidence),
         ),
+        if (data.nutritionCoverage != null)
+          _InfoRow(
+            label: 'Покрытие данных',
+            value: _coverageLabel(data.nutritionCoverage!),
+          ),
         _InfoRow(label: 'Добавки', value: data.ingredientAnalysisLabel),
         _InfoRow(label: 'Степень обработки', value: _processingLabel(data)),
         if (data.nutritionComponent != null)
@@ -418,12 +593,8 @@ class _Breakdown extends StatelessWidget {
     );
   }
 
-  String _confidenceLabel(TazaScoreConfidence confidence) {
-    return switch (confidence) {
-      TazaScoreConfidence.high => 'Высокая',
-      TazaScoreConfidence.medium => 'Средняя',
-      TazaScoreConfidence.low => 'Низкая',
-    };
+  String _coverageLabel(double value) {
+    return '${(value * 100).round()}%';
   }
 
   String _processingLabel(TazaScorePreviewData data) {
@@ -469,14 +640,6 @@ class _InsufficientData extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _confidenceLabel(TazaScoreConfidence confidence) {
-    return switch (confidence) {
-      TazaScoreConfidence.high => 'Высокая',
-      TazaScoreConfidence.medium => 'Средняя',
-      TazaScoreConfidence.low => 'Низкая',
-    };
   }
 }
 
@@ -617,4 +780,12 @@ class _Pill extends StatelessWidget {
       ),
     );
   }
+}
+
+String _confidenceLabel(TazaScoreConfidence confidence) {
+  return switch (confidence) {
+    TazaScoreConfidence.high => 'Высокая',
+    TazaScoreConfidence.medium => 'Средняя',
+    TazaScoreConfidence.low => 'Низкая',
+  };
 }

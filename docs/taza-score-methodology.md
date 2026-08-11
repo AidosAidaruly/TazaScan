@@ -13,10 +13,11 @@ advice. Official Nutri-Score A-E remains a separate standards-based indicator.
 Scores produced by this version must carry the methodology version so future
 versions can be recalculated and compared safely.
 
-## Required inputs
+## Inputs
 
-TazaScore v1 consumes the same nutrition foundation used by
-`OfficialNutriScoreEngine`:
+TazaScore v1 can consume the complete standards-based input set used by
+`OfficialNutriScoreEngine`, but it can also calculate from partial product-label
+data when enough evidence is available:
 
 - serving type: per 100 g or per 100 ml
 - official Nutri-Score category: general food, beverage, water, cheese,
@@ -46,8 +47,12 @@ TazaScore = nutritionComponent + ingredientComponent
 
 The score is rounded to the nearest integer and clamped to 0-100.
 
-If the official nutritional foundation cannot be calculated, TazaScore returns
-`status = insufficient_data` or `requires_review` and `score = null`.
+If the official nutritional foundation can be calculated, TazaScore uses the
+grade-aware official foundation described below.
+
+If the official nutritional foundation cannot be calculated, TazaScore attempts
+a partial-data calculation from known fields only. Official Nutri-Score remains
+strict and may still return `insufficient_data`.
 
 Data confidence is returned separately as metadata. It does not add or subtract
 score points because a product is not nutritionally better or worse because its
@@ -57,9 +62,7 @@ data is more complete.
 
 ### 1. Nutritional quality: 90 points
 
-Nutrition is the foundation because the strongest structured data currently
-available in the Product model is the official Nutri-Score V2-2023 input set.
-TazaScore does not duplicate the Nutri-Score algorithm. It runs
+Nutrition is the foundation. When official inputs are complete, TazaScore runs
 `OfficialNutriScoreEngine` and converts its raw score into a consumer-facing
 0-90 component. The conversion is grade-aware: each official A-E grade maps to a
 TazaScore nutrition band, and the raw score positions the product inside that
@@ -94,6 +97,109 @@ Rationale:
   official grade;
 - nutrition carries 90% of the score because it is the only standards-based
   component in v1.
+
+#### Partial-data nutrition fallback
+
+When Official Nutri-Score is unavailable because required fields are missing,
+TazaScore uses only known nutritional fields and normalizes the known weighted
+components back to 0-90.
+
+Unknown values do not contribute positive or negative points. They are reported
+in `missingFields` and reduce confidence only.
+
+Partial component weights:
+
+```text
+energy:                    18
+sugars:                    24
+saturated fat:             18
+total fat fallback:        10
+salt:                      20
+non-sugar sweeteners:       4
+fiber:                      8
+protein:                    6
+fruit/vegetable/legume:    12
+```
+
+Negative components such as energy, sugar, saturated fat and salt use the
+existing official point functions where possible:
+
+```text
+componentScore = weight * (1 - officialPoints / maxOfficialPoints)
+```
+
+Favorable components such as fiber, protein and fruit/vegetable/legume content
+use:
+
+```text
+componentScore = weight * (officialPoints / maxOfficialPoints)
+```
+
+If saturated fat is unknown but total fat is known, TazaScore may use a lower
+weight total-fat fallback. This is intentionally weaker than saturated fat and
+is flagged through lower confidence.
+
+The partial nutrition score is:
+
+```text
+partialNutrition = round(sum(componentScore) / sum(knownWeights) * 90)
+```
+
+### Missing-data safeguard
+
+Partial normalization can otherwise inflate scores: if a high-risk nutrient is
+missing, the score would be normalized over only the known fields and the
+unknown risk would disappear. TazaScore v1 therefore applies a generic maximum
+score cap for partial calculations.
+
+This cap is not a direct confidence bonus or penalty. It is an uncertainty
+safeguard that prevents low-coverage products from looking nearly perfect when
+critical negative nutrients are missing.
+
+Coverage cap:
+
+```text
+nutritionCoverage >= 0.85 -> max 100
+nutritionCoverage >= 0.75 -> max 90
+nutritionCoverage >= 0.55 -> max 78
+nutritionCoverage >= 0.35 -> max 65
+nutritionCoverage <  0.35 -> max 55
+```
+
+Missing critical negative nutrient cap adjustments:
+
+```text
+missing sugars:        -12
+missing salt:          -10
+missing saturated fat: -10
+saturated fat missing but total fat known: -5
+```
+
+The cap is clamped to a minimum of 25. It is only applied when the preliminary
+partial score exceeds the cap.
+
+Result metadata exposes:
+
+```json
+{
+  "scoreBeforeSafeguard": 89,
+  "scoreCap": 28,
+  "safeguardsApplied": ["coverage_cap", "missing_critical_negative_cap"],
+  "missingCriticalFields": ["sugars", "salt", "saturatedFatApproximation"]
+}
+```
+
+Minimum evidence threshold:
+
+```text
+nutritionCoverage >= 0.25
+at least 3 scored core nutrition fields
+at least 2 known negative nutrition fields
+```
+
+This prevents products with only a name or only calories from receiving a
+TazaScore. A product with energy plus several known nutrients can still be
+scored with medium or low confidence.
 
 ### 2. Ingredient and additive assessment: 10 points
 
@@ -150,6 +256,9 @@ Internal confidence reductions:
 ```text
 ingredients missing: -2
 beverage sweetener status unknown: -2
+official Nutri-Score unavailable / partial calculation: -2
+nutrition coverage below 75%: -2
+nutrition coverage below 55%: -3
 ```
 
 The internal confidence value is clamped to 0-10 and exposed as `high`,
@@ -212,7 +321,7 @@ These may later be displayed as separate product badges or attributes.
 
 ## Missing-data behavior
 
-If required official nutrition inputs are missing, TazaScore returns:
+If too little nutrition evidence is available, TazaScore returns:
 
 ```json
 {
@@ -223,7 +332,19 @@ If required official nutrition inputs are missing, TazaScore returns:
 ```
 
 Unknown nutrition values are never converted to zero. This prevents incomplete
-products from receiving artificially excellent scores.
+products from receiving artificially excellent scores. Missing fields are
+reported separately:
+
+```json
+{
+  "status": "calculated",
+  "score": 74,
+  "confidence": { "level": "medium" },
+  "usedFields": ["energyKcal", "sugars", "saturatedFat", "salt", "protein"],
+  "missingFields": ["fiber", "fruitVegetableLegumePercent"],
+  "nutritionCoverage": 0.78
+}
+```
 
 ## Example: Coca-Cola Original Taste
 
@@ -275,7 +396,7 @@ This means "27 according to TazaScore v1 methodology"; it does not mean
   evidence source is added.
 - Processing level is not scored in v1; there is no NOVA field in the current
   Product model.
-- TazaScore v1 depends on the quality and completeness of official Nutri-Score
-  inputs.
+- TazaScore v1 can calculate with partial data, but low coverage can produce a
+  score that must be interpreted together with confidence and missing fields.
 - Category selection is important. Incorrect product category can change the
   official foundation and therefore TazaScore.

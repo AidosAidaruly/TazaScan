@@ -121,3 +121,79 @@ Reasons:
 Recommended next step: review presentation wording and decide whether v1 needs
 structured ingredient-risk data or processing metadata before production
 integration.
+
+## Partial-data validation update
+
+TazaScore v1 now keeps Official Nutri-Score strict while allowing TazaScore to
+calculate from partial product-label data. Unknown values remain null and do not
+become zero. Missing fields are reported separately and reduce confidence rather
+than directly adding or subtracting score points.
+
+When Official Nutri-Score cannot be calculated, TazaScore uses known nutrition
+components only, normalizes the known weighted components to 0-90, and adds the
+existing conservative 0-10 ingredient component.
+
+Minimum evidence threshold:
+
+```text
+nutritionCoverage >= 0.25
+at least 3 scored core nutrition fields
+at least 2 known negative nutrition fields
+```
+
+### Real product preview results
+
+These results were generated from the local development database after seeding
+real product-label data.
+
+| Product | Barcode | Official Nutri-Score | Before safeguard | After safeguard | Confidence | Coverage | Missing critical fields | Safeguard applied | Reason |
+|---|---|---|---:|---:|:---:|---:|---|---|---|
+| WOTO Drinking Water | 4870207510444 | A, raw 0 | 100 | 100 | high | 1.00 | none | no | Complete official foundation. |
+| Coca-Cola Original Taste | 5449000000996 | E, raw 13 | 27 | 27 | high | 1.00 | none | no | Complete official foundation. |
+| Махеевъ Кетчуп Шашлычный | 4604248020767 | unavailable | 74 | 74 | medium | 0.78 | none | no | Critical negatives sugar, salt and saturated fat are known. |
+| Bon Appetit Майонез Провансаль 67% | 4870144749266 | unavailable | 24 | 24 | low | 0.31 | sugars, salt, saturatedFatApproximation | no | Known energy and fat already produce a low score below the cap. |
+| Томатный рай Томатная паста 25% | 4870144745152 | unavailable | 89 | 28 | low | 0.31 | sugars, salt, saturatedFatApproximation | yes | Low coverage plus missing critical negatives capped an inflated partial score. |
+
+Detailed fields:
+
+| Product | Used fields | Missing fields |
+|---|---|---|
+| WOTO Drinking Water | officialNutriScore | none |
+| Coca-Cola Original Taste | officialNutriScore | none |
+| Махеевъ Кетчуп Шашлычный | energyKcal, sugars, saturatedFat, salt, protein | fiber, fruitVegetableLegumePercent |
+| Bon Appetit Майонез Провансаль 67% | energyKcal, fat, protein | sugars, saturatedFat, salt, fiber, fruitVegetableLegumePercent |
+| Томатный рай Томатная паста 25% | energyKcal, fat, protein | sugars, saturatedFat, salt, fiber, fruitVegetableLegumePercent |
+
+### Interpretation notes
+
+- Water and Coca-Cola still use the complete official foundation and remain high
+  confidence.
+- Ketchup can now be scored because energy, sugar, saturated fat, salt and
+  protein are known. Official Nutri-Score remains unavailable because fiber and
+  fruit/vegetable/legume percentage are missing.
+- Mayonnaise can now be scored with low confidence. Total fat is used only as a
+  lower-weight fallback because saturated fat is missing.
+- Tomato paste previously received a high partial score because only favorable
+  known fields participated in normalization. The missing-data safeguard now
+  caps it because sugar, salt and saturated fat are unavailable.
+- No validation product returns `insufficient_data` after this update. A product
+  with only calories or only a name still returns `insufficient_data`.
+
+### Synthetic edge-case coverage
+
+Regression tests cover:
+
+- only low calories known while sugar and salt are unknown -> insufficient data;
+- energy and sugar known while salt and saturated fat are unknown -> calculated
+  with a missing-critical-negative cap;
+- all negative fields known while positive fields are missing -> calculated
+  without a critical cap;
+- most fields known -> calculated with high coverage;
+- only positive fields known -> insufficient data.
+
+### Remaining interpretation risk
+
+Partial TazaScore is suitable for beta/admin preview when shown with confidence,
+coverage and missing fields. It is not ready to be presented alone as a
+production consumer score, because a generic cap cannot replace missing label
+data and does not model processing level or structured additive risk.

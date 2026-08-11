@@ -494,7 +494,7 @@ describe('ProductService', () => {
     expect(repository.lastUpdateData).toBeNull();
   });
 
-  it('returns insufficient data for stored product score preview', async () => {
+  it('calculates stored product TazaScore from partial data when official Nutri-Score is unavailable', async () => {
     const repository = new FakeProductRepository();
     repository.products = [
       createProduct({
@@ -510,12 +510,44 @@ describe('ProductService', () => {
       '11111111-1111-4111-8111-111111111111'
     );
 
-    expect(preview.tazaScore.status).toBe('insufficient_data');
-    expect(preview.tazaScore.score).toBeNull();
+    expect(preview.tazaScore.status).toBe('calculated');
+    expect(preview.tazaScore.score).not.toBeNull();
     expect(preview.tazaScore.missingFields).toContain('energyKcalOrEnergyKj');
     expect(preview.tazaScore.missingFields).toContain('sugars');
+    expect(preview.tazaScore.usedFields).toEqual(
+      expect.arrayContaining(['saturatedFat', 'salt', 'protein'])
+    );
     expect(preview.nutriScore.status).toBe('insufficient_data');
     expect(repository.lastScoreResult).toBeNull();
+  });
+
+  it('returns insufficient data when stored product has too little evidence for TazaScore', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        officialNutriScoreCategory: 'general_food',
+        energyKcal: 100,
+        protein: null,
+        carbohydrates: null,
+        sugars: null,
+        fat: null,
+        saturatedFat: null,
+        fiber: null,
+        salt: null,
+        fruitVegetableLegumePercent: null
+      })
+    ];
+    const { service } = createService(repository);
+
+    const preview = await service.previewProductScore(
+      '11111111-1111-4111-8111-111111111111'
+    );
+
+    expect(preview.tazaScore.status).toBe('insufficient_data');
+    expect(preview.tazaScore.score).toBeNull();
+    expect(preview.tazaScore.usedFields).toEqual(['energyKcal']);
+    expect(preview.tazaScore.reasonCodes).toContain('MISSING_TAZASCORE_INPUT');
+    expect(preview.nutriScore.status).toBe('insufficient_data');
   });
 
   it('preserves zero fruit percentage and false sweetener flag in TazaScore preview', () => {

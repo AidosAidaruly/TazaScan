@@ -19,6 +19,11 @@ class TazaScorePreviewData {
     this.reasonLabels = const [],
     this.technicalReasonLabels = const [],
     this.missingFields = const [],
+    this.missingCriticalFields = const [],
+    this.nutritionCoverage,
+    this.scoreBeforeSafeguard,
+    this.scoreCap,
+    this.safeguardsApplied = const [],
   });
 
   final TazaScorePreviewStatus status;
@@ -33,7 +38,18 @@ class TazaScorePreviewData {
   final List<String> reasonLabels;
   final List<String> technicalReasonLabels;
   final List<String> missingFields;
+  final List<String> missingCriticalFields;
+  final double? nutritionCoverage;
+  final int? scoreBeforeSafeguard;
+  final int? scoreCap;
+  final List<String> safeguardsApplied;
   final String methodologyVersion;
   final String ingredientAnalysisLabel;
   final String processingLabel;
+
+  bool get isPartialData =>
+      status == TazaScorePreviewStatus.calculated &&
+      (nutritionCoverage != null && nutritionCoverage! < 1);
+
+  bool get hasSafeguardApplied => safeguardsApplied.isNotEmpty;
 }

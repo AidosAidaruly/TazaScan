@@ -319,6 +319,190 @@ describe('TazaScoreEngine', () => {
     expect(result.missingFields).toContain('energyKcalOrEnergyKj');
   });
 
+  it('calculates TazaScore from partial nutrition data without treating unknown as zero', () => {
+    const result = engine.calculate(
+      input({
+        category: 'general_food',
+        energyKcal: 85,
+        protein: 1.4,
+        carbohydrates: 19.9,
+        sugars: 17.5,
+        fat: 0,
+        saturatedFat: 0,
+        fiber: null,
+        salt: 2,
+        fruitVegetableLegumePercent: null,
+        ingredients: ['Water', 'Tomato paste', 'Sugar', 'Salt']
+      })
+    );
+
+    expect(result.officialNutriScore.status).toBe('insufficient_data');
+    expect(result.status).toBe('calculated');
+    expect(result.score).not.toBeNull();
+    expect(result.reasonCodes).toContain('PARTIAL_NUTRITION_FOUNDATION');
+    expect(result.usedFields).toEqual(
+      expect.arrayContaining(['energyKcal', 'sugars', 'saturatedFat', 'salt', 'protein'])
+    );
+    expect(result.missingFields).toContain('fiber');
+    expect(result.missingFields).toContain('fruitVegetableLegumePercent');
+    expect(result.confidence.level).toBe('medium');
+  });
+
+  it('keeps confidence separate and lower when nutrition coverage is limited', () => {
+    const result = engine.calculate(
+      input({
+        category: 'fats_oils_nuts_seeds',
+        energyKcal: 619,
+        protein: 1.1,
+        carbohydrates: 3,
+        sugars: null,
+        fat: 67,
+        saturatedFat: null,
+        fiber: null,
+        salt: null,
+        fruitVegetableLegumePercent: null,
+        ingredients: ['Sunflower oil', 'Water', 'Sugar', 'Salt']
+      })
+    );
+
+    expect(result.status).toBe('calculated');
+    expect(result.score).not.toBeNull();
+    expect(result.usedFields).toEqual(expect.arrayContaining(['energyKcal', 'fat', 'protein']));
+    expect(result.missingFields).toEqual(
+      expect.arrayContaining(['sugars', 'saturatedFat', 'salt', 'fiber'])
+    );
+    expect(result.confidence.score).toBeNull();
+    expect(result.confidence.level).toBe('low');
+  });
+
+  it('does not calculate TazaScore when only calories are known', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: 120,
+        protein: null,
+        carbohydrates: null,
+        sugars: null,
+        fat: null,
+        saturatedFat: null,
+        fiber: null,
+        salt: null,
+        fruitVegetableLegumePercent: null,
+        ingredients: ['Product ingredient']
+      })
+    );
+
+    expect(result.status).toBe('insufficient_data');
+    expect(result.score).toBeNull();
+    expect(result.usedFields).toEqual(['energyKcal']);
+    expect(result.nutritionCoverage).toBeGreaterThan(0);
+  });
+
+  it('does not score a low-calorie product when sugar and salt are unknown and evidence is too thin', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: 20,
+        protein: 0,
+        carbohydrates: null,
+        sugars: null,
+        fat: null,
+        saturatedFat: null,
+        fiber: null,
+        salt: null,
+        fruitVegetableLegumePercent: null
+      })
+    );
+
+    expect(result.status).toBe('insufficient_data');
+    expect(result.score).toBeNull();
+    expect(result.missingCriticalFields).toEqual(
+      expect.arrayContaining(['sugars', 'salt', 'saturatedFat'])
+    );
+  });
+
+  it('caps partial scores when energy and sugar are known but salt and saturated fat are unknown', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: 80,
+        sugars: 2,
+        protein: 1,
+        saturatedFat: null,
+        fat: null,
+        salt: null,
+        fiber: null,
+        fruitVegetableLegumePercent: null
+      })
+    );
+
+    expect(result.status).toBe('calculated');
+    expect(result.scoreBeforeSafeguard).not.toBeNull();
+    expect(result.scoreCap).not.toBeNull();
+    expect(result.score).toBeLessThan(result.scoreBeforeSafeguard!);
+    expect(result.safeguardsApplied).toContain('missing_critical_negative_cap');
+    expect(result.missingCriticalFields).toEqual(
+      expect.arrayContaining(['salt', 'saturatedFat'])
+    );
+  });
+
+  it('allows all negative fields known with positive fields missing without a critical cap', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: 120,
+        sugars: 3,
+        saturatedFat: 0.5,
+        salt: 0.2,
+        protein: null,
+        fiber: null,
+        fruitVegetableLegumePercent: null
+      })
+    );
+
+    expect(result.status).toBe('calculated');
+    expect(result.missingCriticalFields).toEqual([]);
+    expect(result.safeguardsApplied).not.toContain('missing_critical_negative_cap');
+    expect(result.missingFields).toEqual(
+      expect.arrayContaining(['protein', 'fiber', 'fruitVegetableLegumePercent'])
+    );
+  });
+
+  it('does not cap most-fields-known partial products unless the score exceeds the generic cap', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: 140,
+        sugars: 5,
+        saturatedFat: 1,
+        salt: 0.4,
+        protein: 3,
+        fiber: 2,
+        fruitVegetableLegumePercent: null
+      })
+    );
+
+    expect(result.status).toBe('calculated');
+    expect(result.nutritionCoverage).toBeGreaterThan(0.75);
+    expect(result.missingCriticalFields).toEqual([]);
+  });
+
+  it('does not calculate when only positive fields are known', () => {
+    const result = engine.calculate(
+      input({
+        energyKcal: null,
+        sugars: null,
+        saturatedFat: null,
+        fat: null,
+        salt: null,
+        protein: 12,
+        fiber: 8,
+        fruitVegetableLegumePercent: 80
+      })
+    );
+
+    expect(result.status).toBe('insufficient_data');
+    expect(result.score).toBeNull();
+    expect(result.usedFields).toEqual(
+      expect.arrayContaining(['protein', 'fiber', 'fruitVegetableLegumePercent'])
+    );
+  });
+
   it('keeps unknown ingredients/additives conservative rather than inventing a risk penalty', () => {
     const result = engine.calculate(
       input({

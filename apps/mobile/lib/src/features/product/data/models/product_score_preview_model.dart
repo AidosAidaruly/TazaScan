@@ -33,9 +33,14 @@ class ProductScorePreviewModel {
         confidence: _confidence(confidenceJson['level']),
         reasonLabels: _consumerReasonLabels(tazaScoreJson),
         technicalReasonLabels: _technicalReasonLabels(tazaScoreJson),
-        missingFields: _stringList(
-          tazaScoreJson['missingFields'],
-        ).map(ProductPresentationLocalization.missingField).toList(),
+        missingFields: _localizedFields(tazaScoreJson['missingFields']),
+        missingCriticalFields: _localizedFields(
+          tazaScoreJson['missingCriticalFields'],
+        ),
+        nutritionCoverage: _readDouble(tazaScoreJson['nutritionCoverage']),
+        scoreBeforeSafeguard: _readInt(tazaScoreJson['scoreBeforeSafeguard']),
+        scoreCap: _readInt(tazaScoreJson['scoreCap']),
+        safeguardsApplied: _stringList(tazaScoreJson['safeguardsApplied']),
         methodologyVersion: _methodologyVersion(
           tazaScoreJson['methodologyVersion'],
         ),
@@ -60,6 +65,11 @@ class ProductScorePreviewModel {
   static int? _readInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.round();
+    return null;
+  }
+
+  static double? _readDouble(Object? value) {
+    if (value is num) return value.toDouble();
     return null;
   }
 
@@ -170,6 +180,12 @@ class ProductScorePreviewModel {
         normalized.contains('sweetener') ||
         normalized.contains('fiber') ||
         normalized.contains('protein');
+  }
+
+  static List<String> _localizedFields(Object? value) {
+    return _stringList(
+      value,
+    ).map(ProductPresentationLocalization.missingField).toList();
   }
 
   static List<String> _stringList(Object? value) {

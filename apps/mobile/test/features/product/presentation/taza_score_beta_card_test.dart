@@ -4,7 +4,7 @@ import 'package:project/src/features/product/domain/entities/nutrition_score.dar
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/presentation/widgets/taza_score_beta_card.dart';
 
-const testTazaScorePreview = TazaScorePreviewData(
+const cocaColaPreview = TazaScorePreviewData(
   status: TazaScorePreviewStatus.calculated,
   score: 27,
   nutritionComponent: 17,
@@ -16,51 +16,181 @@ const testTazaScorePreview = TazaScorePreviewData(
     'Оценка основана на методике Nutri-Score',
     'Добавки учтены информационно',
   ],
+  nutritionCoverage: 1,
+  methodologyVersion: 'taza-score-v1',
+  ingredientAnalysisLabel: 'Информационный анализ',
+  processingLabel: 'Пока не учитывается в TazaScore',
+);
+
+const wotoPreview = TazaScorePreviewData(
+  status: TazaScorePreviewStatus.calculated,
+  score: 100,
+  nutritionComponent: 90,
+  ingredientComponent: 10,
+  nutriScoreGrade: 'A',
+  confidence: TazaScoreConfidence.high,
+  nutritionCoverage: 1,
+  methodologyVersion: 'taza-score-v1',
+  ingredientAnalysisLabel: 'Информационный анализ',
+  processingLabel: 'Пока не учитывается в TazaScore',
+);
+
+const ketchupPreview = TazaScorePreviewData(
+  status: TazaScorePreviewStatus.calculated,
+  score: 74,
+  nutritionComponent: 64,
+  ingredientComponent: 10,
+  confidence: TazaScoreConfidence.medium,
+  reasonLabels: ['Мало благоприятных пищевых компонентов'],
+  missingFields: ['Клетчатка', 'Доля фруктов/овощей/бобовых'],
+  nutritionCoverage: 0.7818,
+  methodologyVersion: 'taza-score-v1',
+  ingredientAnalysisLabel: 'Информационный анализ',
+  processingLabel: 'Пока не учитывается в TazaScore',
+);
+
+const mayoPreview = TazaScorePreviewData(
+  status: TazaScorePreviewStatus.calculated,
+  score: 24,
+  nutritionComponent: 14,
+  ingredientComponent: 10,
+  confidence: TazaScoreConfidence.low,
+  reasonLabels: ['Высокая энергетическая ценность'],
+  missingFields: [
+    'Сахар',
+    'Насыщенные жиры',
+    'Соль',
+    'Клетчатка',
+    'Доля фруктов/овощей/бобовых',
+  ],
+  missingCriticalFields: ['Сахар', 'Соль', 'Насыщенные жиры'],
+  nutritionCoverage: 0.309,
+  methodologyVersion: 'taza-score-v1',
+  ingredientAnalysisLabel: 'Информационный анализ',
+  processingLabel: 'Пока не учитывается в TazaScore',
+);
+
+const tomatoPastePreview = TazaScorePreviewData(
+  status: TazaScorePreviewStatus.calculated,
+  score: 28,
+  nutritionComponent: 79,
+  ingredientComponent: 10,
+  confidence: TazaScoreConfidence.low,
+  missingFields: [
+    'Сахар',
+    'Насыщенные жиры',
+    'Соль',
+    'Клетчатка',
+    'Доля фруктов/овощей/бобовых',
+  ],
+  missingCriticalFields: ['Сахар', 'Соль', 'Насыщенные жиры'],
+  nutritionCoverage: 0.309,
+  scoreBeforeSafeguard: 89,
+  scoreCap: 28,
+  safeguardsApplied: ['coverage_cap', 'missing_critical_negative_cap'],
   methodologyVersion: 'taza-score-v1',
   ingredientAnalysisLabel: 'Информационный анализ',
   processingLabel: 'Пока не учитывается в TazaScore',
 );
 
 void main() {
-  testWidgets('renders TazaScore value out of 100', (tester) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
-
-    expect(find.text('TazaScore Beta'), findsOneWidget);
-    expect(find.text('27'), findsOneWidget);
-    expect(find.text('/ 100'), findsOneWidget);
-    expect(find.text('Оценка пищевого профиля продукта'), findsOneWidget);
-  });
-
-  testWidgets('renders Nutri-Score grade separately', (tester) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
-
-    expect(find.text('Nutri-Score'), findsOneWidget);
-    expect(find.text('E'), findsOneWidget);
-  });
-
-  testWidgets('collapsed state hides technical details and disclosure', (
+  testWidgets('renders complete high-confidence WOTO without partial warning', (
     tester,
   ) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
+    await _pumpCard(tester, data: wotoPreview);
+
+    expect(find.text('TazaScore Beta'), findsOneWidget);
+    expect(find.text('100'), findsOneWidget);
+    expect(find.text('/ 100'), findsOneWidget);
+    expect(find.text('Nutri-Score'), findsOneWidget);
+    expect(find.text('A'), findsOneWidget);
+    expect(find.text('Оценка рассчитана по неполным данным продукта.'), findsNothing);
+    expect(find.text('Данных недостаточно для высокой точности оценки.'), findsNothing);
+  });
+
+  testWidgets('renders complete Coca-Cola score and Nutri-Score E', (
+    tester,
+  ) async {
+    await _pumpCard(tester, data: cocaColaPreview);
+
+    expect(find.text('27'), findsOneWidget);
+    expect(find.text('E'), findsOneWidget);
+    expect(find.text('Высокое содержание сахара'), findsOneWidget);
+    expect(find.text('Оценка рассчитана по неполным данным продукта.'), findsNothing);
+  });
+
+  testWidgets('shows partial-data score, medium confidence and unavailable Nutri-Score', (
+    tester,
+  ) async {
+    await _pumpCard(tester, data: ketchupPreview);
+
+    expect(find.text('74'), findsOneWidget);
+    expect(find.text('Достоверность'), findsOneWidget);
+    expect(find.text('Средняя'), findsOneWidget);
+    expect(find.text('Недоступен из-за неполных данных'), findsOneWidget);
+    expect(find.text('Оценка рассчитана по неполным данным продукта.'), findsOneWidget);
+  });
+
+  testWidgets('shows low-confidence notice while keeping mayonnaise score visible', (
+    tester,
+  ) async {
+    await _pumpCard(tester, data: mayoPreview);
+
+    expect(find.text('24'), findsOneWidget);
+    expect(find.text('Низкая'), findsOneWidget);
+    expect(find.text('Оценка рассчитана по неполным данным продукта.'), findsOneWidget);
+    expect(find.text('Данных недостаточно для высокой точности оценки.'), findsOneWidget);
+  });
+
+  testWidgets('shows safeguard notice for capped tomato paste score', (
+    tester,
+  ) async {
+    await _pumpCard(tester, data: tomatoPastePreview);
+
+    expect(find.text('28'), findsOneWidget);
+    expect(
+      find.text('Итоговая оценка ограничена из-за отсутствующих важных данных.'),
+      findsOneWidget,
+    );
+    expect(find.text('scoreCap'), findsNothing);
+    expect(find.text('scoreBeforeSafeguard'), findsNothing);
+    expect(find.text('missingCriticalFields'), findsNothing);
+  });
+
+  testWidgets('expanded details show coverage, localized missing fields and cap details', (
+    tester,
+  ) async {
+    await _pumpCard(tester, data: tomatoPastePreview);
+
+    await tester.tap(find.text('Подробнее об оценке'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Достоверность данных'), findsOneWidget);
+    expect(find.text('Низкая'), findsWidgets);
+    expect(find.text('Покрытие данных'), findsOneWidget);
+    expect(find.text('31%'), findsOneWidget);
+    expect(find.text('Не хватает данных'), findsOneWidget);
+    expect(find.text('Сахар'), findsOneWidget);
+    expect(find.text('Соль'), findsOneWidget);
+    expect(find.text('Насыщенные жиры'), findsOneWidget);
+    expect(
+      find.text('Для защиты от завышенной оценки применено ограничение.'),
+      findsOneWidget,
+    );
+    expect(find.text('До ограничения'), findsOneWidget);
+    expect(find.text('89'), findsOneWidget);
+    expect(find.text('После ограничения'), findsOneWidget);
+  });
+
+  testWidgets('expanded details hide disclosure while collapsed', (tester) async {
+    await _pumpCard(tester, data: cocaColaPreview);
 
     expect(find.text('Подробнее об оценке'), findsOneWidget);
     expect(find.text('Достоверность данных'), findsNothing);
     expect(find.text('Nutrition'), findsNothing);
     expect(find.text('Ingredients'), findsNothing);
-    expect(find.text('Оценка основана на методике Nutri-Score'), findsNothing);
-    expect(find.text('Добавки учтены информационно'), findsNothing);
-    expect(
-      find.textContaining('Не является медицинской рекомендацией.'),
-      findsNothing,
-    );
+    expect(find.textContaining('Не является медицинской рекомендацией.'), findsNothing);
     expect(find.text('Legacy'), findsNothing);
-    expect(find.text('69/100 + C'), findsNothing);
-  });
-
-  testWidgets('expanded state shows secondary details and disclosure', (
-    tester,
-  ) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
 
     await tester.tap(find.text('Подробнее об оценке'));
     await tester.pumpAndSettle();
@@ -71,101 +201,34 @@ void main() {
     expect(find.text('17 / 90'), findsOneWidget);
     expect(find.text('Ingredients'), findsOneWidget);
     expect(find.text('10 / 10'), findsOneWidget);
-    expect(
-      find.text('Оценка основана на методике Nutri-Score'),
-      findsOneWidget,
-    );
-    expect(find.text('Добавки учтены информационно'), findsOneWidget);
-    expect(
-      find.textContaining('Не является медицинской рекомендацией.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('expanded state renders secondary TazaScore metadata', (
-    tester,
-  ) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
-
-    await tester.tap(find.text('Подробнее об оценке'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Добавки'), findsOneWidget);
-    expect(find.text('Информационный анализ'), findsOneWidget);
-    expect(find.text('Степень обработки'), findsOneWidget);
-    expect(find.text('Пока не учитывается'), findsOneWidget);
-  });
-
-  testWidgets('renders warning in collapsed primary view', (tester) async {
-    await _pumpCard(tester, data: testTazaScorePreview);
-
-    expect(find.text('Высокое содержание сахара'), findsOneWidget);
-  });
-
-  testWidgets('renders maximum three collapsed reasons', (tester) async {
-    await _pumpCard(
-      tester,
-      data: const TazaScorePreviewData(
-        status: TazaScorePreviewStatus.calculated,
-        score: 31,
-        nutritionComponent: 21,
-        ingredientComponent: 10,
-        nutriScoreGrade: 'D',
-        confidence: TazaScoreConfidence.medium,
-        reasonLabels: [
-          'Высокое содержание сахара',
-          'Высокое содержание соли',
-          'Высокое содержание насыщенных жиров',
-          'Высокая энергетическая ценность',
-        ],
-        methodologyVersion: 'taza-score-v1',
-        ingredientAnalysisLabel: 'Информационный анализ',
-        processingLabel: 'Пока не учитывается в TazaScore',
-      ),
-    );
-
-    expect(find.text('Высокое содержание сахара'), findsOneWidget);
-    expect(find.text('Высокое содержание соли'), findsOneWidget);
-    expect(find.text('Высокое содержание насыщенных жиров'), findsOneWidget);
-    expect(find.text('Высокая энергетическая ценность'), findsNothing);
+    expect(find.textContaining('Не является медицинской рекомендацией.'), findsOneWidget);
   });
 
   testWidgets('renders neutral fallback when no specific reasons exist', (
     tester,
   ) async {
-    await _pumpCard(
-      tester,
-      data: const TazaScorePreviewData(
-        status: TazaScorePreviewStatus.calculated,
-        score: 80,
-        nutritionComponent: 70,
-        ingredientComponent: 10,
-        nutriScoreGrade: 'A',
-        confidence: TazaScoreConfidence.high,
-        methodologyVersion: 'taza-score-v1',
-        ingredientAnalysisLabel: 'Информационный анализ',
-        processingLabel: 'Пока не учитывается в TazaScore',
-      ),
-    );
+    await _pumpCard(tester, data: wotoPreview);
 
     expect(find.text('Дополнительных замечаний нет.'), findsOneWidget);
   });
 
-  testWidgets('renders insufficient-data state', (tester) async {
+  testWidgets('renders insufficient-data state with localized fields', (
+    tester,
+  ) async {
     await _pumpCard(
       tester,
       data: const TazaScorePreviewData(
         status: TazaScorePreviewStatus.insufficientData,
         confidence: TazaScoreConfidence.low,
-        methodologyVersion: 'TazaScore v1.0 Beta',
+        methodologyVersion: 'taza-score-v1',
         ingredientAnalysisLabel: 'Информационный анализ',
         processingLabel: 'Пока не учитывается в TazaScore',
-        missingFields: ['sugars', 'salt'],
+        missingFields: ['Сахар', 'Соль'],
       ),
     );
 
     expect(find.text('Недостаточно данных'), findsOneWidget);
-    expect(find.textContaining('sugars, salt'), findsOneWidget);
+    expect(find.textContaining('Сахар, Соль'), findsOneWidget);
     expect(find.text('Низкая'), findsOneWidget);
   });
 
@@ -208,7 +271,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await _pumpCard(tester, data: testTazaScorePreview);
+    await _pumpCard(tester, data: tomatoPastePreview);
 
     expect(tester.takeException(), isNull);
     expect(find.text('TazaScore Beta'), findsOneWidget);
