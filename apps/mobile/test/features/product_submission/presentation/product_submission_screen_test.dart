@@ -44,6 +44,27 @@ void main() {
     );
   });
 
+  testWidgets('requires front photo for unknown barcode flow', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ProductSubmissionScreen(initialBarcode: '5449000000996'),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Coca-Cola');
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Проверить и отправить'),
+    );
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Добавь фото лицевой стороны упаковки, чтобы модератор проверил товар.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('submits successfully after review confirmation', (tester) async {
     final repository = FakeSubmissionRepository();
     await tester.pumpWidget(

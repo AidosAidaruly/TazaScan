@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { ProductRepository } from '../repositories/product.repository';
 import { ProductSubmissionRepository } from '../repositories/product-submission.repository';
 import {
   approveSubmissionBodySchema,
@@ -8,13 +9,14 @@ import {
 } from '../schemas/product-submission.schema';
 import { NutriScoreEngine } from '../scoring/engines/nutri-score.engine';
 import { ProductSubmissionService } from '../services/product-submission.service';
+import { ProductService } from '../services/product.service';
 import { HttpError } from '../utils/http-error';
 import { requireParam } from '../utils/request';
 import { uploadedFileUrl } from '../middleware/submission-upload';
 
 const productSubmissionService = new ProductSubmissionService(
   new ProductSubmissionRepository(),
-  new NutriScoreEngine()
+  new ProductService(new ProductRepository(), new NutriScoreEngine())
 );
 
 export const listProductSubmissions: RequestHandler = async (_request, response) => {

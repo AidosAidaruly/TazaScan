@@ -630,6 +630,177 @@ describe('TazaScoreEngine', () => {
     });
     expect(withENumber.score).toBe(withoutENumber.score);
   });
+
+  describe('partial-data beverage metadata safeguard', () => {
+    const beverageBase = input({
+      servingType: 'per100ml',
+      category: 'beverage',
+      legacyCategoryLabel: 'Soft Drinks',
+      energyKcal: 42,
+      sugars: 10.6,
+      carbohydrates: 10.6,
+      fat: 0,
+      saturatedFat: 0,
+      protein: 0,
+      fiber: 0,
+      salt: 0,
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false,
+      ingredients: ['Water', 'Sugar'],
+      dataStatus: 'verified'
+    });
+
+    it('keeps complete high-sugar beverage on the official foundation', () => {
+      const result = engine.calculate(beverageBase);
+
+      expect(result.score).toBe(27);
+      expect(result.officialNutriScore).toMatchObject({
+        status: 'calculated',
+        grade: 'E',
+        rawScore: 13
+      });
+      expect(result.usedFields).toEqual(['officialNutriScore']);
+      expect(result.safeguardsApplied).toEqual([]);
+      expect(result.methodologyVersion).toBe('taza-score-v1.1');
+    });
+
+    it('caps the same high-sugar beverage when FVL metadata is missing', () => {
+      const result = engine.calculate({
+        ...beverageBase,
+        fruitVegetableLegumePercent: null
+      });
+
+      expect(result.officialNutriScore.status).toBe('insufficient_data');
+      expect(result.scoreBeforeSafeguard).toBe(60);
+      expect(result.score).toBe(44);
+      expect(result.scoreCap).toBe(44);
+      expect(result.safeguardsApplied).toContain('beverage_official_metadata_cap');
+      expect(result.missingFields).toContain('fruitVegetableLegumePercent');
+      expect(result.usedFields).toContain('containsNonSugarSweeteners');
+    });
+
+    it('caps the same high-sugar beverage when FVL and sweetener metadata are missing', () => {
+      const result = engine.calculate({
+        ...beverageBase,
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: null
+      });
+
+      expect(result.scoreBeforeSafeguard).toBe(58);
+      expect(result.score).toBe(44);
+      expect(result.scoreCap).toBe(44);
+      expect(result.safeguardsApplied).toContain('beverage_official_metadata_cap');
+      expect(result.missingFields).toEqual(
+        expect.arrayContaining([
+          'fruitVegetableLegumePercent',
+          'containsNonSugarSweeteners'
+        ])
+      );
+      expect(result.usedFields).not.toContain('containsNonSugarSweeteners');
+    });
+
+    it('does not treat a zero-sugar beverage as sugary', () => {
+      const result = engine.calculate({
+        ...beverageBase,
+        energyKcal: 0.2,
+        carbohydrates: 0,
+        sugars: 0,
+        salt: 0.05,
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: null,
+        ingredients: ['Water', 'Aspartame']
+      });
+
+      expect(result.reasonCodes).not.toContain('HIGH_SUGAR');
+      expect(result.scoreBeforeSafeguard).toBe(83);
+      expect(result.score).toBe(76);
+      expect(result.scoreCap).toBe(76);
+      expect(result.safeguardsApplied).toContain('beverage_official_metadata_cap');
+      expect(result.reasonCodes).toContain('CONTAINS_NON_SUGAR_SWEETENERS');
+    });
+
+    it('leaves legitimate water behavior unchanged', () => {
+      const result = engine.calculate({
+        ...beverageBase,
+        category: 'water',
+        energyKcal: null,
+        carbohydrates: null,
+        sugars: null,
+        fat: null,
+        saturatedFat: null,
+        protein: null,
+        fiber: null,
+        salt: null,
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: false,
+        ingredients: ['Water']
+      });
+
+      expect(result.score).toBe(100);
+      expect(result.usedFields).toEqual(['officialNutriScore']);
+      expect(result.safeguardsApplied).toEqual([]);
+    });
+
+    it('caps a moderate-sugar partial beverage without matching the complete control', () => {
+      const partial = engine.calculate({
+        ...beverageBase,
+        energyKcal: 25,
+        carbohydrates: 6,
+        sugars: 6,
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: null
+      });
+      const complete = engine.calculate({
+        ...beverageBase,
+        energyKcal: 25,
+        carbohydrates: 6,
+        sugars: 6,
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false
+      });
+
+      expect(partial.scoreBeforeSafeguard).toBe(72);
+      expect(partial.score).toBe(62);
+      expect(partial.safeguardsApplied).toContain('beverage_official_metadata_cap');
+      expect(complete.score).toBe(54);
+      expect(complete.usedFields).toEqual(['officialNutriScore']);
+    });
+
+    it('preserves explicit zero and false values as complete metadata', () => {
+      const result = engine.calculate({
+        ...beverageBase,
+        fruitVegetableLegumePercent: 0,
+        containsNonSugarSweeteners: false
+      });
+
+      expect(result.missingFields).not.toContain('fruitVegetableLegumePercent');
+      expect(result.missingFields).not.toContain('containsNonSugarSweeteners');
+      expect(result.officialNutriScore.status).toBe('calculated');
+      expect(result.safeguardsApplied).toEqual([]);
+    });
+
+    it('keeps unrelated general-food partial scores unchanged', () => {
+      const result = engine.calculate({
+        category: 'general_food',
+        servingType: 'per100g',
+        energyKcal: 85,
+        protein: 1.4,
+        carbohydrates: 19.9,
+        sugars: 17.5,
+        fat: 0,
+        saturatedFat: 0,
+        fiber: null,
+        salt: 2,
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: null,
+        ingredients: ['Water', 'Tomato paste', 'Sugar', 'Salt'],
+        dataStatus: 'verified'
+      });
+
+      expect(result.score).toBe(74);
+      expect(result.safeguardsApplied).not.toContain('beverage_official_metadata_cap');
+    });
+  });
 });
 
 function officialResult(

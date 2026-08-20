@@ -52,7 +52,7 @@ class ProductLookupErrorScreen extends StatelessWidget {
                 onPressed: () => Navigator.of(
                   context,
                 ).pushNamed(AppRoutes.productSubmission, arguments: barcode),
-                child: const Text('Добавить продукт'),
+                child: const Text('Добавить товар'),
               ),
             ],
           ),

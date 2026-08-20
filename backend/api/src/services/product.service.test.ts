@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../generated/prisma/client';
 import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type { ProductWithCanonicalFamily } from '../types/product';
 import {
   officialNutriScorePreviewBodySchema,
   productBodySchema,
@@ -20,6 +21,12 @@ function createProduct(overrides: Partial<Product> = {}): Product {
     brand: 'Coca-Cola',
     category: 'Soft Drinks',
     ingredients: ['Carbonated water', 'Sugar'],
+    ingredientsTextOriginal: null,
+    ingredientsTextOriginalLanguage: null,
+    ingredientsTextRu: null,
+    ingredientsTextTranslatedRu: null,
+    ingredientsTranslationSource: null,
+    ingredientsTranslatedAt: null,
     servingType: 'per100ml',
     energyKcal: 42,
     protein: 0,
@@ -58,6 +65,7 @@ function createProduct(overrides: Partial<Product> = {}): Product {
     dataStatus: 'verified',
     source: 'test',
     lastVerifiedAt: now,
+    canonicalProductFamilyId: null,
     createdAt: now,
     updatedAt: now,
     ...overrides
@@ -71,6 +79,12 @@ function createProductBody(overrides = {}) {
     brand: 'Coca-Cola',
     category: 'Soft Drinks',
     ingredients: ['Carbonated water', 'Sugar'],
+    ingredientsTextOriginal: null,
+    ingredientsTextOriginalLanguage: null,
+    ingredientsTextRu: null,
+    ingredientsTextTranslatedRu: null,
+    ingredientsTranslationSource: null,
+    ingredientsTranslatedAt: null,
     nutritionFacts: {
       servingType: 'per100ml',
       energyKcal: 42,
@@ -109,7 +123,7 @@ class FakeScoreEngine implements ScoreEngine {
 }
 
 class FakeProductRepository {
-  products: Product[] = [];
+  products: ProductWithCanonicalFamily[] = [];
   deletedIds: string[] = [];
   lastListFilters: unknown;
   lastCreateData: ProductBody | null = null;
@@ -204,7 +218,11 @@ function createService(repository = new FakeProductRepository()) {
     repository,
     imageStorage,
     scoreEngine,
-    service: new ProductService(repository, scoreEngine, imageStorage)
+    service: new ProductService(
+      repository,
+      scoreEngine,
+      imageStorage as unknown as ConstructorParameters<typeof ProductService>[2]
+    )
   };
 }
 
@@ -370,6 +388,12 @@ describe('ProductService', () => {
     const previewBody = officialNutriScorePreviewBodySchema.parse({
       category: '',
       ingredients: ['Carbonated water', 'Sugar'],
+    ingredientsTextOriginal: null,
+    ingredientsTextOriginalLanguage: null,
+    ingredientsTextRu: null,
+    ingredientsTextTranslatedRu: null,
+    ingredientsTranslationSource: null,
+    ingredientsTranslatedAt: null,
       nutritionFacts: {
         servingType: 'per100ml',
         energyKcal: 42,
@@ -487,8 +511,12 @@ describe('ProductService', () => {
       rawScore: 13,
       grade: 'E'
     });
-    expect(repository.products[0].calculatedScore).toBe(69);
-    expect(repository.products[0].calculatedGrade).toBe('C');
+    expect(preview.dataQuality).toEqual({
+      status: 'ok',
+      warnings: []
+    });
+    expect(repository.products[0]!.calculatedScore).toBe(69);
+    expect(repository.products[0]!.calculatedGrade).toBe('C');
     expect(repository.lastScoreResult).toBeNull();
     expect(repository.lastCreateData).toBeNull();
     expect(repository.lastUpdateData).toBeNull();
@@ -740,5 +768,70 @@ describe('ProductService', () => {
       statusCode: 404,
       message: 'Product not found'
     });
+  });
+
+  it('resolves consumer TazaScore from canonical family while preserving member data', async () => {
+    const repository = new FakeProductRepository();
+    const canonical = createProduct({
+      id: 'canonical-product-id',
+      barcode: '5449000000996',
+      name: 'Coca-Cola Original Taste',
+      officialNutriScoreCategory: 'beverage',
+      fruitVegetableLegumePercent: 0,
+      containsNonSugarSweeteners: false,
+      fiber: 0,
+      dataStatus: 'verified'
+    });
+    repository.products = [
+      {
+        ...createProduct({
+          id: 'member-product-id',
+          barcode: '42105220',
+          name: 'Coca Cola',
+          dataStatus: 'community',
+          source: 'Open Food Facts',
+          officialNutriScoreCategory: 'beverage',
+          fruitVegetableLegumePercent: null,
+          containsNonSugarSweeteners: null,
+          fiber: null,
+          canonicalProductFamilyId: 'family-1'
+        }),
+        canonicalProductFamily: {
+          id: 'family-1',
+          canonicalProductId: canonical.id,
+          canonicalProduct: canonical
+        }
+      }
+    ];
+    const { service } = createService(repository);
+
+    const result = await service.getByBarcode('42105220');
+
+    expect(result.barcode).toBe('42105220');
+    expect(result.name).toBe('Coca Cola');
+    expect(result.tazaScore?.score).toBe(27);
+    expect(result.scoreSource).toBe('canonical_recipe');
+    expect(result.canonicalFamilyId).toBe('family-1');
+    expect(result.canonicalProductId).toBe(canonical.id);
+  });
+
+  it('keeps per-product score behavior when no canonical family exists', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        officialNutriScoreCategory: 'beverage',
+        fruitVegetableLegumePercent: null,
+        containsNonSugarSweeteners: null,
+        fiber: null,
+        dataStatus: 'community'
+      })
+    ];
+    const { service } = createService(repository);
+
+    const result = await service.getByBarcode('5449000000996');
+
+    expect(result.tazaScore?.score).toBe(44);
+    expect(result.scoreSource).toBe('product_record');
+    expect(result.canonicalFamilyId).toBeNull();
   });
 });

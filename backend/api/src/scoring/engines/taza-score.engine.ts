@@ -29,7 +29,7 @@ import type {
 } from '../types/taza-score-result';
 
 const methodology = 'TazaScore';
-const methodologyVersion = 'taza-score-v1';
+const methodologyVersion = 'taza-score-v1.1';
 const nutritionMaxScore = 90;
 const ingredientMaxScore = 10;
 
@@ -178,7 +178,10 @@ export class TazaScoreEngine {
     const safeguard = this.applyPartialScoreSafeguard(
       scoreBeforeSafeguard,
       nutritionComponent.nutritionCoverage ?? 0,
-      missingCriticalFields
+      missingCriticalFields,
+      input,
+      officialNutriScore.category,
+      nutritionComponent.missingFields
     );
     const reasonCodes = this.unique([
       ...nutritionComponent.reasonCodes,
@@ -759,7 +762,10 @@ export class TazaScoreEngine {
   private applyPartialScoreSafeguard(
     score: number,
     nutritionCoverage: number,
-    missingCriticalFields: string[]
+    missingCriticalFields: string[],
+    input: TazaScoreInput,
+    category: OfficialNutriScoreCategory | null,
+    missingFields: string[]
   ): ScoreSafeguard {
     const coverageCap = this.partialCoverageCap(nutritionCoverage);
     const criticalPenalty = missingCriticalFields.reduce((penalty, field) => {
@@ -769,11 +775,18 @@ export class TazaScoreEngine {
       if (field === 'saturatedFatApproximation') return penalty + 5;
       return penalty;
     }, 0);
-    const cap = this.clamp(coverageCap - criticalPenalty, 25, 100);
+    const missingCriticalCap = this.clamp(coverageCap - criticalPenalty, 25, 100);
+    const beverageMetadataCap = this.partialBeverageMetadataCap(
+      input,
+      category,
+      missingFields
+    );
+    const cap = Math.min(missingCriticalCap, beverageMetadataCap ?? 100);
     const cappedScore = Math.min(score, cap);
     const safeguardsApplied = [
       nutritionCoverage < 0.85 ? 'coverage_cap' : null,
-      criticalPenalty > 0 ? 'missing_critical_negative_cap' : null
+      criticalPenalty > 0 ? 'missing_critical_negative_cap' : null,
+      beverageMetadataCap !== null ? 'beverage_official_metadata_cap' : null
     ].filter((item): item is string => item !== null);
 
     return {
@@ -781,6 +794,35 @@ export class TazaScoreEngine {
       scoreCap: cappedScore < score ? cap : null,
       safeguardsApplied: cappedScore < score ? safeguardsApplied : []
     };
+  }
+
+  private partialBeverageMetadataCap(
+    input: TazaScoreInput,
+    category: OfficialNutriScoreCategory | null,
+    missingFields: string[]
+  ) {
+    if (category !== 'beverage') return null;
+
+    const missingOfficialMetadata =
+      missingFields.includes('fruitVegetableLegumePercent') ||
+      missingFields.includes('containsNonSugarSweeteners');
+
+    if (!missingOfficialMetadata) return null;
+
+    const energyKj = this.energyKj(input);
+    const knownNegativePoints =
+      (energyKj !== null ? beverageEnergyPoints(energyKj) : 0) +
+      (input.sugars !== null ? beverageSugarPoints(input.sugars) : 0) +
+      (input.saturatedFat !== null ? saturatedFatPoints(input.saturatedFat) : 0) +
+      (input.salt !== null ? saltPoints(input.salt) : 0) +
+      (this.knownSweetenerStatus(input) === true ? 4 : 0);
+
+    if (input.sugars !== null && beverageSugarPoints(input.sugars) >= 8) return 44;
+    if (knownNegativePoints >= 10) return 44;
+    if (knownNegativePoints >= 7) return 62;
+    if (this.knownSweetenerStatus(input) === true) return 76;
+
+    return null;
   }
 
   private partialCoverageCap(nutritionCoverage: number) {

@@ -24,6 +24,37 @@ void main() {
         'algorithmVersion': 'nutri-score-foundation-2025-01',
         'calculatedAt': '2026-07-31T00:00:00.000Z',
       },
+      'tazaScore': {
+        'score': 27,
+        'status': 'calculated',
+        'nutritionComponent': {
+          'score': 17,
+          'maxScore': 90,
+        },
+        'ingredientComponent': {
+          'score': 10,
+          'maxScore': 10,
+        },
+        'confidence': {
+          'level': 'high',
+        },
+        'officialNutriScore': {
+          'status': 'calculated',
+          'rawScore': 14,
+          'grade': 'E',
+        },
+        'reasonCodes': ['HIGH_SUGAR'],
+        'negativeReasons': ['High sugar content.'],
+        'positiveReasons': [],
+        'warnings': [],
+        'missingFields': [],
+        'missingCriticalFields': [],
+        'nutritionCoverage': 1,
+        'scoreBeforeSafeguard': 27,
+        'scoreCap': null,
+        'safeguardsApplied': [],
+        'methodologyVersion': 'taza-score-v1',
+      },
       'createdAt': '2026-07-31T00:00:00.000Z',
       'updatedAt': '2026-07-31T00:00:00.000Z',
     });
@@ -32,6 +63,9 @@ void main() {
     expect(product.name, 'Coca-Cola Original Taste');
     expect(product.healthScore, 65);
     expect(product.nutritionScore.grade, 'C');
+    expect(product.tazaScore?.score, 27);
+    expect(product.tazaScore?.nutriScoreGrade, 'E');
+    expect(product.tazaScore?.methodologyVersion, 'taza-score-v1');
     expect(
       product.nutritionScore.negativeReasons,
       contains('High sugar content.'),

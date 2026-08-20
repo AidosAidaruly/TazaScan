@@ -42,7 +42,7 @@ class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Pill(label: 'TazaScore Beta', color: colorScheme.primary),
+          _Pill(label: 'TazaScore', color: colorScheme.primary),
           const SizedBox(height: 14),
           if (widget.isLoading)
             const _LoadingPreview()

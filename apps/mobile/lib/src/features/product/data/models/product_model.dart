@@ -1,5 +1,7 @@
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
+import 'package:project/src/features/product/data/models/product_score_preview_model.dart';
 
 class ProductModel extends Product {
   const ProductModel({
@@ -13,6 +15,7 @@ class ProductModel extends Product {
     required super.createdAt,
     required super.updatedAt,
     required super.dataStatus,
+    super.tazaScore,
     super.brand,
     super.category,
     super.imageUrl,
@@ -34,10 +37,27 @@ class ProductModel extends Product {
         fallbackScore: json['healthScore'] as int,
         fallbackDate: json['updatedAt'] as String,
       ),
+      tazaScore: _parseTazaScore(json['tazaScore']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       dataStatus: json['dataStatus'] as String? ?? 'unverified',
     );
+  }
+
+  static TazaScorePreviewData? _parseTazaScore(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final officialNutriScore = value['officialNutriScore'];
+    final nutriScore = officialNutriScore is Map<String, dynamic>
+        ? officialNutriScore
+        : const <String, dynamic>{};
+
+    return ProductScorePreviewModel.fromJson({
+      'tazaScore': value,
+      'nutriScore': nutriScore,
+    }).tazaScore;
   }
 }
 

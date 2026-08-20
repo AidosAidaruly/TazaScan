@@ -115,6 +115,8 @@ export type TazaScorePreviewResponse = {
       status: ScoreStatus
       reasonCodes: string[]
       missingFields: string[]
+      usedFields?: string[]
+      nutritionCoverage?: number
     }
     ingredientComponent: {
       score: number | null
@@ -122,6 +124,8 @@ export type TazaScorePreviewResponse = {
       status: ScoreStatus
       reasonCodes: string[]
       missingFields: string[]
+      usedFields?: string[]
+      nutritionCoverage?: number
       additiveCount: number | null
       knownRiskPenalty: number
     }
@@ -131,6 +135,8 @@ export type TazaScorePreviewResponse = {
       status: ScoreStatus
       reasonCodes: string[]
       missingFields: string[]
+      usedFields?: string[]
+      nutritionCoverage?: number
       level: 'high' | 'medium' | 'low'
       dataStatus: ProductDataStatus | null
     }
@@ -138,7 +144,14 @@ export type TazaScorePreviewResponse = {
     positiveReasons: string[]
     negativeReasons: string[]
     missingFields: string[]
+    usedFields: string[]
+    nutritionCoverage: number
+    missingCriticalFields: string[]
+    scoreBeforeSafeguard: number | null
+    scoreCap: number | null
+    safeguardsApplied: string[]
     warnings: string[]
+    methodology: 'TazaScore'
     methodologyVersion: string
     officialNutriScore: {
       status: ScoreStatus

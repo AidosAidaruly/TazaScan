@@ -35,6 +35,9 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   bool _isSuccess = false;
   String? _errorMessage;
 
+  bool get _isUnknownBarcodeFlow =>
+      (widget.initialBarcode ?? '').trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +83,13 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
     final draft = _draft();
     if (!draft.hasIdentifyingData) {
       _showError('Добавь штрихкод, название продукта или фото упаковки.');
+      return;
+    }
+
+    if (_isUnknownBarcodeFlow && !draft.hasFrontPackagePhoto) {
+      _showError(
+        'Добавь фото лицевой стороны упаковки, чтобы модератор проверил товар.',
+      );
       return;
     }
 
@@ -153,7 +163,12 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
             if (draft.barcode.isNotEmpty) 'Штрихкод: ${draft.barcode}',
             if (draft.name.isNotEmpty) 'Название: ${draft.name}',
             if (draft.brand.isNotEmpty) 'Бренд: ${draft.brand}',
-            'Фото: ${[draft.frontImage, draft.ingredientsImage, draft.nutritionImage, draft.barcodeImage].where((image) => image != null).length}',
+            'Фото: ${[
+              draft.frontImage,
+              draft.ingredientsImage,
+              draft.nutritionImage,
+              draft.barcodeImage,
+            ].where((image) => image != null).length}',
           ].join('\n'),
         ),
         actions: [
@@ -189,9 +204,7 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
         minimum: const EdgeInsets.all(16),
         child: FilledButton(
           onPressed: _isSubmitting ? null : _submit,
-          child: Text(
-            _isSubmitting ? 'Отправляем...' : 'Проверить и отправить',
-          ),
+          child: Text(_isSubmitting ? 'Отправляем...' : 'Проверить и отправить'),
         ),
       ),
       body: ResponsivePage(
@@ -199,7 +212,9 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text('Фото важнее примерных значений.'),
+              const Text(
+                'Фото лицевой стороны обязательно для товара, найденного по неизвестному штрихкоду. Данные с этикетки можно добавить вручную, неизвестные поля оставь пустыми.',
+              ),
               const SizedBox(height: 16),
               _TextInput(
                 controller: _controllers['barcode']!,

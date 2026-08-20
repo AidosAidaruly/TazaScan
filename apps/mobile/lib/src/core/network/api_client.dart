@@ -10,10 +10,10 @@ import 'package:project/src/core/errors/app_exception.dart';
 class ApiClient {
   ApiClient({
     http.Client? httpClient,
-    String baseUrl = ApiConfig.baseUrl,
+    String? baseUrl,
     this.timeout = ApiConfig.timeout,
   }) : _httpClient = httpClient ?? http.Client(),
-       _baseUri = Uri.parse(baseUrl);
+       _baseUri = Uri.parse(baseUrl ?? ApiConfig.baseUrl);
 
   final http.Client _httpClient;
   final Uri _baseUri;

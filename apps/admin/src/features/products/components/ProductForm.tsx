@@ -417,12 +417,15 @@ function TazaScorePreview({ result }: TazaScorePreviewProps) {
         <span>
           Missing:{" "}
           {result.missingFields.length > 0
-            ? result.missingFields.join(", ")
+            ? result.missingFields.map(readFieldLabel).join(", ")
             : "unknown"}
         </span>
       </div>
     );
   }
+
+  const safeguardsApplied = result.safeguardsApplied ?? [];
+  const missingCriticalFields = result.missingCriticalFields ?? [];
 
   return (
     <div className="nutri-score-preview" aria-label="TazaScore preview">
@@ -437,6 +440,24 @@ function TazaScorePreview({ result }: TazaScorePreviewProps) {
         {result.ingredientComponent.maxScore}
       </span>
       <span>Data confidence: {readConfidenceLabel(result.confidence.level)}</span>
+      <span>Coverage: {formatCoverage(result.nutritionCoverage)}</span>
+      <span>
+        Missing critical fields:{" "}
+        {missingCriticalFields.length > 0
+          ? missingCriticalFields.map(readFieldLabel).join(", ")
+          : "none"}
+      </span>
+      <span>
+        Score before safeguards:{" "}
+        {formatNullableScore(result.scoreBeforeSafeguard)}
+      </span>
+      <span>Score cap: {formatNullableScore(result.scoreCap)}</span>
+      <span>
+        Safeguards applied:{" "}
+        {safeguardsApplied.length > 0
+          ? safeguardsApplied.map(readSafeguardLabel).join(", ")
+          : "none"}
+      </span>
       {result.negativeReasons.length > 0 ? (
         <ul className="preview-reasons">
           {result.negativeReasons.map((reason) => (
@@ -448,10 +469,52 @@ function TazaScorePreview({ result }: TazaScorePreviewProps) {
   );
 }
 
+function formatCoverage(value: number | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "unknown";
+  }
+
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatNullableScore(value: number | null | undefined) {
+  return typeof value === "number" ? String(value) : "not applied";
+}
+
 function readConfidenceLabel(level: TazaScorePreviewResponse["data"]["confidence"]["level"]) {
   if (level === "high") return "High";
   if (level === "medium") return "Medium";
   return "Low";
+}
+
+function readSafeguardLabel(safeguard: string) {
+  const labels: Record<string, string> = {
+    coverage_cap: "Coverage cap",
+    missing_critical_negative_cap: "Missing critical nutrients cap",
+  };
+
+  return labels[safeguard] ?? safeguard;
+}
+
+function readFieldLabel(field: string) {
+  const labels: Record<string, string> = {
+    energyKcal: "Energy kcal",
+    energyKj: "Energy kJ",
+    energyKcalOrEnergyKj: "Energy",
+    protein: "Protein",
+    carbohydrates: "Carbohydrates",
+    sugars: "Sugars",
+    fat: "Fat",
+    saturatedFat: "Saturated fat",
+    saturatedFatApproximation: "Saturated fat approximation",
+    fiber: "Fiber",
+    salt: "Salt",
+    fruitVegetableLegumePercent: "Fruit / vegetable / legume %",
+    containsNonSugarSweeteners: "Non-sugar sweeteners",
+    officialNutriScoreCategory: "Nutri-Score category",
+  };
+
+  return labels[field] ?? field;
 }
 
 function readReasonLabel(reason: string) {

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductSubmission } from '../generated/prisma/client';
-import type { ScoreEngine } from '../scoring/contracts/score-engine';
-import type { ScoreInput, ScoreResult } from '../scoring/types/score-result';
 import { ProductSubmissionService } from './product-submission.service';
 
 const now = new Date('2026-08-01T00:00:00.000Z');
@@ -39,26 +37,10 @@ function createSubmission(overrides: Partial<ProductSubmission> = {}): ProductSu
   };
 }
 
-class FakeScoreEngine implements ScoreEngine {
-  calculate(_input: ScoreInput): ScoreResult {
-    return {
-      score: 65,
-      grade: 'C',
-      status: 'calculated',
-      positiveReasons: [],
-      negativeReasons: ['High sugar content.'],
-      warnings: [],
-      missingFields: [],
-      algorithm: 'test',
-      algorithmVersion: 'test-1',
-      calculatedAt: now.toISOString()
-    };
-  }
-}
-
 class FakeSubmissionRepository {
   submissions: ProductSubmission[] = [];
   productBarcodeExists = false;
+  approvedProductId: string | null = null;
 
   list() {
     return Promise.resolve<[ProductSubmissionWithProduct[], number]>([
@@ -107,11 +89,12 @@ class FakeSubmissionRepository {
     return Promise.resolve(this.productBarcodeExists ? { id: 'product-id' } : null);
   }
 
-  approve(id: string) {
+  markApproved(id: string, createdProductId: string) {
+    this.approvedProductId = createdProductId;
     const submission = createSubmission({
       id,
       status: 'approved',
-      createdProductId: 'created-product-id',
+      createdProductId,
       reviewedAt: now,
       reviewedByUserId: 'admin-id'
     });
@@ -119,10 +102,22 @@ class FakeSubmissionRepository {
   }
 }
 
+class FakeProductCreator {
+  createdBody: unknown;
+
+  create(data: unknown) {
+    this.createdBody = data;
+    return Promise.resolve({ id: 'created-product-id' });
+  }
+}
+
 function createService(repository = new FakeSubmissionRepository()) {
+  const productCreator = new FakeProductCreator();
+
   return {
     repository,
-    service: new ProductSubmissionService(repository as never, new FakeScoreEngine())
+    productCreator,
+    service: new ProductSubmissionService(repository as never, productCreator as never)
   };
 }
 
@@ -132,7 +127,12 @@ describe('ProductSubmissionService', () => {
 
     const submission = await service.create(
       { barcode: '5449000000996', ingredients: [] },
-      { frontImageUrl: null, ingredientsImageUrl: null, nutritionImageUrl: null, barcodeImageUrl: null }
+      {
+        frontImageUrl: '/product-submissions/uploads/front.jpg',
+        ingredientsImageUrl: null,
+        nutritionImageUrl: null,
+        barcodeImageUrl: null
+      }
     );
 
     expect(submission.barcode).toBe('5449000000996');
@@ -158,15 +158,57 @@ describe('ProductSubmissionService', () => {
     await expect(
       service.create(
         { barcode: '5449000000996', ingredients: [] },
-        { frontImageUrl: null, ingredientsImageUrl: null, nutritionImageUrl: null, barcodeImageUrl: null }
+        {
+          frontImageUrl: '/product-submissions/uploads/front.jpg',
+          ingredientsImageUrl: null,
+          nutritionImageUrl: null,
+          barcodeImageUrl: null
+        }
       )
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
+  it('does not create a duplicate submission when product barcode already exists', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.productBarcodeExists = true;
+    const { service } = createService(repository);
+
+    await expect(
+      service.create(
+        { barcode: '5449000000996', ingredients: [] },
+        {
+          frontImageUrl: '/product-submissions/uploads/front.jpg',
+          ingredientsImageUrl: null,
+          nutritionImageUrl: null,
+          barcodeImageUrl: null
+        }
+      )
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      details: expect.objectContaining({ code: 'product_exists' })
+    });
+  });
+
+  it('requires a front package photo for unknown barcode submissions', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.create(
+        { barcode: '5449000000996', ingredients: [] },
+        { frontImageUrl: null, ingredientsImageUrl: null, nutritionImageUrl: null, barcodeImageUrl: null }
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      details: expect.objectContaining({ code: 'front_image_required' })
+    });
+  });
+
   it('approves a submission and creates a product', async () => {
     const repository = new FakeSubmissionRepository();
-    repository.submissions = [createSubmission()];
-    const { service } = createService(repository);
+    repository.submissions = [
+      createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+    ];
+    const { service, productCreator } = createService(repository);
 
     const submission = await service.approve(
       '11111111-1111-4111-8111-111111111111',
@@ -182,6 +224,14 @@ describe('ProductSubmissionService', () => {
 
     expect(submission.status).toBe('approved');
     expect(submission.createdProductId).toBe('created-product-id');
+    expect(productCreator.createdBody).toMatchObject({
+      barcode: '5449000000996',
+      imageUrl: '/product-submissions/uploads/front.jpg',
+      dataStatus: 'community',
+      source: 'user_submission',
+      lastVerifiedAt: null
+    });
+    expect(repository.approvedProductId).toBe('created-product-id');
   });
 
   it('fails approval safely for duplicate barcode', async () => {

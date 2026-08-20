@@ -108,19 +108,23 @@ void main() {
     expect(find.text('Fresh product name'), findsOneWidget);
   });
 
-  testWidgets('legacy score UI remains the default Product Details mode', (
+  testWidgets('legacy score UI remains available when TazaScore is disabled', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
 
-    await _pumpDetails(tester, createTestProduct());
+    await _pumpDetails(
+      tester,
+      createTestProduct(),
+      enableTazaScorePreview: false,
+    );
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -320));
     await tester.pumpAndSettle();
 
     expect(find.byType(ProductScoreSummaryCard), findsOneWidget);
     expect(find.byType(TazaScoreBetaCard), findsNothing);
-    expect(find.text('TazaScore Beta'), findsNothing);
+    expect(find.text('TazaScore'), findsNothing);
   });
 
   testWidgets(
@@ -137,7 +141,7 @@ void main() {
 
       expect(find.byType(TazaScoreBetaCard), findsOneWidget);
       expect(find.byType(ProductScoreSummaryCard), findsNothing);
-      expect(find.text('TazaScore Beta'), findsOneWidget);
+      expect(find.text('TazaScore'), findsOneWidget);
       expect(find.text('27'), findsOneWidget);
       expect(find.text('Nutri-Score'), findsOneWidget);
       expect(find.text('E'), findsOneWidget);
@@ -168,7 +172,12 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final repository = FakeProductRepository(createTestProduct());
 
-    await _pumpDetails(tester, createTestProduct(), repository: repository);
+    await _pumpDetails(
+      tester,
+      createTestProduct(),
+      repository: repository,
+      enableTazaScorePreview: false,
+    );
     await tester.pumpAndSettle();
 
     expect(repository.previewRequestCount, 0);
@@ -650,7 +659,7 @@ Future<void> _pumpDetails(
   bool refreshFromNetwork = false,
   Product? freshProduct,
   FakeProductRepository? repository,
-  bool enableTazaScorePreview = false,
+  bool enableTazaScorePreview = true,
 }) async {
   final productRepository =
       repository ?? FakeProductRepository(freshProduct ?? product);

@@ -365,11 +365,7 @@ class _ProductSearchResultCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    _MetaPill(
-                      label: product.nutritionScore.grade == null
-                          ? '${product.healthScore}/100'
-                          : '${product.nutritionScore.grade} · ${product.healthScore}/100',
-                    ),
+                    _MetaPill(label: _tazaScoreLabel(product)),
                     _MetaPill(label: statusLabel),
                   ],
                 ),
@@ -392,6 +388,15 @@ class _ProductSearchResultCard extends StatelessWidget {
       'community' => 'Сообщество',
       _ => 'Не проверено',
     };
+  }
+
+  String _tazaScoreLabel(Product product) {
+    final tazaScore = product.tazaScore;
+    if (tazaScore?.score == null) {
+      return 'TazaScore · нет данных';
+    }
+
+    return 'TazaScore · ${tazaScore!.score}/100';
   }
 }
 

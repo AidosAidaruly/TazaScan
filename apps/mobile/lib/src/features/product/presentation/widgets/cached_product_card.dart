@@ -17,6 +17,7 @@ class CachedProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = resolveApiAssetUrl(product.imageUrl);
+    final scoreLabel = product.scoreLabel ?? 'TazaScore';
 
     return Card(
       child: ListTile(
@@ -28,15 +29,13 @@ class CachedProductCard extends StatelessWidget {
             height: 40,
             child: imageUrl == null
                 ? CircleAvatar(
-                    child: Text(product.grade ?? '${product.calculatedScore}'),
+                    child: Text(_scoreAvatarLabel(scoreLabel)),
                   )
                 : Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => CircleAvatar(
-                      child: Text(
-                        product.grade ?? '${product.calculatedScore}',
-                      ),
+                      child: Text(_scoreAvatarLabel(scoreLabel)),
                     ),
                   ),
           ),
@@ -50,8 +49,22 @@ class CachedProductCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
+        trailing:
+            trailing ??
+            Text(
+              scoreLabel,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
       ),
     );
+  }
+
+  String _scoreAvatarLabel(String label) {
+    if (label.contains('нет данных')) {
+      return '—';
+    }
+
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    return match?.group(1) ?? 'T';
   }
 }

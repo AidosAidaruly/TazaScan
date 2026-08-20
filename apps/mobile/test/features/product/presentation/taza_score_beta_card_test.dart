@@ -99,7 +99,7 @@ void main() {
   ) async {
     await _pumpCard(tester, data: wotoPreview);
 
-    expect(find.text('TazaScore Beta'), findsOneWidget);
+    expect(find.text('TazaScore'), findsOneWidget);
     expect(find.text('100'), findsOneWidget);
     expect(find.text('/ 100'), findsOneWidget);
     expect(find.text('Nutri-Score'), findsOneWidget);
@@ -274,7 +274,7 @@ void main() {
     await _pumpCard(tester, data: tomatoPastePreview);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('TazaScore Beta'), findsOneWidget);
+    expect(find.text('TazaScore'), findsOneWidget);
   });
 }
 

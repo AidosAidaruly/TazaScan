@@ -3,6 +3,14 @@ import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schem
 import type { Prisma } from '../generated/prisma/client';
 import type { ScoreResult } from '../scoring/types/score-result';
 
+const productWithCanonicalFamily = {
+  canonicalProductFamily: {
+    include: {
+      canonicalProduct: true
+    }
+  }
+} as const;
+
 export class ProductRepository {
   list(filters: ListProductsQuery) {
     const where = this.buildWhere(filters);
@@ -11,6 +19,7 @@ export class ProductRepository {
     return prisma.$transaction([
       prisma.product.findMany({
         where,
+        include: productWithCanonicalFamily,
         orderBy: { createdAt: 'desc' },
         skip,
         take: filters.pageSize
@@ -21,13 +30,15 @@ export class ProductRepository {
 
   findById(id: string) {
     return prisma.product.findUnique({
-      where: { id }
+      where: { id },
+      include: productWithCanonicalFamily
     });
   }
 
   findByBarcode(barcode: string) {
     return prisma.product.findUnique({
-      where: { barcode }
+      where: { barcode },
+      include: productWithCanonicalFamily
     });
   }
 
@@ -39,6 +50,7 @@ export class ProductRepository {
           { brand: { contains: query, mode: 'insensitive' } }
         ]
       },
+      include: productWithCanonicalFamily,
       orderBy: { updatedAt: 'desc' },
       take: limit
     });
@@ -114,6 +126,20 @@ export class ProductRepository {
     };
 
     this.assignDefined(productData, 'brand', data.brand);
+    this.assignDefined(productData, 'ingredientsTextOriginal', data.ingredientsTextOriginal);
+    this.assignDefined(
+      productData,
+      'ingredientsTextOriginalLanguage',
+      data.ingredientsTextOriginalLanguage
+    );
+    this.assignDefined(productData, 'ingredientsTextRu', data.ingredientsTextRu);
+    this.assignDefined(productData, 'ingredientsTextTranslatedRu', data.ingredientsTextTranslatedRu);
+    this.assignDefined(productData, 'ingredientsTranslationSource', data.ingredientsTranslationSource);
+    this.assignDefined(
+      productData,
+      'ingredientsTranslatedAt',
+      data.ingredientsTranslatedAt ? new Date(data.ingredientsTranslatedAt) : data.ingredientsTranslatedAt
+    );
     this.assignDefined(productData, 'energyKcal', data.nutritionFacts.energyKcal);
     this.assignDefined(productData, 'protein', data.nutritionFacts.protein);
     this.assignDefined(productData, 'carbohydrates', data.nutritionFacts.carbohydrates);
@@ -155,6 +181,20 @@ export class ProductRepository {
     this.assignDefined(productData, 'brand', data.brand);
     this.assignDefined(productData, 'category', data.category);
     this.assignDefined(productData, 'ingredients', data.ingredients);
+    this.assignDefined(productData, 'ingredientsTextOriginal', data.ingredientsTextOriginal);
+    this.assignDefined(
+      productData,
+      'ingredientsTextOriginalLanguage',
+      data.ingredientsTextOriginalLanguage
+    );
+    this.assignDefined(productData, 'ingredientsTextRu', data.ingredientsTextRu);
+    this.assignDefined(productData, 'ingredientsTextTranslatedRu', data.ingredientsTextTranslatedRu);
+    this.assignDefined(productData, 'ingredientsTranslationSource', data.ingredientsTranslationSource);
+    this.assignDefined(
+      productData,
+      'ingredientsTranslatedAt',
+      data.ingredientsTranslatedAt ? new Date(data.ingredientsTranslatedAt) : data.ingredientsTranslatedAt
+    );
     this.assignDefined(productData, 'manualScoreOverride', data.manualScoreOverride);
     this.assignDefined(
       productData,

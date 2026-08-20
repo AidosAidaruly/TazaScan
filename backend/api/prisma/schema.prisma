@@ -61,6 +61,12 @@ model Product {
   brand          String?
   category       String
   ingredients    String[]
+  ingredientsTextOriginal String?
+  ingredientsTextOriginalLanguage String?
+  ingredientsTextRu String?
+  ingredientsTextTranslatedRu String?
+  ingredientsTranslationSource String?
+  ingredientsTranslatedAt DateTime?
   servingType    ServingType
   energyKcal     Float?
   protein        Float?
@@ -88,6 +94,9 @@ model Product {
   dataStatus     ProductDataStatus @default(unverified)
   source         String?
   lastVerifiedAt DateTime?
+  canonicalProductFamilyId String?
+  canonicalProductFamily CanonicalProductFamily? @relation("ProductFamilyMembers", fields: [canonicalProductFamilyId], references: [id], onDelete: SetNull)
+  canonicalSourceForFamilies CanonicalProductFamily[] @relation("CanonicalProductFamilySource")
   submissions    ProductSubmission[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
@@ -96,7 +105,25 @@ model Product {
   @@index([name])
   @@index([brand])
   @@index([category])
+  @@index([canonicalProductFamilyId])
   @@map("products")
+}
+
+model CanonicalProductFamily {
+  id                 String   @id @default(uuid())
+  canonicalName      String
+  brand              String?
+  variant            String?
+  canonicalProductId String
+  canonicalProduct   Product  @relation("CanonicalProductFamilySource", fields: [canonicalProductId], references: [id], onDelete: Restrict)
+  members            Product[] @relation("ProductFamilyMembers")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([canonicalProductId])
+  @@index([brand])
+  @@index([canonicalName])
+  @@map("canonical_product_families")
 }
 
 model ProductSubmission {

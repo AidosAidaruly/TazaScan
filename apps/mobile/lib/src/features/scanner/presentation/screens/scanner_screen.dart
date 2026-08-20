@@ -100,7 +100,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       return _ProductFound(product);
     } on NotFoundException {
       return const _ProductLookupFailed(
-        title: 'Продукт не найден',
+        title: 'Товар не найден',
         message: 'Этого штрихкода пока нет в нашей базе.',
       );
     } on NetworkException {

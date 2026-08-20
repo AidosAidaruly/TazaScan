@@ -1,4 +1,5 @@
 import type { Product } from '../generated/prisma/client';
+import { ProductDataQualityEvaluator } from '../data-quality/product-data-quality.evaluator';
 import type {
   ListProductsQuery,
   OfficialNutriScorePreviewBody,
@@ -13,15 +14,15 @@ import type { OfficialNutriScoreInput } from '../scoring/types/official-nutri-sc
 import type { TazaScoreInput } from '../scoring/types/taza-score-result';
 import type { ScoreInput } from '../scoring/types/score-result';
 import type { PaginatedResponse } from '../types/pagination';
-import type { ProductDto, ProductScorePreviewDto } from '../types/product';
+import type { ProductDto, ProductScorePreviewDto, ProductWithCanonicalFamily } from '../types/product';
 import { toProductDto } from '../types/product';
 import { HttpError } from '../utils/http-error';
 import { ProductImageStorageService } from './product-image-storage.service';
 
 type ProductRepositoryContract = {
-  list(filters: ListProductsQuery): Promise<[Product[], number]>;
-  findById(id: string): Promise<Product | null>;
-  findByBarcode(barcode: string): Promise<Product | null>;
+  list(filters: ListProductsQuery): Promise<[ProductWithCanonicalFamily[], number]>;
+  findById(id: string): Promise<ProductWithCanonicalFamily | null>;
+  findByBarcode(barcode: string): Promise<ProductWithCanonicalFamily | null>;
   create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   update(id: string, data: UpdateProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   updateImageUrl(id: string, imageUrl: string | null): Promise<Product>;
@@ -33,6 +34,7 @@ type NumericNutritionField = Exclude<keyof ProductBody['nutritionFacts'], 'servi
 export class ProductService {
   private readonly officialNutriScoreEngine = new OfficialNutriScoreEngine();
   private readonly tazaScoreEngine = new TazaScoreEngine();
+  private readonly productDataQualityEvaluator = new ProductDataQualityEvaluator();
 
   constructor(
     private readonly productRepository: ProductRepositoryContract,
@@ -44,7 +46,7 @@ export class ProductService {
     const [products, total] = await this.productRepository.list(filters);
 
     return {
-      items: products.map(toProductDto),
+      items: products.map((product) => this.toProductDto(product)),
       pagination: {
         page: filters.page,
         pageSize: filters.pageSize,
@@ -61,7 +63,7 @@ export class ProductService {
       throw new HttpError(404, 'Product not found');
     }
 
-    return toProductDto(product);
+    return this.toProductDto(product);
   }
 
   async getByBarcode(barcode: string) {
@@ -71,7 +73,7 @@ export class ProductService {
       throw new HttpError(404, 'Product not found');
     }
 
-    return toProductDto(product);
+    return this.toProductDto(product);
   }
 
   async create(data: ProductBody) {
@@ -79,7 +81,7 @@ export class ProductService {
     const scoreResult = this.scoreEngine.calculate(this.toScoreInput(data));
     const product = await this.productRepository.create(data, scoreResult);
 
-    return toProductDto(product);
+    return this.toProductDto(product);
   }
 
   previewOfficialNutriScore(data: OfficialNutriScorePreviewBody) {
@@ -96,7 +98,8 @@ export class ProductService {
 
     return {
       tazaScore,
-      nutriScore: tazaScore.officialNutriScore
+      nutriScore: tazaScore.officialNutriScore,
+      dataQuality: this.productDataQualityEvaluator.evaluate(product)
     };
   }
 
@@ -134,7 +137,7 @@ export class ProductService {
     const scoreResult = this.scoreEngine.calculate(scoreInput);
     const product = await this.productRepository.update(id, data, scoreResult);
 
-    return toProductDto(product);
+    return this.toProductDto(product);
   }
 
   async delete(id: string) {
@@ -150,7 +153,7 @@ export class ProductService {
       const product = await this.productRepository.updateImageUrl(id, storedImage.imageUrl);
       await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
 
-      return toProductDto(product);
+      return this.toProductDto(product);
     } catch (error) {
       await this.imageStorage.deleteLocalImage(storedImage.imageUrl);
       throw error;
@@ -162,7 +165,16 @@ export class ProductService {
     const product = await this.productRepository.updateImageUrl(id, null);
     await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
 
-    return toProductDto(product);
+    return this.toProductDto(product);
+  }
+
+  private toProductDto(product: ProductWithCanonicalFamily): ProductDto {
+    const scoreProduct = product.canonicalProductFamily?.canonicalProduct ?? product;
+
+    return toProductDto(
+      product,
+      this.tazaScoreEngine.calculate(this.productToTazaScoreInput(scoreProduct))
+    );
   }
 
   private async ensureExists(id: string) {

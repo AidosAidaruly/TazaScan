@@ -43,4 +43,6 @@ class ProductSubmissionDraft {
 
   bool get hasIdentifyingData =>
       barcode.trim().isNotEmpty || name.trim().isNotEmpty || frontImage != null;
+
+  bool get hasFrontPackagePhoto => frontImage != null;
 }

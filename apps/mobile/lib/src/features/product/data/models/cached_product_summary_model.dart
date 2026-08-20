@@ -13,6 +13,7 @@ class CachedProductSummaryModel extends CachedProductSummary {
     super.category,
     super.imageUrl,
     super.grade,
+    super.scoreLabel,
   });
 
   factory CachedProductSummaryModel.fromProduct(Product product) {
@@ -31,6 +32,7 @@ class CachedProductSummaryModel extends CachedProductSummary {
       imageUrl: summary.imageUrl,
       calculatedScore: summary.calculatedScore,
       grade: summary.grade,
+      scoreLabel: summary.scoreLabel,
       createdAt: summary.createdAt,
       updatedAt: summary.updatedAt,
     );
@@ -46,6 +48,7 @@ class CachedProductSummaryModel extends CachedProductSummary {
       imageUrl: json['imageUrl'] as String?,
       calculatedScore: json['calculatedScore'] as int,
       grade: json['grade'] as String?,
+      scoreLabel: json['scoreLabel'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -61,6 +64,7 @@ class CachedProductSummaryModel extends CachedProductSummary {
       'imageUrl': imageUrl,
       'calculatedScore': calculatedScore,
       'grade': grade,
+      'scoreLabel': scoreLabel,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };

@@ -42,6 +42,12 @@ export const productBodySchema = z.object({
   brand: z.string().trim().min(1).nullable().optional(),
   category: z.string().trim().min(1),
   ingredients: z.array(z.string().trim().min(1)).default([]),
+  ingredientsTextOriginal: z.string().trim().min(1).nullable().optional(),
+  ingredientsTextOriginalLanguage: z.string().trim().min(1).nullable().optional(),
+  ingredientsTextRu: z.string().trim().min(1).nullable().optional(),
+  ingredientsTextTranslatedRu: z.string().trim().min(1).nullable().optional(),
+  ingredientsTranslationSource: z.string().trim().min(1).nullable().optional(),
+  ingredientsTranslatedAt: z.string().datetime().nullable().optional(),
   nutritionFacts: z.object({
     servingType: z.enum(['per100g', 'per100ml']),
     energyKcal: nullableNumberSchema,

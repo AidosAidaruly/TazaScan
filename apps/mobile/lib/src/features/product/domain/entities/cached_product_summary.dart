@@ -13,6 +13,7 @@ class CachedProductSummary {
     this.category,
     this.imageUrl,
     this.grade,
+    this.scoreLabel,
   });
 
   factory CachedProductSummary.fromProduct(Product product) {
@@ -23,8 +24,11 @@ class CachedProductSummary {
       brand: product.brand,
       category: product.category,
       imageUrl: product.imageUrl,
-      calculatedScore: product.nutritionScore.score ?? product.healthScore,
-      grade: product.nutritionScore.grade,
+      calculatedScore: product.tazaScore?.score ?? 0,
+      grade: null,
+      scoreLabel: product.tazaScore?.score == null
+          ? 'TazaScore · нет данных'
+          : 'TazaScore · ${product.tazaScore!.score}/100',
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     );
@@ -38,6 +42,7 @@ class CachedProductSummary {
   final String? imageUrl;
   final int calculatedScore;
   final String? grade;
+  final String? scoreLabel;
   final DateTime createdAt;
   final DateTime updatedAt;
 

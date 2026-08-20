@@ -243,7 +243,108 @@ describe("ProductForm image upload", () => {
     expect(screen.getByText("Nutrition: 17 / 90")).toBeInTheDocument();
     expect(screen.getByText("Ingredients: 10 / 10")).toBeInTheDocument();
     expect(screen.getByText("Data confidence: High")).toBeInTheDocument();
+    expect(screen.getByText("Coverage: unknown")).toBeInTheDocument();
+    expect(screen.getByText("Missing critical fields: none")).toBeInTheDocument();
+    expect(screen.getByText("Score before safeguards: not applied")).toBeInTheDocument();
+    expect(screen.getByText("Score cap: not applied")).toBeInTheDocument();
+    expect(screen.getByText("Safeguards applied: none")).toBeInTheDocument();
     expect(screen.getByText("Высокое содержание сахара")).toBeInTheDocument();
+  });
+
+  it("shows partial TazaScore diagnostics with missing critical fields and safeguards", async () => {
+    const user = userEvent.setup();
+    const onPreviewTazaScore = vi.fn().mockResolvedValue({
+      score: 28,
+      status: "calculated",
+      nutritionComponent: {
+        score: 79,
+        maxScore: 90,
+        status: "calculated",
+        reasonCodes: ["PARTIAL_NUTRITION_FOUNDATION"],
+        missingFields: ["sugars", "salt", "saturatedFat"],
+        usedFields: ["energyKcal", "fat", "protein"],
+        nutritionCoverage: 0.31,
+      },
+      ingredientComponent: {
+        score: 10,
+        maxScore: 10,
+        status: "calculated",
+        reasonCodes: [],
+        missingFields: [],
+        additiveCount: 0,
+        knownRiskPenalty: 0,
+      },
+      confidence: {
+        score: null,
+        maxScore: 0,
+        status: "calculated",
+        reasonCodes: ["LOW_NUTRITION_COVERAGE"],
+        missingFields: [],
+        level: "low",
+        dataStatus: "verified",
+      },
+      reasonCodes: [
+        "PARTIAL_NUTRITION_FOUNDATION",
+        "PARTIAL_SCORE_CAP_APPLIED",
+      ],
+      positiveReasons: [],
+      negativeReasons: [
+        "TazaScore was calculated from partial product data.",
+      ],
+      missingFields: [
+        "sugars",
+        "salt",
+        "saturatedFat",
+        "fiber",
+        "fruitVegetableLegumePercent",
+      ],
+      usedFields: ["energyKcal", "fat", "protein"],
+      nutritionCoverage: 0.31,
+      missingCriticalFields: [
+        "sugars",
+        "salt",
+        "saturatedFatApproximation",
+      ],
+      scoreBeforeSafeguard: 89,
+      scoreCap: 28,
+      safeguardsApplied: ["coverage_cap", "missing_critical_negative_cap"],
+      warnings: [],
+      methodology: "TazaScore",
+      methodologyVersion: "taza-score-v1",
+      officialNutriScore: {
+        status: "insufficient_data",
+        rawScore: null,
+        grade: null,
+      },
+    });
+
+    renderWithRouter(
+      <ProductForm
+        submitLabel="Save"
+        isSubmitting={false}
+        onSubmit={vi.fn()}
+        onPreviewTazaScore={onPreviewTazaScore}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Preview TazaScore" }));
+
+    expect(await screen.findByText("TazaScore 28 / 100")).toBeInTheDocument();
+    expect(screen.getByText("Nutri-Score: —")).toBeInTheDocument();
+    expect(screen.getByText("Data confidence: Low")).toBeInTheDocument();
+    expect(screen.getByText("Coverage: 31%")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Missing critical fields: Sugars, Salt, Saturated fat approximation",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Score before safeguards: 89")).toBeInTheDocument();
+    expect(screen.getByText("Score cap: 28")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Safeguards applied: Coverage cap, Missing critical nutrients cap",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows TazaScore insufficient-data state", async () => {
@@ -301,7 +402,7 @@ describe("ProductForm image upload", () => {
     await user.click(screen.getByRole("button", { name: "Preview TazaScore" }));
 
     expect(await screen.findByText("Недостаточно данных")).toBeInTheDocument();
-    expect(screen.getByText("Missing: energyKcalOrEnergyKj, sugars")).toBeInTheDocument();
+    expect(screen.getByText("Missing: Energy, Sugars")).toBeInTheDocument();
   });
 
   it("shows backend TazaScore validation details", async () => {

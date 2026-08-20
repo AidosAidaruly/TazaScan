@@ -10,7 +10,6 @@ import 'package:project/src/features/product/data/repositories/http_product_repo
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
-import 'package:project/src/features/product/presentation/scoring/taza_score_preview_config.dart';
 import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_disclaimer.dart';
@@ -26,7 +25,7 @@ class ProductDetailsScreen extends StatefulWidget {
     required this.product,
     this.refreshFromNetwork = false,
     this.productService,
-    this.enableTazaScorePreview = TazaScorePreviewConfig.enabled,
+    this.enableTazaScorePreview = true,
     super.key,
   });
 
@@ -53,9 +52,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void initState() {
     super.initState();
     _product = widget.product;
+    _tazaScorePreviewData = widget.product.tazaScore;
     _isOfflineData = widget.refreshFromNetwork;
     _initLocalState();
-    if (widget.enableTazaScorePreview) {
+    if (widget.enableTazaScorePreview && _tazaScorePreviewData == null) {
       _loadTazaScorePreview();
     }
     if (widget.refreshFromNetwork) {
@@ -93,9 +93,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       if (!mounted) return;
       setState(() {
         _product = freshProduct;
+        _tazaScorePreviewData = freshProduct.tazaScore;
         _isOfflineData = false;
       });
-      if (widget.enableTazaScorePreview) {
+      if (widget.enableTazaScorePreview && _tazaScorePreviewData == null) {
         await _loadTazaScorePreview();
       }
     } on AppException {
@@ -125,7 +126,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   Future<void> _loadTazaScorePreview() async {
     final productId = _product.id;
     setState(() {
-      _isTazaScorePreviewLoading = true;
+      _isTazaScorePreviewLoading = _tazaScorePreviewData == null;
       _tazaScorePreviewError = null;
     });
 
@@ -143,7 +144,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     } catch (error) {
       if (!mounted || _product.id != productId) return;
       setState(() {
-        _tazaScorePreviewError = error;
+        if (_tazaScorePreviewData == null) {
+          _tazaScorePreviewError = error;
+        }
         _isTazaScorePreviewLoading = false;
       });
     }
@@ -190,15 +193,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               ProductScoreSummaryCard(product: _product),
             const SizedBox(height: 24),
             ProductNutritionSection(product: _product),
-            const SizedBox(height: 24),
-            NutritionScoreDetailsSection(score: _product.nutritionScore),
+            if (!widget.enableTazaScorePreview) ...[
+              const SizedBox(height: 24),
+              NutritionScoreDetailsSection(score: _product.nutritionScore),
+            ],
             const SizedBox(height: 16),
             ProductInfoSection(product: _product),
             const SizedBox(height: 16),
-            ExpandableTechnicalDetails(
-              score: _product.nutritionScore,
-              barcode: _product.barcode,
-            ),
+            if (!widget.enableTazaScorePreview)
+              ExpandableTechnicalDetails(
+                score: _product.nutritionScore,
+                barcode: _product.barcode,
+              ),
             const SizedBox(height: 18),
             const ProductDisclaimer(),
           ],

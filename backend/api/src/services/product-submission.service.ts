@@ -14,7 +14,6 @@ import type {
   UpdateSubmissionStatusBody
 } from '../schemas/product-submission.schema';
 import { productBodySchema, type ProductBody } from '../schemas/product.schema';
-import type { ScoreEngine } from '../scoring/contracts/score-engine';
 
 type SubmissionRepositoryContract = Pick<
   ProductSubmissionRepository,
@@ -24,13 +23,17 @@ type SubmissionRepositoryContract = Pick<
   | 'create'
   | 'updateStatus'
   | 'findProductByBarcode'
-  | 'approve'
+  | 'markApproved'
 >;
+
+type ProductCreatorContract = {
+  create(data: ProductBody): Promise<{ id: string }>;
+};
 
 export class ProductSubmissionService {
   constructor(
     private readonly submissionRepository: SubmissionRepositoryContract,
-    private readonly scoreEngine: ScoreEngine
+    private readonly productCreator: ProductCreatorContract
   ) {}
 
   async list(filters: ListSubmissionsQuery): Promise<PaginatedResponse<ProductSubmissionDto>> {
@@ -58,6 +61,7 @@ export class ProductSubmissionService {
 
   async create(data: ProductSubmissionBody, images: SubmissionImageUrls) {
     this.ensureIdentifyingData(data, images);
+    await this.ensureUnknownBarcodeCanBeSubmitted(data, images);
     this.ensureNutritionConsistency(data);
 
     const duplicate = await this.submissionRepository.findPendingDuplicate(
@@ -94,8 +98,11 @@ export class ProductSubmissionService {
     }
 
     this.ensureNutritionConsistency(data);
-    const productBody = this.toProductBody(data);
-    const parsedProduct = productBodySchema.parse(productBody);
+    const productBody = this.toProductBody(data, existingSubmission);
+    const parsedProduct = productBodySchema.parse({
+      ...productBody,
+      imageUrl: undefined
+    });
     const duplicateProduct = await this.submissionRepository.findProductByBarcode(
       parsedProduct.barcode
     );
@@ -104,23 +111,17 @@ export class ProductSubmissionService {
       throw new HttpError(409, 'Barcode already exists');
     }
 
-    const scoreResult = this.scoreEngine.calculate({
-      servingType: parsedProduct.nutritionFacts.servingType,
-      energyKcal: parsedProduct.nutritionFacts.energyKcal ?? null,
-      protein: parsedProduct.nutritionFacts.protein ?? null,
-      carbohydrates: parsedProduct.nutritionFacts.carbohydrates ?? null,
-      sugars: parsedProduct.nutritionFacts.sugars ?? null,
-      fat: parsedProduct.nutritionFacts.fat ?? null,
-      saturatedFat: parsedProduct.nutritionFacts.saturatedFat ?? null,
-      fiber: parsedProduct.nutritionFacts.fiber ?? null,
-      salt: parsedProduct.nutritionFacts.salt ?? null,
-      category: parsedProduct.category,
-      ingredients: parsedProduct.ingredients
+    const product = await this.productCreator.create({
+      ...parsedProduct,
+      imageUrl: existingSubmission.frontImageUrl,
+      dataStatus: 'community',
+      source: 'user_submission',
+      lastVerifiedAt: null
     });
-    const submission = await this.submissionRepository.approve(
+
+    const submission = await this.submissionRepository.markApproved(
       id,
-      parsedProduct,
-      scoreResult,
+      product.id,
       reviewedByUserId,
       data.moderationNote
     );
@@ -140,6 +141,31 @@ export class ProductSubmissionService {
   private ensureIdentifyingData(data: ProductSubmissionBody, images: SubmissionImageUrls) {
     if (!data.barcode && !data.name && !images.frontImageUrl) {
       throw new HttpError(400, 'Barcode, name, or front image is required');
+    }
+  }
+
+  private async ensureUnknownBarcodeCanBeSubmitted(
+    data: ProductSubmissionBody,
+    images: SubmissionImageUrls
+  ) {
+    if (!data.barcode) {
+      return;
+    }
+
+    const existingProduct = await this.submissionRepository.findProductByBarcode(data.barcode);
+    if (existingProduct) {
+      throw new HttpError(409, 'Product already exists for this barcode', {
+        code: 'product_exists',
+        productId: existingProduct.id,
+        barcode: data.barcode
+      });
+    }
+
+    if (!images.frontImageUrl) {
+      throw new HttpError(400, 'Front package photo is required for barcode submissions', {
+        code: 'front_image_required',
+        barcode: data.barcode
+      });
     }
   }
 
@@ -165,7 +191,10 @@ export class ProductSubmissionService {
     }
   }
 
-  private toProductBody(data: ApproveSubmissionBody): ProductBody {
+  private toProductBody(
+    data: ApproveSubmissionBody,
+    submission: ProductSubmission
+  ): ProductBody {
     return {
       barcode: data.barcode ?? '',
       name: data.name,
@@ -183,7 +212,10 @@ export class ProductSubmissionService {
         fiber: data.fiber,
         salt: data.salt
       },
-      dataStatus: 'community'
+      imageUrl: submission.frontImageUrl,
+      dataStatus: 'community',
+      source: 'user_submission',
+      lastVerifiedAt: null
     };
   }
 }

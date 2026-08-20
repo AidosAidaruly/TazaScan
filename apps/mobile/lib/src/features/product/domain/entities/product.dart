@@ -1,4 +1,5 @@
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 
 class Product {
   const Product({
@@ -11,6 +12,7 @@ class Product {
     required this.nutritionScore,
     required this.createdAt,
     required this.updatedAt,
+    this.tazaScore,
     this.dataStatus = 'unverified',
     this.brand,
     this.category,
@@ -28,6 +30,7 @@ class Product {
   final Map<String, dynamic> nutritionFacts;
   final int healthScore;
   final NutritionScore nutritionScore;
+  final TazaScorePreviewData? tazaScore;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

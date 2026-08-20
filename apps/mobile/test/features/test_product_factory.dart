@@ -1,5 +1,6 @@
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 
 Product createTestProduct({
   String id = 'product-id',
@@ -18,6 +19,7 @@ Product createTestProduct({
   },
   List<String> ingredients = const ['Carbonated water', 'Sugar'],
   NutritionScore? nutritionScore,
+  TazaScorePreviewData? tazaScore,
 }) {
   final now = DateTime.parse('2026-08-01T00:00:00.000Z');
   final score =
@@ -46,6 +48,7 @@ Product createTestProduct({
     nutritionFacts: nutritionFacts,
     healthScore: score.score ?? 0,
     nutritionScore: score,
+    tazaScore: tazaScore,
     createdAt: now,
     updatedAt: now,
   );

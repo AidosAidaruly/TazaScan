@@ -1,4 +1,4 @@
-# TazaScore v1 methodology
+# TazaScore v1.1 methodology
 
 TazaScore is a TazaScan-specific consumer score from 0 to 100. It is not an
 official Nutri-Score value, not a percentage of healthiness, and not medical
@@ -7,11 +7,15 @@ advice. Official Nutri-Score A-E remains a separate standards-based indicator.
 ## Version
 
 - Methodology: `TazaScore`
-- Version: `taza-score-v1`
-- Status: experimental, not active in production scoring
+- Version: `taza-score-v1.1`
+- Status: active after beverage partial-data safeguard
 
 Scores produced by this version must carry the methodology version so future
 versions can be recalculated and compared safely.
+
+`taza-score-v1` is frozen: formulas, weights, thresholds, confidence rules, and
+safeguards were not changed in place. The partial-data beverage metadata
+safeguard is versioned as `taza-score-v1.1`.
 
 ## Inputs
 
@@ -177,6 +181,50 @@ saturated fat missing but total fat known: -5
 
 The cap is clamped to a minimum of 25. It is only applied when the preliminary
 partial score exceeds the cap.
+
+#### Partial beverage official-metadata safeguard
+
+`taza-score-v1.1` adds one generic safeguard for partial beverage scoring.
+The Coca-Cola cross-variant audit showed a reproducible general failure mode:
+a beverage with known high sugar and energy could score much higher when
+official-only beverage metadata was missing, because the partial fallback
+normalized over known fields instead of using the complete official beverage
+foundation.
+
+This safeguard applies only when all of the following are true:
+
+- the product category is `beverage`;
+- Official Nutri-Score is unavailable and the partial-data path is used;
+- `fruitVegetableLegumePercent` or `containsNonSugarSweeteners` is missing;
+- known factual negative inputs already indicate beverage risk.
+
+It never invents missing data:
+
+- unknown FVL is not treated as `0`;
+- unknown sweetener status is not treated as `false`;
+- explicit `0` remains `0`;
+- explicit `false` remains `false`.
+
+The safeguard uses only known beverage negative points from available data:
+energy, sugars, saturated fat, salt, and known/detected non-sugar sweeteners.
+If the preliminary partial score exceeds the cap, the final score is limited
+and `beverage_official_metadata_cap` is reported in `safeguardsApplied`.
+
+Cap rules:
+
+```text
+known beverage sugar points >= 8 -> max 44
+known beverage negative points >= 10 -> max 44
+known beverage negative points >= 7 -> max 62
+known/detected non-sugar sweeteners -> max 76
+otherwise -> no beverage metadata cap
+```
+
+This is intentionally not SKU-specific and does not force partial beverages to
+match complete-data controls. It prevents high-sugar or otherwise materially
+risky partial beverages from appearing high-confidence or high-scoring merely
+because official-only metadata is unknown. Water uses the official water path
+and is unaffected.
 
 Result metadata exposes:
 

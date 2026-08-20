@@ -151,6 +151,33 @@ void main() {
     expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
   });
 
+  testWidgets('search result shows TazaScore instead of legacy score', (
+    tester,
+  ) async {
+    final repository = FakeSearchRepository(
+      products: [
+        createTestProduct(
+          tazaScore: const TazaScorePreviewData(
+            status: TazaScorePreviewStatus.calculated,
+            score: 27,
+            confidence: TazaScoreConfidence.high,
+            methodologyVersion: 'taza-score-v1',
+            ingredientAnalysisLabel: 'Информационный анализ',
+            processingLabel: 'Пока не учитывается в TazaScore',
+          ),
+        ),
+      ],
+    );
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TazaScore · 27/100'), findsOneWidget);
+    expect(find.textContaining('65/100'), findsNothing);
+  });
+
   testWidgets('shows no results state', (tester) async {
     final repository = FakeSearchRepository(products: const []);
     await _pumpSearch(tester, repository);

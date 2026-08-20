@@ -68,6 +68,6 @@ export type TazaScoreResult = {
   safeguardsApplied: string[];
   warnings: string[];
   methodology: 'TazaScore';
-  methodologyVersion: 'taza-score-v1';
+  methodologyVersion: 'taza-score-v1' | 'taza-score-v1.1';
   calculatedAt: string;
 };

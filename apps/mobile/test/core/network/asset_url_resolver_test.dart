@@ -5,7 +5,7 @@ void main() {
   test('resolves relative upload URL against API base URL', () {
     expect(
       resolveApiAssetUrl('/uploads/products/image.webp'),
-      'http://10.0.2.2:4000/uploads/products/image.webp',
+      'http://localhost:4000/uploads/products/image.webp',
     );
   });
 
