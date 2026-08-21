@@ -30,10 +30,8 @@ void main() {
 
     expect(find.byType(HomeScreen), findsNothing);
     expect(find.text('Название, бренд или штрихкод'), findsOneWidget);
-    expect(
-      find.text('Начни вводить название, бренд или штрихкод.'),
-      findsOneWidget,
-    );
+    expect(find.text('Найдите продукт'), findsOneWidget);
+    expect(find.text('Введите название или бренд.'), findsOneWidget);
   });
 
   testWidgets('bottom navigation opens favorites', (tester) async {

@@ -16,11 +16,8 @@ class ProductPresentationLocalization {
     }
 
     final normalized = _normalize(value);
-    if (normalized.isEmpty) {
-      return 'Оценка рассчитана на основе доступных данных продукта.';
-    }
-    if (_looksTechnical(normalized)) {
-      return 'Оценка рассчитана на основе доступных данных продукта.';
+    if (normalized.isEmpty || _looksTechnical(normalized)) {
+      return 'Оценка рассчитана по доступным данным продукта.';
     }
 
     return value;
@@ -29,8 +26,8 @@ class ProductPresentationLocalization {
   static String dataStatus(String status) {
     return switch (_normalize(status)) {
       'verified' => 'Проверено',
-      'unverified' => 'Не проверено',
-      'community' => 'Сообщество',
+      'unverified' => 'Требуется проверка',
+      'community' => 'Данные сообщества',
       'calculated' => 'Рассчитано',
       'insufficient data' || 'insufficient_data' => 'Недостаточно данных',
       'requires review' || 'requires_review' => 'Требуется проверка',
@@ -106,39 +103,49 @@ const _ingredientLabels = {
 };
 
 const _insightLabels = {
-  'high_sugar': 'Высокое содержание сахара',
-  'high_salt': 'Высокое содержание соли',
-  'high_saturated_fat': 'Высокое содержание насыщенных жиров',
-  'high_energy': 'Высокая энергетическая ценность',
+  'high_sugar': 'Много сахара',
+  'high_salt': 'Много соли',
+  'high_saturated_fat': 'Много насыщенных жиров',
+  'high_energy': 'Высокая калорийность',
   'contains_non_sugar_sweeteners': 'Содержит некалорийные подсластители',
   'non_sugar_sweeteners': 'Содержит некалорийные подсластители',
   'low_favorable_components': 'Мало благоприятных пищевых компонентов',
   'low_favorable_nutritional_components':
       'Мало благоприятных пищевых компонентов',
-  'high_fiber': 'Высокое содержание клетчатки',
-  'high_protein': 'Высокое содержание белка',
-  'fruit_vegetable_legume_content': 'Есть доля фруктов, овощей или бобовых',
-  'official_nutri_score_foundation': 'Оценка основана на методике Nutri-Score',
-  'conservative_additive_assessment': 'Добавки учтены информационно',
+  'high_fiber': 'Есть пищевые волокна',
+  'good_fiber': 'Есть пищевые волокна',
+  'high_protein': 'Источник белка',
+  'good_protein': 'Источник белка',
+  'fruit_vegetable_legume_content':
+      'Есть доля фруктов, овощей или бобовых',
+  'official_nutri_score_foundation':
+      'Оценка основана на методике Nutri-Score',
+  'conservative_additive_assessment':
+      'Добавки учтены как информационный фактор',
   'verified_product_data': 'Данные продукта проверены',
   'community_product_data': 'Данные добавлены сообществом',
   'unverified_product_data': 'Данные продукта требуют проверки',
   'missing_tazascore_input': 'Недостаточно данных для TazaScore',
-  'partial_nutrition_foundation': 'Оценка рассчитана по неполным данным продукта',
+  'partial_nutrition_foundation':
+      'Оценка рассчитана по неполным данным продукта',
   'partial_data_confidence_limit': 'Данные продукта неполные',
   'low_nutrition_coverage': 'Покрытие данных ограничено',
-  'missing_critical_negative_field': 'Не хватает важных данных о составе питания',
-  'partial_score_cap_applied': 'Применено ограничение от завышенной оценки',
-  'high sugar content.': 'Высокое содержание сахара',
-  'high sugar content': 'Высокое содержание сахара',
-  'high sugars content.': 'Высокое содержание сахара',
-  'high sugars content': 'Высокое содержание сахара',
+  'missing_critical_negative_field':
+      'Не хватает важных данных о пищевой ценности',
+  'partial_score_cap_applied':
+      'Применено ограничение от завышенной оценки',
+  'beverage_official_metadata_cap':
+      'Для напитка не хватает части данных',
+  'high sugar content.': 'Много сахара',
+  'high sugar content': 'Много сахара',
+  'high sugars content.': 'Много сахара',
+  'high sugars content': 'Много сахара',
   'low salt.': 'Низкое содержание соли',
   'low salt': 'Низкое содержание соли',
   'low saturated fat.': 'Низкое содержание насыщенных жиров',
   'low saturated fat': 'Низкое содержание насыщенных жиров',
-  'high saturated fat.': 'Высокое содержание насыщенных жиров',
-  'high saturated fat': 'Высокое содержание насыщенных жиров',
+  'high saturated fat.': 'Много насыщенных жиров',
+  'high saturated fat': 'Много насыщенных жиров',
   'insufficient data': 'Недостаточно данных',
   'insufficient_data': 'Недостаточно данных',
   'requires review': 'Требуется проверка',

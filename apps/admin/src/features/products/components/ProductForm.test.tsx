@@ -49,8 +49,16 @@ describe("ProductForm image upload", () => {
     });
 
     expect(validateProductImageFile(image)).toBe(
-      "Use JPEG, PNG, or WebP image.",
+      "Use JPEG, PNG, WebP, HEIC, HEIF, or AVIF image.",
     );
+  });
+
+  it("allows modern phone image formats for backend normalization", () => {
+    const heic = new File(["image"], "iphone.heic", { type: "image/heic" });
+    const avif = new File(["image"], "modern.avif", { type: "image/avif" });
+
+    expect(validateProductImageFile(heic)).toBe("");
+    expect(validateProductImageFile(avif)).toBe("");
   });
 
   it("renders official Nutri-Score controls and previews a calculated score", async () => {

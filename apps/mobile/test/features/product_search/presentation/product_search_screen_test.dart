@@ -71,6 +71,16 @@ class FakeSearchRepository implements ProductRepository {
 }
 
 void main() {
+  testWidgets('shows clean initial search state before typing', (tester) async {
+    final repository = FakeSearchRepository();
+    await _pumpSearch(tester, repository);
+
+    expect(find.text('Найдите продукт'), findsOneWidget);
+    expect(find.text('Введите название или бренд.'), findsOneWidget);
+    expect(find.text('Ничего не найдено.'), findsNothing);
+    expect(repository.searches, isEmpty);
+  });
+
   testWidgets('debounces search while typing', (tester) async {
     final repository = FakeSearchRepository();
     await _pumpSearch(tester, repository);
@@ -138,10 +148,15 @@ void main() {
 
   testWidgets('successful search updates result list', (tester) async {
     final repository = FakeSearchRepository();
+    final pending = Completer<List<Product>>();
+    repository.pendingSearches['cola'] = pending;
     await _pumpSearch(tester, repository);
 
     await tester.enterText(find.byType(TextField), 'cola');
     await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    pending.complete(repository.products);
     await tester.pumpAndSettle();
 
     expect(repository.searches, hasLength(1));
@@ -151,7 +166,7 @@ void main() {
     expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
   });
 
-  testWidgets('search result shows TazaScore instead of legacy score', (
+  testWidgets('search result shows TazaScore and category instead of legacy score', (
     tester,
   ) async {
     final repository = FakeSearchRepository(
@@ -174,8 +189,116 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
-    expect(find.text('TazaScore · 27/100'), findsOneWidget);
+    expect(find.text('TazaScore 27/100 · Низкий'), findsOneWidget);
     expect(find.textContaining('65/100'), findsNothing);
+  });
+
+  testWidgets('search result shows unavailable TazaScore without fake zero', (
+    tester,
+  ) async {
+    final repository = FakeSearchRepository();
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TazaScore · нет данных'), findsOneWidget);
+    expect(find.text('TazaScore 0/100 · Очень низкий'), findsNothing);
+  });
+
+  testWidgets('low-confidence result shows a compact incomplete-data hint', (
+    tester,
+  ) async {
+    final repository = FakeSearchRepository(
+      products: [
+        createTestProduct(
+          tazaScore: const TazaScorePreviewData(
+            status: TazaScorePreviewStatus.calculated,
+            score: 74,
+            confidence: TazaScoreConfidence.low,
+            nutritionCoverage: 0.31,
+            methodologyVersion: 'taza-score-v1.1',
+            ingredientAnalysisLabel: 'Информационный анализ',
+            processingLabel: 'Пока не учитывается в TazaScore',
+          ),
+        ),
+      ],
+    );
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TazaScore 74/100 · Хороший'), findsOneWidget);
+    expect(find.text('Неполные данные'), findsOneWidget);
+  });
+
+  testWidgets('missing brand does not render a blank secondary line', (
+    tester,
+  ) async {
+    final repository = FakeSearchRepository(
+      products: [
+        createTestProduct(
+          name: 'Plain Water',
+          brand: null,
+          category: null,
+          tazaScore: const TazaScorePreviewData(
+            status: TazaScorePreviewStatus.calculated,
+            score: 100,
+            confidence: TazaScoreConfidence.high,
+            methodologyVersion: 'taza-score-v1.1',
+            ingredientAnalysisLabel: 'Информационный анализ',
+            processingLabel: 'Пока не учитывается в TazaScore',
+          ),
+        ),
+      ],
+    );
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'water');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Plain Water'), findsOneWidget);
+    expect(find.text('TazaScore 100/100 · Отличный'), findsOneWidget);
+    expect(find.text('null'), findsNothing);
+  });
+
+  testWidgets('missing image uses product placeholder', (tester) async {
+    final repository = FakeSearchRepository();
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
+  });
+
+  testWidgets('long product name does not overflow', (tester) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repository = FakeSearchRepository(
+      products: [
+        createTestProduct(
+          name:
+              'Очень длинное название продукта с большим количеством слов и уточнений вкуса',
+          brand: 'Очень длинный бренд производителя',
+        ),
+      ],
+    );
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'длин');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('Очень длинное название'), findsOneWidget);
   });
 
   testWidgets('shows no results state', (tester) async {
@@ -216,14 +339,73 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
-    expect(find.text('Поиск не удался'), findsOneWidget);
-    expect(find.text('Нет подключения к интернету.'), findsOneWidget);
+    expect(find.text('Не удалось выполнить поиск'), findsOneWidget);
+    expect(
+      find.text('Проверьте подключение и попробуйте снова.'),
+      findsOneWidget,
+    );
 
     repository.error = null;
     await tester.tap(find.text('Повторить'));
     await tester.pumpAndSettle();
 
     expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+  });
+
+  testWidgets('shows timeout state separately', (tester) async {
+    final repository = FakeSearchRepository()
+      ..error = const RequestTimeoutException('timeout');
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Сервер долго отвечает'), findsOneWidget);
+    expect(find.text('Попробуйте снова.'), findsOneWidget);
+  });
+
+  testWidgets('clear search action resets results and query', (tester) async {
+    final repository = FakeSearchRepository();
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coca-Cola Original Taste'), findsNothing);
+    expect(find.text('Найдите продукт'), findsOneWidget);
+  });
+
+  testWidgets('canonical technical metadata is not displayed', (tester) async {
+    final repository = FakeSearchRepository(
+      products: [
+        createTestProduct(
+          scoreSource: 'canonical_recipe',
+          tazaScore: const TazaScorePreviewData(
+            status: TazaScorePreviewStatus.calculated,
+            score: 27,
+            confidence: TazaScoreConfidence.high,
+            methodologyVersion: 'taza-score-v1.1',
+            ingredientAnalysisLabel: 'Информационный анализ',
+            processingLabel: 'Пока не учитывается в TazaScore',
+          ),
+        ),
+      ],
+    );
+    await _pumpSearch(tester, repository);
+
+    await tester.enterText(find.byType(TextField), 'cola');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('canonical'), findsNothing);
+    expect(find.textContaining('canonical_recipe'), findsNothing);
   });
 
   testWidgets('opens existing product details screen', (tester) async {

@@ -73,6 +73,10 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
           if (!hasIngredients)
             _SecondaryText('Состав пока не указан.')
           else ...[
+            if (product.ingredientsIsTranslated) ...[
+              const _SecondaryText('Переведено автоматически'),
+              const SizedBox(height: 8),
+            ],
             Text(
               _ingredientSentence(visibleIngredients),
               style: Theme.of(

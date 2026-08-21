@@ -6,6 +6,8 @@ Product createTestProduct({
   String id = 'product-id',
   String barcode = '5449000000996',
   String name = 'Coca-Cola Original Taste',
+  String? brand = 'Coca-Cola',
+  String? category = 'Soft Drinks',
   String? imageUrl,
   Map<String, dynamic> nutritionFacts = const {
     'energyKcal': 42,
@@ -20,6 +22,10 @@ Product createTestProduct({
   List<String> ingredients = const ['Carbonated water', 'Sugar'],
   NutritionScore? nutritionScore,
   TazaScorePreviewData? tazaScore,
+  String dataStatus = 'verified',
+  String? source,
+  String scoreSource = 'product_record',
+  bool ingredientsIsTranslated = false,
 }) {
   final now = DateTime.parse('2026-08-01T00:00:00.000Z');
   final score =
@@ -41,14 +47,18 @@ Product createTestProduct({
     id: id,
     barcode: barcode,
     name: name,
-    brand: 'Coca-Cola',
-    category: 'Soft Drinks',
+    brand: brand,
+    category: category,
     imageUrl: imageUrl,
     ingredients: ingredients,
     nutritionFacts: nutritionFacts,
     healthScore: score.score ?? 0,
     nutritionScore: score,
     tazaScore: tazaScore,
+    dataStatus: dataStatus,
+    source: source,
+    scoreSource: scoreSource,
+    ingredientsIsTranslated: ingredientsIsTranslated,
     createdAt: now,
     updatedAt: now,
   );

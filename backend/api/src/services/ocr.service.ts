@@ -4,10 +4,10 @@ import { HttpError } from '../utils/http-error';
 const ocrTimeoutMs = 20000;
 
 export class OcrService {
-  async extractText(imageBuffer: Buffer): Promise<string> {
+  async extractText(imageBuffer: Buffer, languages = 'eng+rus'): Promise<string> {
     try {
       const result = await this.withTimeout(
-        recognize(imageBuffer, 'eng'),
+        recognize(imageBuffer, languages),
         ocrTimeoutMs
       );
 

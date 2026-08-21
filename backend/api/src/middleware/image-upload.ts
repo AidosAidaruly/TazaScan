@@ -1,8 +1,10 @@
 import type { RequestHandler } from 'express';
 import multer from 'multer';
+import {
+  acceptsImageMimeType,
+  normalizeImageBuffer
+} from '../services/image-normalization.service';
 import { HttpError } from '../utils/http-error';
-
-const supportedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -10,7 +12,7 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024
   },
   fileFilter: (_request, file, callback) => {
-    if (!supportedMimeTypes.has(file.mimetype)) {
+    if (!acceptsImageMimeType(file.mimetype)) {
       callback(new HttpError(415, 'Unsupported image format'));
       return;
     }
@@ -41,6 +43,19 @@ export const uploadProductImage: RequestHandler = (request, response, next) => {
       return;
     }
 
-    next();
+    if (!request.file) {
+      next();
+      return;
+    }
+
+    normalizeImageBuffer(request.file.buffer)
+      .then((image) => {
+        request.file!.buffer = image.buffer;
+        request.file!.mimetype = image.mimetype;
+        request.file!.size = image.size;
+        request.file!.filename = `${request.file!.filename ?? 'image'}${image.extension}`;
+        next();
+      })
+      .catch(next);
   });
 };

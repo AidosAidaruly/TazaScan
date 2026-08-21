@@ -62,6 +62,48 @@ Data confidence is returned separately as metadata. It does not add or subtract
 score points because a product is not nutritionally better or worse because its
 data is more complete.
 
+## Consumer presentation
+
+The mobile Product Details screen may show TazaScore as the primary consumer
+score, but it must not describe the value as a health percentage. Use neutral
+wording such as "food profile score" / "оценка пищевого профиля продукта".
+
+Recommended consumer bands:
+
+```text
+80-100 -> Отличный
+60-79  -> Хороший
+40-59  -> Средний
+20-39  -> Низкий
+0-19   -> Очень низкий
+```
+
+Nutri-Score A-E must remain visually separate from TazaScore. Confidence,
+coverage, missing-data notices, and safeguards should be shown as reliability
+metadata, not as part of the score itself. If TazaScore is unavailable, the UI
+must not display a fake `0/100`.
+
+### Search Result Presentation
+
+Product search cards should show product identity first: image, product name,
+and brand/category when available. The score line uses the resolved consumer
+TazaScore returned by the backend:
+
+```text
+TazaScore 27/100 · Низкий
+```
+
+If TazaScore is unavailable, search cards show:
+
+```text
+TazaScore · нет данных
+```
+
+Search cards must not expose raw scoring internals such as canonical ids,
+score source identifiers, coverage, safeguards, or methodology version.
+Low-confidence or partial-data products may show a short hint such as
+`Неполные данные`; detailed diagnostics belong on Product Details.
+
 ## Component weights
 
 ### 1. Nutritional quality: 90 points

@@ -16,6 +16,39 @@ This MVP flow lets a user submit a product when scanning a supported barcode tha
 
 Unknown nutrition values must stay unknown. They must not be converted to `0`.
 
+## OCR-Assisted Submission
+
+OCR is a helper inside the existing pending-submission flow:
+
+```text
+nutrition photo
+-> OCR
+-> parse candidate
+-> auto-fill editable fields
+-> user confirmation
+-> admin approval
+```
+
+```text
+ingredients photo
+-> OCR
+-> raw text candidate
+-> auto-fill editable ingredients text
+-> user confirmation
+-> admin approval
+```
+
+OCR candidates are not authoritative:
+
+- OCR does not create a `Product`.
+- OCR does not approve a submission.
+- OCR does not mark data as verified.
+- OCR missing values remain `null`/empty.
+- OCR explicit printed `0` may be kept as `0`.
+- Serving-only nutrition tables are not silently treated as per-100g/per-100ml values.
+- User-confirmed values are what the admin reviews.
+- TazaScore methodology is unchanged; scores are calculated only after admin-approved Product creation through the existing service path.
+
 ## Backend Submission Rules
 
 - A barcode that already exists in `Product` is rejected with `409` and `code: product_exists`.

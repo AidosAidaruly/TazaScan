@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/errors/app_exception.dart';
 import 'package:project/src/features/product_submission/domain/entities/product_submission_draft.dart';
+import 'package:project/src/features/product_submission/domain/entities/submission_ocr_candidate.dart';
 import 'package:project/src/features/product_submission/domain/repositories/product_submission_repository.dart';
 import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
 
@@ -16,6 +18,25 @@ class FakeSubmissionRepository implements ProductSubmissionRepository {
     if (error != null) {
       throw error;
     }
+  }
+
+  @override
+  Future<NutritionOcrCandidate> recognizeNutrition(XFile image) async {
+    return const NutritionOcrCandidate(
+      nutrition: {},
+      detectedBasis: 'unknown',
+      warnings: [],
+    );
+  }
+
+  @override
+  Future<IngredientsOcrCandidate> recognizeIngredients(XFile image) async {
+    return const IngredientsOcrCandidate(
+      value: null,
+      confidence: 'not_detected',
+      detectedLanguage: 'unknown',
+      warnings: [],
+    );
   }
 }
 

@@ -14,6 +14,9 @@ class Product {
     required this.updatedAt,
     this.tazaScore,
     this.dataStatus = 'unverified',
+    this.source,
+    this.scoreSource = 'product_record',
+    this.ingredientsIsTranslated = false,
     this.brand,
     this.category,
     this.imageUrl,
@@ -26,6 +29,9 @@ class Product {
   final String? category;
   final String? imageUrl;
   final String dataStatus;
+  final String? source;
+  final String scoreSource;
+  final bool ingredientsIsTranslated;
   final List<String> ingredients;
   final Map<String, dynamic> nutritionFacts;
   final int healthScore;

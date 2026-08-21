@@ -12,6 +12,10 @@ void main() {
       'ingredients': ['Carbonated water', 'Sugar'],
       'nutritionFacts': {'energyKcal': 42, 'sugarsG': 10.6},
       'healthScore': 65,
+      'dataStatus': 'community',
+      'source': 'Open Food Facts',
+      'scoreSource': 'canonical_recipe',
+      'ingredientsIsTranslated': true,
       'nutritionScore': {
         'score': 65,
         'grade': 'C',
@@ -66,6 +70,10 @@ void main() {
     expect(product.tazaScore?.score, 27);
     expect(product.tazaScore?.nutriScoreGrade, 'E');
     expect(product.tazaScore?.methodologyVersion, 'taza-score-v1');
+    expect(product.dataStatus, 'community');
+    expect(product.source, 'Open Food Facts');
+    expect(product.scoreSource, 'canonical_recipe');
+    expect(product.ingredientsIsTranslated, isTrue);
     expect(
       product.nutritionScore.negativeReasons,
       contains('High sugar content.'),

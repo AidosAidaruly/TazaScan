@@ -13,6 +13,7 @@ import 'package:project/src/features/product/domain/services/product_service.dar
 import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_disclaimer.dart';
+import 'package:project/src/features/product/presentation/widgets/product_data_reliability_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_hero_card.dart';
 import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
@@ -199,6 +200,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
             const SizedBox(height: 16),
             ProductInfoSection(product: _product),
+            const SizedBox(height: 16),
+            ProductDataReliabilitySection(product: _product),
             const SizedBox(height: 16),
             if (!widget.enableTazaScorePreview)
               ExpandableTechnicalDetails(

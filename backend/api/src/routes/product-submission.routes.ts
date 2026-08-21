@@ -1,5 +1,9 @@
 import { Router } from 'express';
 import {
+  recognizeSubmissionIngredients,
+  recognizeSubmissionNutrition
+} from '../controllers/product-submission-ocr.controller';
+import {
   approveProductSubmission,
   createProductSubmission,
   getProductSubmissionById,
@@ -10,6 +14,8 @@ import { getSubmissionUpload } from '../controllers/submission-upload.controller
 import { asyncHandler } from '../middleware/async-handler';
 import { authenticate } from '../middleware/authenticate';
 import { authorizeRole } from '../middleware/authorize-role';
+import { uploadProductImage } from '../middleware/image-upload';
+import { ocrRateLimit } from '../middleware/ocr-rate-limit';
 import { submissionRateLimit } from '../middleware/submission-rate-limit';
 import { uploadSubmissionImages } from '../middleware/submission-upload';
 import { validate } from '../middleware/validate';
@@ -20,6 +26,20 @@ import {
 } from '../schemas/product-submission.schema';
 
 export const productSubmissionRouter = Router();
+
+productSubmissionRouter.post(
+  '/ocr/nutrition',
+  ocrRateLimit,
+  uploadProductImage,
+  asyncHandler(recognizeSubmissionNutrition)
+);
+
+productSubmissionRouter.post(
+  '/ocr/ingredients',
+  ocrRateLimit,
+  uploadProductImage,
+  asyncHandler(recognizeSubmissionIngredients)
+);
 
 productSubmissionRouter.post(
   '/',

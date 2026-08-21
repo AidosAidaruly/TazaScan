@@ -164,8 +164,8 @@ class ProductScorePreviewModel {
       'HIGH_ENERGY' => 3,
       'CONTAINS_NON_SUGAR_SWEETENERS' || 'NON_SUGAR_SWEETENERS' => 4,
       'LOW_FAVORABLE_COMPONENTS' || 'LOW_FAVORABLE_NUTRITIONAL_COMPONENTS' => 5,
-      'HIGH_FIBER' => 20,
-      'HIGH_PROTEIN' => 21,
+      'HIGH_FIBER' || 'GOOD_FIBER' => 20,
+      'HIGH_PROTEIN' || 'GOOD_PROTEIN' => 21,
       'FRUIT_VEGETABLE_LEGUME_CONTENT' => 22,
       _ => 100,
     };

@@ -15,6 +15,9 @@ class ProductModel extends Product {
     required super.createdAt,
     required super.updatedAt,
     required super.dataStatus,
+    super.source,
+    super.scoreSource,
+    super.ingredientsIsTranslated,
     super.tazaScore,
     super.brand,
     super.category,
@@ -41,6 +44,9 @@ class ProductModel extends Product {
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       dataStatus: json['dataStatus'] as String? ?? 'unverified',
+      source: json['source'] as String?,
+      scoreSource: json['scoreSource'] as String? ?? 'product_record',
+      ingredientsIsTranslated: json['ingredientsIsTranslated'] as bool? ?? false,
     );
   }
 

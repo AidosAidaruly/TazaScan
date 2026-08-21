@@ -11,6 +11,7 @@ import 'package:project/src/features/product/presentation/screens/product_detail
 import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
 import 'package:project/src/features/product/presentation/widgets/ingredient_explanation_row.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
+import 'package:project/src/features/product/presentation/widgets/product_data_reliability_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_info_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_nutrition_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_score_summary_card.dart';
@@ -569,6 +570,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(IngredientExplanationRow), findsNWidgets(5));
+  });
+
+  testWidgets('shows automatic translation note for ingredients', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductInfoSection(
+        product: createTestProduct(ingredientsIsTranslated: true),
+      ),
+    );
+
+    expect(find.text('Переведено автоматически'), findsOneWidget);
+  });
+
+  testWidgets('shows product data source and status without canonical ids', (
+    tester,
+  ) async {
+    await _pumpSection(
+      tester,
+      ProductDataReliabilitySection(
+        product: createTestProduct(
+          dataStatus: 'community',
+          source: 'Open Food Facts',
+          scoreSource: 'canonical_recipe',
+        ),
+      ),
+    );
+
+    expect(find.text('Данные продукта'), findsOneWidget);
+    expect(find.text('Open Food Facts'), findsOneWidget);
+    expect(find.text('Данные сообщества'), findsOneWidget);
+    expect(find.textContaining('подтверждённой рецептуре'), findsOneWidget);
+    expect(find.textContaining('canonical'), findsNothing);
   });
 
   testWidgets('barcode is not displayed inside ingredients section', (

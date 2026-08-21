@@ -60,6 +60,16 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
       throw const ServerException('Сервер недоступен. Попробуй позже.');
     }
 
+    if (statusCode == 413) {
+      throw const ServerException('Фото слишком большое.');
+    }
+
+    if (statusCode == 415) {
+      throw const ServerException(
+        'Не удалось открыть изображение. Попробуйте выбрать другое фото.',
+      );
+    }
+
     if (statusCode < 200 || statusCode >= 300) {
       throw ServerException(_readErrorMessage(json));
     }

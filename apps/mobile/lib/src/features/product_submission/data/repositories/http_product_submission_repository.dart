@@ -3,15 +3,40 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/config/api_config.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/features/product_submission/data/models/submission_ocr_candidate_model.dart';
 import 'package:project/src/features/product_submission/domain/entities/product_submission_draft.dart';
+import 'package:project/src/features/product_submission/domain/entities/submission_ocr_candidate.dart';
 import 'package:project/src/features/product_submission/domain/repositories/product_submission_repository.dart';
 
 class HttpProductSubmissionRepository implements ProductSubmissionRepository {
   const HttpProductSubmissionRepository([this._httpClient]);
 
   final http.Client? _httpClient;
+
+  @override
+  Future<NutritionOcrCandidate> recognizeNutrition(XFile image) async {
+    final json = await _uploadImageForJson(
+      '/product-submissions/ocr/nutrition',
+      image,
+      timeout: const Duration(seconds: 30),
+    );
+
+    return NutritionOcrCandidateModel.fromJson(json);
+  }
+
+  @override
+  Future<IngredientsOcrCandidate> recognizeIngredients(XFile image) async {
+    final json = await _uploadImageForJson(
+      '/product-submissions/ocr/ingredients',
+      image,
+      timeout: const Duration(seconds: 30),
+    );
+
+    return IngredientsOcrCandidateModel.fromJson(json);
+  }
 
   @override
   Future<void> submit(ProductSubmissionDraft draft) async {
@@ -44,6 +69,44 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       rethrow;
     } catch (_) {
       throw const UnknownAppException('Не удалось отправить продукт.');
+    } finally {
+      if (_httpClient == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _uploadImageForJson(
+    String path,
+    XFile image, {
+    required Duration timeout,
+  }) async {
+    final client = _httpClient ?? http.Client();
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}$path'),
+      );
+      request.headers[HttpHeaders.acceptHeader] = 'application/json';
+      request.files.add(await http.MultipartFile.fromPath('image', image.path));
+
+      final response = await client.send(request).timeout(timeout);
+      final body = await response.stream.bytesToString();
+
+      return _handleJsonResponse(response.statusCode, body);
+    } on TimeoutException {
+      throw const RequestTimeoutException(
+        'Распознавание заняло слишком много времени. Можно заполнить поля вручную или попробовать другое фото.',
+      );
+    } on SocketException {
+      throw const NetworkException('Нет подключения к интернету.');
+    } on AppException {
+      rethrow;
+    } catch (_) {
+      throw const UnknownAppException(
+        'Не удалось распознать данные. Можно заполнить поля вручную или сделать другое фото.',
+      );
     } finally {
       if (_httpClient == null) {
         client.close();
@@ -94,6 +157,10 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
   }
 
   void _handleResponse(int statusCode, String body) {
+    _handleJsonResponse(statusCode, body);
+  }
+
+  Map<String, dynamic> _handleJsonResponse(int statusCode, String body) {
     final json = body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(body) as Map<String, dynamic>;
@@ -102,9 +169,21 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       throw const ServerException('Сервер недоступен. Попробуй позже.');
     }
 
+    if (statusCode == 413) {
+      throw const ServerException('Фото слишком большое.');
+    }
+
+    if (statusCode == 415) {
+      throw const ServerException(
+        'Не удалось открыть изображение. Попробуй выбрать другое фото.',
+      );
+    }
+
     if (statusCode < 200 || statusCode >= 300) {
       throw ServerException(_readErrorMessage(json));
     }
+
+    return json;
   }
 
   String _readErrorMessage(Map<String, dynamic> json) {

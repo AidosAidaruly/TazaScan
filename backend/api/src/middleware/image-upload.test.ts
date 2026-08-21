@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import sharp from 'sharp';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { env } from '../config/env';
@@ -62,22 +63,24 @@ const adminUser: AuthUser = {
 
 describe('product image upload middleware', () => {
   it('allows authenticated admin to upload a product image', async () => {
+    const image = await createImage('png');
     const response = await request(createTestApp(adminUser))
       .post('/products/11111111-1111-4111-8111-111111111111/image')
       .set('Authorization', `Bearer ${signToken()}`)
-      .attach('image', Buffer.from('image-bytes'), {
+      .attach('image', image, {
         filename: 'coca-cola.png',
         contentType: 'image/png'
       });
 
     expect(response.status).toBe(200);
-    expect(response.body.data.mimetype).toBe('image/png');
+    expect(response.body.data.mimetype).toBe('image/jpeg');
   });
 
   it('rejects unauthenticated upload', async () => {
+    const image = await createImage('png');
     const response = await request(createTestApp())
       .post('/products/11111111-1111-4111-8111-111111111111/image')
-      .attach('image', Buffer.from('image-bytes'), {
+      .attach('image', image, {
         filename: 'coca-cola.png',
         contentType: 'image/png'
       });
@@ -86,12 +89,13 @@ describe('product image upload middleware', () => {
   });
 
   it('rejects non-admin upload', async () => {
+    const image = await createImage('png');
     const response = await request(
       createTestApp({ ...adminUser, role: 'user' })
     )
       .post('/products/11111111-1111-4111-8111-111111111111/image')
       .set('Authorization', `Bearer ${signToken({ sub: 'user-id', role: 'user' })}`)
-      .attach('image', Buffer.from('image-bytes'), {
+      .attach('image', image, {
         filename: 'coca-cola.png',
         contentType: 'image/png'
       });
@@ -111,6 +115,65 @@ describe('product image upload middleware', () => {
     expect(response.status).toBe(415);
   });
 
+  it('rejects a fake jpg with invalid image content', async () => {
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', Buffer.from('not-an-image'), {
+        filename: 'photo.JPG',
+        contentType: 'image/jpeg'
+      });
+
+    expect(response.status).toBe(415);
+    expect(response.body.error.message).toBe('Unreadable image');
+  });
+
+  it('accepts uppercase extensions when the image content is valid', async () => {
+    const image = await createImage('jpeg');
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', image, {
+        filename: 'PHOTO.JPG',
+        contentType: 'image/jpeg'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.mimetype).toBe('image/jpeg');
+  });
+
+  it('accepts WebP and normalizes it to JPEG', async () => {
+    const image = await createImage('webp');
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', image, {
+        filename: 'front.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.mimetype).toBe('image/jpeg');
+  });
+
+  it('accepts AVIF when the runtime decoder supports it', async () => {
+    const image = await createOptionalImage('avif');
+    if (!image) {
+      return;
+    }
+
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', image, {
+        filename: 'front.avif',
+        contentType: 'image/avif'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.mimetype).toBe('image/jpeg');
+  });
+
   it('rejects oversized images', async () => {
     const response = await request(createTestApp(adminUser))
       .post('/products/11111111-1111-4111-8111-111111111111/image')
@@ -124,14 +187,15 @@ describe('product image upload middleware', () => {
   });
 
   it('rejects multiple files', async () => {
+    const image = await createImage('png');
     const response = await request(createTestApp(adminUser))
       .post('/products/11111111-1111-4111-8111-111111111111/image')
       .set('Authorization', `Bearer ${signToken()}`)
-      .attach('image', Buffer.from('one'), {
+      .attach('image', image, {
         filename: 'one.png',
         contentType: 'image/png'
       })
-      .attach('image', Buffer.from('two'), {
+      .attach('image', image, {
         filename: 'two.png',
         contentType: 'image/png'
       });
@@ -148,3 +212,24 @@ describe('product image upload middleware', () => {
     expect(response.body.data.imageUrl).toBeNull();
   });
 });
+
+async function createImage(format: 'jpeg' | 'png' | 'webp' | 'avif') {
+  return sharp({
+    create: {
+      width: 24,
+      height: 16,
+      channels: 3,
+      background: '#1677ff'
+    }
+  })
+    .toFormat(format)
+    .toBuffer();
+}
+
+async function createOptionalImage(format: 'avif') {
+  try {
+    return await createImage(format);
+  } catch {
+    return null;
+  }
+}
