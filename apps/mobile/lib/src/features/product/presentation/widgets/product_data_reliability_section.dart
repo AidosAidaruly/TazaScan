@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class ProductDataReliabilitySection extends StatelessWidget {
   const ProductDataReliabilitySection({required this.product, super.key});
@@ -17,16 +19,19 @@ class ProductDataReliabilitySection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Данные продукта',
+            context.t.pick(ru: 'Данные продукта', kk: 'Өнім деректері'),
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: 'Источник данных', value: _sourceLabel(product)),
           _InfoRow(
-            label: 'Статус данных',
-            value: _dataStatusLabel(product.dataStatus),
+            label: context.t.pick(ru: 'Источник данных', kk: 'Дереккөз'),
+            value: _sourceLabel(context, product),
+          ),
+          _InfoRow(
+            label: context.t.pick(ru: 'Статус данных', kk: 'Деректер мәртебесі'),
+            value: _dataStatusLabel(context, product.dataStatus),
           ),
           if (product.scoreSource == 'canonical_recipe') ...[
             const SizedBox(height: 8),
@@ -41,7 +46,12 @@ class ProductDataReliabilitySection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Оценка основана на подтверждённой рецептуре этого продукта.',
+                    context.t.pick(
+                      ru:
+                          'Оценка основана на подтверждённой рецептуре этого продукта.',
+                      kk:
+                          'Баға осы өнімнің расталған рецептурасына негізделген.',
+                    ),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -57,7 +67,7 @@ class ProductDataReliabilitySection extends StatelessWidget {
     );
   }
 
-  String _sourceLabel(Product product) {
+  String _sourceLabel(BuildContext context, Product product) {
     final source = product.source?.trim();
     if (source == null || source.isEmpty) {
       return 'TazaScan';
@@ -65,19 +75,20 @@ class ProductDataReliabilitySection extends StatelessWidget {
 
     return switch (source.toLowerCase()) {
       'open food facts' => 'Open Food Facts',
-      'user_submission' => 'Заявка пользователя',
+      'user_submission' => context.t.pick(
+          ru: 'Заявка пользователя',
+          kk: 'Пайдаланушы өтінімі',
+        ),
       'manual' || 'tazascan' => 'TazaScan',
       _ => source,
     };
   }
 
-  String _dataStatusLabel(String status) {
-    return switch (status.trim().toLowerCase()) {
-      'verified' => 'Проверено',
-      'community' => 'Данные сообщества',
-      'unverified' => 'Требуется проверка',
-      _ => 'Требуется проверка',
-    };
+  String _dataStatusLabel(BuildContext context, String status) {
+    return ProductPresentationLocalization.dataStatus(
+      status,
+      locale: context.tazaLocaleController.locale,
+    );
   }
 }
 

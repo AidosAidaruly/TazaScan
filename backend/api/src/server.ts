@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { prisma } from './prisma/client';
+import { fileStorage } from './storage/storage-provider';
 
 const app = createApp();
 
@@ -9,7 +10,8 @@ const server = app.listen(env.PORT, () => {
     level: 'info',
     event: 'startup',
     service: 'tazascan-api',
-    port: env.PORT
+    port: env.PORT,
+    storageDriver: fileStorage.driver
   }));
 });
 

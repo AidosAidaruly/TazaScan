@@ -5,8 +5,9 @@ import { useAuth } from "../../../core/auth/use-auth";
 import { ApiError, type FieldErrors } from "../../../core/errors/api-error";
 import { PageLoader } from "../../../shared/components/PageLoader";
 import { ProductsApi } from "../api/products-api";
+import { HalalCertificationSection } from "../components/HalalCertificationSection";
 import { ProductForm } from "../components/ProductForm";
-import type { ProductPayload } from "../types";
+import type { HalalCertificationPayload, ProductDto, ProductPayload } from "../types";
 import {
   productToFormValues,
   type ProductFormValues,
@@ -21,11 +22,13 @@ export function EditProductPage() {
   const [initialValues, setInitialValues] = useState<ProductFormValues | null>(
     null,
   );
+  const [product, setProduct] = useState<ProductDto | null>(null);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageRemoving, setIsImageRemoving] = useState(false);
+  const [isHalalSaving, setIsHalalSaving] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,6 +42,7 @@ export function EditProductPage() {
         const response = await productsApi.findById(id);
 
         if (isMounted) {
+          setProduct(response.data);
           setInitialValues(productToFormValues(response.data));
         }
       } catch (loadError) {
@@ -62,6 +66,16 @@ export function EditProductPage() {
       isMounted = false;
     };
   }, [id]);
+
+  async function refreshProduct() {
+    if (!id) {
+      return;
+    }
+
+    const response = await productsApi.findById(id);
+    setProduct(response.data);
+    setInitialValues(productToFormValues(response.data));
+  }
 
   async function handleSubmit(payload: ProductPayload, imageFile: File | null) {
     if (!id || !token || isSubmitting) {
@@ -113,6 +127,7 @@ export function EditProductPage() {
 
     try {
       const response = await productsApi.removeImage(id, token);
+      setProduct(response.data);
       setInitialValues(productToFormValues(response.data));
     } catch (removeError) {
       if (removeError instanceof ApiError && removeError.statusCode === 401) {
@@ -152,6 +167,56 @@ export function EditProductPage() {
     return response.data;
   }
 
+  async function handleSaveHalalCertification(
+    payload: HalalCertificationPayload,
+  ) {
+    if (!id || !token || isHalalSaving) {
+      return;
+    }
+
+    setIsHalalSaving(true);
+    setError("");
+
+    try {
+      await productsApi.updateHalalCertification(id, payload, token);
+      await refreshProduct();
+    } catch (saveError) {
+      if (saveError instanceof ApiError && saveError.statusCode === 401) {
+        logout();
+        history.replace("/login");
+        return;
+      }
+
+      throw saveError;
+    } finally {
+      setIsHalalSaving(false);
+    }
+  }
+
+  async function handleClearHalalCertification() {
+    if (!id || !token || isHalalSaving) {
+      return;
+    }
+
+    setIsHalalSaving(true);
+    setError("");
+
+    try {
+      await productsApi.clearHalalCertification(id, token);
+      await refreshProduct();
+    } catch (clearError) {
+      if (clearError instanceof ApiError && clearError.statusCode === 401) {
+        logout();
+        history.replace("/login");
+        return;
+      }
+
+      throw clearError;
+    } finally {
+      setIsHalalSaving(false);
+    }
+  }
+
   if (isLoading) {
     return <PageLoader label="Loading product..." />;
   }
@@ -166,17 +231,28 @@ export function EditProductPage() {
       </div>
       {error ? <div className="alert error">{error}</div> : null}
       {initialValues ? (
-        <ProductForm
-          initialValues={initialValues}
-          submitLabel="Save changes"
-          isSubmitting={isSubmitting}
-          isImageRemoving={isImageRemoving}
-          fieldErrors={fieldErrors}
-          onSubmit={handleSubmit}
-          onPreviewOfficialNutriScore={handlePreviewOfficialNutriScore}
-          onPreviewTazaScore={handlePreviewTazaScore}
-          onRemoveImage={handleRemoveImage}
-        />
+        <>
+          {product ? (
+            <HalalCertificationSection
+              halalCheck={product.halalCheck}
+              isEditable
+              isSaving={isHalalSaving}
+              onSave={handleSaveHalalCertification}
+              onClear={handleClearHalalCertification}
+            />
+          ) : null}
+          <ProductForm
+            initialValues={initialValues}
+            submitLabel="Save changes"
+            isSubmitting={isSubmitting}
+            isImageRemoving={isImageRemoving}
+            fieldErrors={fieldErrors}
+            onSubmit={handleSubmit}
+            onPreviewOfficialNutriScore={handlePreviewOfficialNutriScore}
+            onPreviewTazaScore={handlePreviewTazaScore}
+            onRemoveImage={handleRemoveImage}
+          />
+        </>
       ) : null}
     </section>
   );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
@@ -25,20 +26,43 @@ class ExpandableTechnicalDetails extends StatelessWidget {
       collapsedBackgroundColor: Theme.of(
         context,
       ).colorScheme.surfaceContainerHighest,
-      title: const Text(
-        'Как рассчитана оценка',
-        style: TextStyle(fontWeight: FontWeight.w900),
+      title: Text(
+        context.t.pick(
+          ru: 'Как рассчитана оценка',
+          kk: 'Баға қалай есептелді',
+        ),
+        style: const TextStyle(fontWeight: FontWeight.w900),
       ),
       children: [
-        _TechRow(label: 'Алгоритм', value: score.algorithm),
-        _TechRow(label: 'Версия', value: score.algorithmVersion),
-        _TechRow(label: 'Дата расчёта', value: _formatDate(score.calculatedAt)),
-        _TechRow(label: 'Статус', value: _statusLabel(score.status)),
+        _TechRow(
+          label: context.t.pick(ru: 'Алгоритм', kk: 'Алгоритм'),
+          value: score.algorithm,
+        ),
+        _TechRow(
+          label: context.t.pick(ru: 'Версия', kk: 'Нұсқа'),
+          value: score.algorithmVersion,
+        ),
+        _TechRow(
+          label: context.t.pick(ru: 'Дата расчёта', kk: 'Есептеу күні'),
+          value: _formatDate(score.calculatedAt),
+        ),
+        _TechRow(
+          label: context.t.pick(ru: 'Статус', kk: 'Мәртебе'),
+          value: _statusLabel(context, score.status),
+        ),
         if (barcode != null && barcode!.trim().isNotEmpty)
-          _TechRow(label: 'Штрихкод', value: barcode!),
+          _TechRow(
+            label: context.t.pick(ru: 'Штрихкод', kk: 'Штрихкод'),
+            value: barcode!,
+          ),
         const SizedBox(height: 10),
         Text(
-          'Расчёт основан на доступных данных продукта и может измениться после проверки информации.',
+          context.t.pick(
+            ru:
+                'Расчёт основан на доступных данных продукта и может измениться после проверки информации.',
+            kk:
+                'Есеп қолжетімді өнім деректеріне негізделген және ақпарат тексерілгеннен кейін өзгеруі мүмкін.',
+          ),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -52,12 +76,15 @@ class ExpandableTechnicalDetails extends StatelessWidget {
         '${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
-  static String _statusLabel(String status) {
+  static String _statusLabel(BuildContext context, String status) {
     if (status == 'offline_cached') {
-      return 'Сохранённые данные';
+      return context.t.pick(ru: 'Сохранённые данные', kk: 'Сақталған деректер');
     }
 
-    return ProductPresentationLocalization.dataStatus(status);
+    return ProductPresentationLocalization.dataStatus(
+      status,
+      locale: context.tazaLocaleController.locale,
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/core/constants/app_constants.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/tazascan_logo.dart';
 
 class HomeHeader extends StatelessWidget {
@@ -26,7 +27,7 @@ class HomeHeader extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Знай, что внутри.',
+            context.t.knowWhatsInside,
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
               height: 1.35,

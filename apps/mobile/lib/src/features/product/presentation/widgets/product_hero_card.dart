@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/network/asset_url_resolver.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
@@ -24,6 +25,7 @@ class ProductHeroCard extends StatelessWidget {
     final gradeColor = ProductGradeColors.colorFor(
       product.nutritionScore.grade,
     );
+    final locale = context.tazaLocaleController.locale;
 
     return TazaSurfaceCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -82,7 +84,10 @@ class ProductHeroCard extends StatelessWidget {
           Text(
             [
               product.brand,
-              ProductPresentationLocalization.category(product.category),
+              ProductPresentationLocalization.category(
+                product.category,
+                locale: locale,
+              ),
             ].where((value) => value != null && value.isNotEmpty).join(' • '),
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
@@ -94,11 +99,14 @@ class ProductHeroCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               _Badge(
-                label: 'Оценка ${product.nutritionScore.grade ?? 'нет'}',
+                label: context.t.pick(
+                  ru: 'Оценка ${product.nutritionScore.grade ?? 'нет'}',
+                  kk: 'Баға ${product.nutritionScore.grade ?? 'жоқ'}',
+                ),
                 color: gradeColor,
               ),
               _Badge(
-                label: _dataStatusLabel(product.dataStatus),
+                label: _dataStatusLabel(context, product.dataStatus),
                 color: _dataStatusColor(product.dataStatus),
               ),
             ],
@@ -108,8 +116,11 @@ class ProductHeroCard extends StatelessWidget {
     );
   }
 
-  String _dataStatusLabel(String status) {
-    return ProductPresentationLocalization.dataStatus(status);
+  String _dataStatusLabel(BuildContext context, String status) {
+    return ProductPresentationLocalization.dataStatus(
+      status,
+      locale: context.tazaLocaleController.locale,
+    );
   }
 
   Color _dataStatusColor(String status) {

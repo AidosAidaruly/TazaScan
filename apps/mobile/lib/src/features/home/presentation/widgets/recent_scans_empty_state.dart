@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/taza_empty_state.dart';
 
 class RecentScansEmptyState extends StatelessWidget {
@@ -6,10 +7,12 @@ class RecentScansEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TazaEmptyState(
+    final t = context.t;
+
+    return TazaEmptyState(
       icon: Icons.history_rounded,
-      title: 'Пока нет сканов',
-      message: 'Когда ты отсканируешь продукты, они появятся здесь.',
+      title: t.noScansYet,
+      message: t.scansWillAppearHere,
     );
   }
 }

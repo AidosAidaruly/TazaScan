@@ -33,8 +33,14 @@ class ProductScorePreviewModel {
         confidence: _confidence(confidenceJson['level']),
         reasonLabels: _consumerReasonLabels(tazaScoreJson),
         technicalReasonLabels: _technicalReasonLabels(tazaScoreJson),
+        reasonCodes: _consumerReasonCodes(tazaScoreJson),
+        technicalReasonCodes: _technicalReasonCodes(tazaScoreJson),
         missingFields: _localizedFields(tazaScoreJson['missingFields']),
         missingCriticalFields: _localizedFields(
+          tazaScoreJson['missingCriticalFields'],
+        ),
+        missingFieldKeys: _stringList(tazaScoreJson['missingFields']),
+        missingCriticalFieldKeys: _stringList(
           tazaScoreJson['missingCriticalFields'],
         ),
         nutritionCoverage: _readDouble(tazaScoreJson['nutritionCoverage']),
@@ -143,6 +149,39 @@ class ProductScorePreviewModel {
     return labels;
   }
 
+  static List<String> _consumerReasonCodes(Map<String, dynamic> tazaScoreJson) {
+    final values = [
+      ..._sortConsumerCodes(
+        _stringList(tazaScoreJson['reasonCodes']).where(_isConsumerReasonCode),
+      ),
+      ..._stringList(
+        tazaScoreJson['negativeReasons'],
+      ).where(_isSpecificReadableReason),
+      ..._stringList(tazaScoreJson['warnings']).where(_isSpecificReadableReason),
+      ..._stringList(
+        tazaScoreJson['positiveReasons'],
+      ).where(_isSpecificReadableReason),
+    ];
+
+    return _unique(values).take(3).toList();
+  }
+
+  static List<String> _technicalReasonCodes(Map<String, dynamic> tazaScoreJson) {
+    final values = [
+      ..._stringList(
+        tazaScoreJson['reasonCodes'],
+      ).where((value) => !_isConsumerReasonCode(value)),
+      ..._stringList(
+        tazaScoreJson['negativeReasons'],
+      ).where((value) => !_isSpecificReadableReason(value)),
+      ..._stringList(
+        tazaScoreJson['warnings'],
+      ).where((value) => !_isSpecificReadableReason(value)),
+    ];
+
+    return _unique(values);
+  }
+
   static List<String> _sortConsumerCodes(Iterable<String> codes) {
     final values = codes.toList();
     values.sort(
@@ -186,6 +225,16 @@ class ProductScorePreviewModel {
     return _stringList(
       value,
     ).map(ProductPresentationLocalization.missingField).toList();
+  }
+
+  static List<String> _unique(Iterable<String> values) {
+    final result = <String>[];
+    for (final value in values) {
+      if (!result.contains(value)) {
+        result.add(value);
+      }
+    }
+    return result;
   }
 
   static List<String> _stringList(Object? value) {

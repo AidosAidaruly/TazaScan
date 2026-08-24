@@ -250,6 +250,60 @@ describe("ProductsApi", () => {
     expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
   });
 
+  it("updates halal certification with bearer token", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        await createMockResponse({
+          data: { id: "product-id" },
+        }),
+      );
+
+    await api().updateHalalCertification(
+      "product-id",
+      {
+        status: "verified",
+        issuer: "Trusted halal body",
+        certificateNumber: "HAL-123",
+        validUntil: "2027-01-01T00:00:00.000Z",
+        source: "Admin-reviewed certificate",
+        evidenceUrl: "https://example.com/cert/HAL-123",
+        verifiedAt: "2026-08-23T00:00:00.000Z",
+      },
+      "token",
+    );
+
+    const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/products/product-id/halal-certification",
+    );
+    expect(init.method).toBe("PUT");
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      status: "verified",
+      issuer: "Trusted halal body",
+    });
+  });
+
+  it("clears halal certification with bearer token", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        await createMockResponse({
+          data: { id: "product-id" },
+        }),
+      );
+
+    await api().clearHalalCertification("product-id", "token");
+
+    const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/products/product-id/halal-certification",
+    );
+    expect(init.method).toBe("DELETE");
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer token");
+  });
+
   it("surfaces duplicate barcode errors", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       await createMockResponse(

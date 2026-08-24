@@ -1,12 +1,7 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import type { FileStorage, StoredFile } from '../storage/file-storage';
+import { fileStorage, getLocalFileStorage } from '../storage/storage-provider';
 import { HttpError } from '../utils/http-error';
 
-const uploadRoot = path.resolve(process.cwd(), 'uploads', 'products');
-const publicUploadPath = '/uploads/products';
-
-// MVP local storage. Production should move product images to persistent object storage.
 const mimeExtensions = new Map([
   ['image/jpeg', 'jpg'],
   ['image/png', 'png'],
@@ -15,74 +10,54 @@ const mimeExtensions = new Map([
 
 export type StoredProductImage = {
   imageUrl: string;
-  absolutePath: string;
+  key: string;
+  contentType: string;
+  size: number;
 };
 
 export async function ensureProductImageUploadDirectory() {
-  await fs.mkdir(uploadRoot, { recursive: true });
+  await getLocalFileStorage().ensureDirectories();
 }
 
 export class ProductImageStorageService {
+  constructor(private readonly storage: FileStorage = fileStorage) {}
+
   async store(file: Express.Multer.File | undefined): Promise<StoredProductImage> {
     if (!file || file.size === 0 || file.buffer.length === 0) {
       throw new HttpError(400, 'Product image is required');
     }
 
-    const extension = mimeExtensions.get(file.mimetype);
-
-    if (!extension) {
+    if (!mimeExtensions.has(file.mimetype)) {
       throw new HttpError(415, 'Unsupported image format');
     }
 
-    await ensureProductImageUploadDirectory();
+    const storedFile = await this.storage.save({
+      scope: 'products',
+      buffer: file.buffer,
+      contentType: file.mimetype
+    });
 
-    const filename = `${randomUUID()}.${extension}`;
-    const tempPath = path.join(uploadRoot, `${filename}.tmp`);
-    const absolutePath = path.join(uploadRoot, filename);
+    return this.toStoredProductImage(storedFile);
+  }
 
-    try {
-      await fs.writeFile(tempPath, file.buffer, { flag: 'wx' });
-      await fs.rename(tempPath, absolutePath);
-    } catch (error) {
-      await this.deletePath(tempPath);
-      throw error;
-    }
-
-    return {
-      imageUrl: `${publicUploadPath}/${filename}`,
-      absolutePath
-    };
+  async deleteImage(imageUrl: string | null | undefined) {
+    await this.storage.deleteByUrl(imageUrl);
   }
 
   async deleteLocalImage(imageUrl: string | null | undefined) {
-    const absolutePath = this.toLocalPath(imageUrl);
-
-    if (!absolutePath) {
-      return;
-    }
-
-    await this.deletePath(absolutePath);
+    await this.deleteImage(imageUrl);
   }
 
   isLocalProductImage(imageUrl: string | null | undefined) {
-    return this.toLocalPath(imageUrl) !== null;
+    return getLocalFileStorage().resolveLocalPathFromUrl(imageUrl) !== null;
   }
 
-  private toLocalPath(imageUrl: string | null | undefined) {
-    if (!imageUrl || !imageUrl.startsWith(`${publicUploadPath}/`)) {
-      return null;
-    }
-
-    const filename = path.basename(imageUrl);
-
-    if (filename !== imageUrl.slice(`${publicUploadPath}/`.length)) {
-      return null;
-    }
-
-    return path.join(uploadRoot, filename);
-  }
-
-  private async deletePath(absolutePath: string) {
-    await fs.rm(absolutePath, { force: true });
+  private toStoredProductImage(storedFile: StoredFile): StoredProductImage {
+    return {
+      imageUrl: storedFile.url,
+      key: storedFile.key,
+      contentType: storedFile.contentType,
+      size: storedFile.size
+    };
   }
 }

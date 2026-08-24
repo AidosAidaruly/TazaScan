@@ -42,6 +42,22 @@ function createTestApp(user?: AuthUser) {
     }
   );
   app.put(
+    '/products/:id/halal-certification',
+    createAuthenticate(authService, new TokenService()),
+    authorizeRole('admin'),
+    (request, response) => {
+      response.status(200).json({ data: { id: request.params.id } });
+    }
+  );
+  app.delete(
+    '/products/:id/halal-certification',
+    createAuthenticate(authService, new TokenService()),
+    authorizeRole('admin'),
+    (request, response) => {
+      response.status(200).json({ data: { id: request.params.id } });
+    }
+  );
+  app.put(
     '/products/:id',
     createAuthenticate(authService, new TokenService()),
     authorizeRole('admin'),
@@ -165,6 +181,35 @@ describe('authentication middleware', () => {
 
     expect(updateResponse.status).toBe(401);
     expect(deleteResponse.status).toBe(401);
+  });
+
+  it('keeps halal certification writes admin-only', async () => {
+    const unauthenticated = await request(createTestApp())
+      .put('/products/product-id/halal-certification')
+      .send({});
+    const ordinaryUser = await request(
+      createTestApp({
+        id: 'user-id',
+        email: 'user@example.com',
+        role: 'user'
+      })
+    )
+      .delete('/products/product-id/halal-certification')
+      .set('Authorization', `Bearer ${signToken({ sub: 'user-id', role: 'user' })}`);
+    const admin = await request(
+      createTestApp({
+        id: 'user-id',
+        email: 'admin@example.com',
+        role: 'admin'
+      })
+    )
+      .put('/products/product-id/halal-certification')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .send({});
+
+    expect(unauthenticated.status).toBe(401);
+    expect(ordinaryUser.status).toBe(403);
+    expect(admin.status).toBe(200);
   });
 
   it('keeps public product GET endpoints available', async () => {

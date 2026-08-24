@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  clearProductHalalCertification,
   createProduct,
   deleteProduct,
   getProductByBarcode,
@@ -8,6 +9,7 @@ import {
   previewProductScore,
   previewOfficialNutriScore,
   previewTazaScore,
+  replaceProductHalalCertification,
   removeProductImage,
   uploadProductImage as uploadProductImageController,
   updateProduct
@@ -21,6 +23,7 @@ import { ocrRateLimit } from '../middleware/ocr-rate-limit';
 import { validate } from '../middleware/validate';
 import {
   barcodeParamsSchema,
+  halalCertificationBodySchema,
   listProductsQuerySchema,
   officialNutriScorePreviewBodySchema,
   productBodySchema,
@@ -101,6 +104,23 @@ productRouter.delete(
   authorizeRole('admin'),
   validate(productIdParamsSchema, 'params'),
   asyncHandler(removeProductImage)
+);
+
+productRouter.put(
+  '/:id/halal-certification',
+  authenticate,
+  authorizeRole('admin'),
+  validate(productIdParamsSchema, 'params'),
+  validate(halalCertificationBodySchema),
+  asyncHandler(replaceProductHalalCertification)
+);
+
+productRouter.delete(
+  '/:id/halal-certification',
+  authenticate,
+  authorizeRole('admin'),
+  validate(productIdParamsSchema, 'params'),
+  asyncHandler(clearProductHalalCertification)
 );
 
 productRouter.put(

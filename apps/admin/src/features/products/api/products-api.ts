@@ -2,6 +2,7 @@ import { ApiClient } from "../../../core/api/api-client";
 import type {
   ProductListResponse,
   ProductPayload,
+  HalalCertificationPayload,
   OfficialNutriScorePreviewResponse,
   ProductResponse,
   TazaScorePreviewResponse,
@@ -104,5 +105,30 @@ export class ProductsApi {
       method: "DELETE",
       token,
     });
+  }
+
+  updateHalalCertification(
+    id: string,
+    payload: HalalCertificationPayload,
+    token: string,
+  ) {
+    return this.apiClient.request<ProductResponse>(
+      `/products/${id}/halal-certification`,
+      {
+        method: "PUT",
+        body: payload,
+        token,
+      },
+    );
+  }
+
+  clearHalalCertification(id: string, token: string) {
+    return this.apiClient.request<ProductResponse>(
+      `/products/${id}/halal-certification`,
+      {
+        method: "DELETE",
+        token,
+      },
+    );
   }
 }

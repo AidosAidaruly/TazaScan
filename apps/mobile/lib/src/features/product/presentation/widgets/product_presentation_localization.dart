@@ -1,54 +1,86 @@
+import 'package:project/src/core/localization/taza_localizations.dart';
+
 class ProductPresentationLocalization {
   const ProductPresentationLocalization._();
 
-  static String category(String? value) {
-    return _mapKnown(value, _categoryLabels) ?? value?.trim() ?? '';
+  static String category(String? value, {TazaLocale locale = TazaLocale.ru}) {
+    return _mapKnown(value, _labels(_categoryLabels, locale)) ??
+        value?.trim() ??
+        '';
   }
 
-  static String ingredient(String value) {
-    return _mapKnown(value, _ingredientLabels) ?? value;
+  static String ingredient(String value, {TazaLocale locale = TazaLocale.ru}) {
+    return _mapKnown(value, _labels(_ingredientLabels, locale)) ?? value;
   }
 
-  static String insight(String value) {
-    final mapped = _mapKnown(value, _insightLabels);
+  static String insight(String value, {TazaLocale locale = TazaLocale.ru}) {
+    final mapped = _mapKnown(value, _labels(_insightLabels, locale));
     if (mapped != null) {
       return mapped;
     }
 
     final normalized = _normalize(value);
     if (normalized.isEmpty || _looksTechnical(normalized)) {
-      return 'Оценка рассчитана по доступным данным продукта.';
+      return locale == TazaLocale.kk
+          ? 'Баға өнімнің қолжетімді деректері бойынша есептелді.'
+          : 'Оценка рассчитана по доступным данным продукта.';
     }
 
     return value;
   }
 
-  static String dataStatus(String status) {
+  static String dataStatus(String status, {TazaLocale locale = TazaLocale.ru}) {
     return switch (_normalize(status)) {
-      'verified' => 'Проверено',
-      'unverified' => 'Требуется проверка',
-      'community' => 'Данные сообщества',
-      'calculated' => 'Рассчитано',
-      'insufficient data' || 'insufficient_data' => 'Недостаточно данных',
-      'requires review' || 'requires_review' => 'Требуется проверка',
-      _ => 'Неизвестно',
+      'verified' => locale == TazaLocale.kk ? 'Тексерілген' : 'Проверено',
+      'unverified' => locale == TazaLocale.kk
+          ? 'Тексеру қажет'
+          : 'Требуется проверка',
+      'community' => locale == TazaLocale.kk
+          ? 'Қауымдастық деректері'
+          : 'Данные сообщества',
+      'calculated' => locale == TazaLocale.kk ? 'Есептелді' : 'Рассчитано',
+      'insufficient data' || 'insufficient_data' => locale == TazaLocale.kk
+          ? 'Деректер жеткіліксіз'
+          : 'Недостаточно данных',
+      'requires review' || 'requires_review' => locale == TazaLocale.kk
+          ? 'Тексеру қажет'
+          : 'Требуется проверка',
+      _ => locale == TazaLocale.kk ? 'Белгісіз' : 'Неизвестно',
     };
   }
 
-  static String missingField(String value) {
+  static String missingField(String value, {TazaLocale locale = TazaLocale.ru}) {
+    final kk = locale == TazaLocale.kk;
     return switch (_normalizeField(value)) {
-      'energykcal' || 'energykcalorenergykj' || 'energykj' => 'Энергия',
-      'protein' => 'Белки',
-      'carbohydrates' => 'Углеводы',
-      'sugars' => 'Сахар',
-      'fat' => 'Жиры',
-      'saturatedfat' || 'saturatedfatapproximation' => 'Насыщенные жиры',
-      'fiber' => 'Клетчатка',
-      'salt' => 'Соль',
-      'fruitvegetablelegumepercent' => 'Доля фруктов/овощей/бобовых',
-      'containsnonsugarsweeteners' => 'Некалорийные подсластители',
-      _ => _mapKnown(value, _missingFieldLabels) ?? insight(value),
+      'energykcal' ||
+      'energykcalorenergykj' ||
+      'energykj' => kk ? 'Энергия' : 'Энергия',
+      'protein' => kk ? 'Ақуыз' : 'Белки',
+      'carbohydrates' => kk ? 'Көмірсулар' : 'Углеводы',
+      'sugars' => kk ? 'Қант' : 'Сахар',
+      'fat' => kk ? 'Май' : 'Жиры',
+      'saturatedfat' ||
+      'saturatedfatapproximation' => kk ? 'Қаныққан майлар' : 'Насыщенные жиры',
+      'fiber' => kk ? 'Тағамдық талшықтар' : 'Клетчатка',
+      'salt' => kk ? 'Тұз' : 'Соль',
+      'fruitvegetablelegumepercent' => kk
+          ? 'Жеміс/көкөніс/бұршақ үлесі'
+          : 'Доля фруктов/овощей/бобовых',
+      'containsnonsugarsweeteners' => kk
+          ? 'Некалориялық тәттілендіргіштер'
+          : 'Некалорийные подсластители',
+      _ => _mapKnown(value, _labels(_missingFieldLabels, locale)) ??
+          insight(value, locale: locale),
     };
+  }
+
+  static Map<String, String> _labels(
+    Map<String, ({String ru, String kk})> source,
+    TazaLocale locale,
+  ) {
+    return source.map(
+      (key, value) => MapEntry(key, locale == TazaLocale.kk ? value.kk : value.ru),
+    );
   }
 
   static String? _mapKnown(String? value, Map<String, String> labels) {
@@ -82,90 +114,179 @@ class ProductPresentationLocalization {
 }
 
 const _categoryLabels = {
-  'soft drinks': 'Газированные напитки',
-  'soda': 'Газированные напитки',
-  'beverages': 'Напитки',
-  'drinks': 'Напитки',
-  'water': 'Вода',
-  'dairy': 'Молочные продукты',
-  'snacks': 'Снеки',
+  'soft drinks': (ru: 'Газированные напитки', kk: 'Газдалған сусындар'),
+  'soda': (ru: 'Газированные напитки', kk: 'Газдалған сусындар'),
+  'beverages': (ru: 'Напитки', kk: 'Сусындар'),
+  'drinks': (ru: 'Напитки', kk: 'Сусындар'),
+  'water': (ru: 'Вода', kk: 'Су'),
+  'dairy': (ru: 'Молочные продукты', kk: 'Сүт өнімдері'),
+  'snacks': (ru: 'Снеки', kk: 'Снэктер'),
 };
 
 const _ingredientLabels = {
-  'carbonated water': 'Газированная вода',
-  'sugar': 'Сахар',
-  'phosphoric acid': 'Фосфорная кислота',
-  'natural flavourings': 'Натуральные ароматизаторы',
-  'natural flavorings': 'Натуральные ароматизаторы',
-  'caffeine': 'Кофеин',
-  'colour caramel e150d': 'Краситель карамельный E150d',
-  'color caramel e150d': 'Краситель карамельный E150d',
+  'carbonated water': (ru: 'Газированная вода', kk: 'Газдалған су'),
+  'sugar': (ru: 'Сахар', kk: 'Қант'),
+  'phosphoric acid': (ru: 'Фосфорная кислота', kk: 'Фосфор қышқылы'),
+  'natural flavourings': (
+    ru: 'Натуральные ароматизаторы',
+    kk: 'Табиғи хош иістендіргіштер',
+  ),
+  'natural flavorings': (
+    ru: 'Натуральные ароматизаторы',
+    kk: 'Табиғи хош иістендіргіштер',
+  ),
+  'caffeine': (ru: 'Кофеин', kk: 'Кофеин'),
+  'кофеин': (ru: 'Кофеин', kk: 'Кофеин'),
+  'газированная вода': (ru: 'Газированная вода', kk: 'Газдалған су'),
+  'фосфорная кислота': (ru: 'Фосфорная кислота', kk: 'Фосфор қышқылы'),
+  'фосфорная кислота (e338)': (
+    ru: 'Фосфорная кислота (E338)',
+    kk: 'Фосфор қышқылы (E338)',
+  ),
+  'натуральные ароматизаторы': (
+    ru: 'Натуральные ароматизаторы',
+    kk: 'Табиғи хош иістендіргіштер',
+  ),
+  'карамельный краситель e150d': (
+    ru: 'Карамельный краситель E150d',
+    kk: 'Карамельді бояғыш E150d',
+  ),
+  'colour caramel e150d': (
+    ru: 'Краситель карамельный E150d',
+    kk: 'Карамельді бояғыш E150d',
+  ),
+  'color caramel e150d': (
+    ru: 'Краситель карамельный E150d',
+    kk: 'Карамельді бояғыш E150d',
+  ),
 };
 
 const _insightLabels = {
-  'high_sugar': 'Много сахара',
-  'high_salt': 'Много соли',
-  'high_saturated_fat': 'Много насыщенных жиров',
-  'high_energy': 'Высокая калорийность',
-  'contains_non_sugar_sweeteners': 'Содержит некалорийные подсластители',
-  'non_sugar_sweeteners': 'Содержит некалорийные подсластители',
-  'low_favorable_components': 'Мало благоприятных пищевых компонентов',
+  'high_sugar': (ru: 'Высокое содержание сахара', kk: 'Қант мөлшері жоғары'),
+  'high_salt': (ru: 'Высокое содержание соли', kk: 'Тұз мөлшері жоғары'),
+  'high_saturated_fat': (
+    ru: 'Высокое содержание насыщенных жиров',
+    kk: 'Қаныққан май мөлшері жоғары',
+  ),
+  'high_energy': (
+    ru: 'Высокая энергетическая ценность',
+    kk: 'Энергетикалық құндылығы жоғары',
+  ),
+  'contains_non_sugar_sweeteners': (
+    ru: 'Содержит некалорийные подсластители',
+    kk: 'Некалориялық тәттілендіргіштер бар',
+  ),
+  'non_sugar_sweeteners': (
+    ru: 'Содержит некалорийные подсластители',
+    kk: 'Некалориялық тәттілендіргіштер бар',
+  ),
+  'low_favorable_components': (
+    ru: 'Мало благоприятных пищевых компонентов',
+    kk: 'Пайдалы тағамдық компоненттер аз',
+  ),
   'low_favorable_nutritional_components':
-      'Мало благоприятных пищевых компонентов',
-  'high_fiber': 'Есть пищевые волокна',
-  'good_fiber': 'Есть пищевые волокна',
-  'high_protein': 'Источник белка',
-  'good_protein': 'Источник белка',
-  'fruit_vegetable_legume_content':
-      'Есть доля фруктов, овощей или бобовых',
-  'official_nutri_score_foundation':
-      'Оценка основана на методике Nutri-Score',
-  'conservative_additive_assessment':
-      'Добавки учтены как информационный фактор',
-  'verified_product_data': 'Данные продукта проверены',
-  'community_product_data': 'Данные добавлены сообществом',
-  'unverified_product_data': 'Данные продукта требуют проверки',
-  'missing_tazascore_input': 'Недостаточно данных для TazaScore',
-  'partial_nutrition_foundation':
-      'Оценка рассчитана по неполным данным продукта',
-  'partial_data_confidence_limit': 'Данные продукта неполные',
-  'low_nutrition_coverage': 'Покрытие данных ограничено',
-  'missing_critical_negative_field':
-      'Не хватает важных данных о пищевой ценности',
-  'partial_score_cap_applied':
-      'Применено ограничение от завышенной оценки',
-  'beverage_official_metadata_cap':
-      'Для напитка не хватает части данных',
-  'high sugar content.': 'Много сахара',
-  'high sugar content': 'Много сахара',
-  'high sugars content.': 'Много сахара',
-  'high sugars content': 'Много сахара',
-  'low salt.': 'Низкое содержание соли',
-  'low salt': 'Низкое содержание соли',
-  'low saturated fat.': 'Низкое содержание насыщенных жиров',
-  'low saturated fat': 'Низкое содержание насыщенных жиров',
-  'high saturated fat.': 'Много насыщенных жиров',
-  'high saturated fat': 'Много насыщенных жиров',
-  'insufficient data': 'Недостаточно данных',
-  'insufficient_data': 'Недостаточно данных',
-  'requires review': 'Требуется проверка',
-  'requires_review': 'Требуется проверка',
-  'calculated': 'Рассчитано',
+      (ru: 'Мало благоприятных пищевых компонентов', kk: 'Пайдалы тағамдық компоненттер аз'),
+  'high_fiber': (ru: 'Есть пищевые волокна', kk: 'Тағамдық талшықтар бар'),
+  'good_fiber': (ru: 'Есть пищевые волокна', kk: 'Тағамдық талшықтар бар'),
+  'high_protein': (ru: 'Источник белка', kk: 'Ақуыз көзі'),
+  'good_protein': (ru: 'Источник белка', kk: 'Ақуыз көзі'),
+  'fruit_vegetable_legume_content': (
+    ru: 'Есть доля фруктов, овощей или бобовых',
+    kk: 'Жеміс, көкөніс немесе бұршақ үлесі бар',
+  ),
+  'official_nutri_score_foundation': (
+    ru: 'Оценка основана на методике Nutri-Score',
+    kk: 'Баға Nutri-Score әдістемесіне негізделген',
+  ),
+  'conservative_additive_assessment': (
+    ru: 'Добавки учтены как информационный фактор',
+    kk: 'Қоспалар ақпараттық фактор ретінде ескерілді',
+  ),
+  'verified_product_data': (ru: 'Данные продукта проверены', kk: 'Өнім деректері тексерілген'),
+  'community_product_data': (
+    ru: 'Данные добавлены сообществом',
+    kk: 'Деректерді қауымдастық қосты',
+  ),
+  'unverified_product_data': (
+    ru: 'Данные продукта требуют проверки',
+    kk: 'Өнім деректері тексеруді қажет етеді',
+  ),
+  'missing_tazascore_input': (
+    ru: 'Недостаточно данных для TazaScore',
+    kk: 'TazaScore үшін деректер жеткіліксіз',
+  ),
+  'partial_nutrition_foundation': (
+    ru: 'Оценка рассчитана по неполным данным продукта',
+    kk: 'Баға өнімнің толық емес деректері бойынша есептелді',
+  ),
+  'partial_data_confidence_limit': (ru: 'Данные продукта неполные', kk: 'Өнім деректері толық емес'),
+  'low_nutrition_coverage': (ru: 'Покрытие данных ограничено', kk: 'Деректер қамтылуы шектеулі'),
+  'missing_critical_negative_field': (
+    ru: 'Не хватает важных данных о пищевой ценности',
+    kk: 'Тағамдық құндылық туралы маңызды деректер жоқ',
+  ),
+  'partial_score_cap_applied': (
+    ru: 'Применено ограничение от завышенной оценки',
+    kk: 'Бағаның шамадан тыс жоғары болмауы үшін шектеу қолданылды',
+  ),
+  'beverage_official_metadata_cap': (
+    ru: 'Для напитка не хватает части данных',
+    kk: 'Сусын үшін кейбір деректер жоқ',
+  ),
+  'high sugar content.': (ru: 'Высокое содержание сахара', kk: 'Қант мөлшері жоғары'),
+  'high sugar content': (ru: 'Высокое содержание сахара', kk: 'Қант мөлшері жоғары'),
+  'high sugars content.': (ru: 'Высокое содержание сахара', kk: 'Қант мөлшері жоғары'),
+  'high sugars content': (ru: 'Высокое содержание сахара', kk: 'Қант мөлшері жоғары'),
+  'low salt.': (ru: 'Низкое содержание соли', kk: 'Тұз мөлшері төмен'),
+  'low salt': (ru: 'Низкое содержание соли', kk: 'Тұз мөлшері төмен'),
+  'low saturated fat.': (
+    ru: 'Низкое содержание насыщенных жиров',
+    kk: 'Қаныққан май мөлшері төмен',
+  ),
+  'low saturated fat': (
+    ru: 'Низкое содержание насыщенных жиров',
+    kk: 'Қаныққан май мөлшері төмен',
+  ),
+  'high saturated fat.': (
+    ru: 'Высокое содержание насыщенных жиров',
+    kk: 'Қаныққан май мөлшері жоғары',
+  ),
+  'high saturated fat': (
+    ru: 'Высокое содержание насыщенных жиров',
+    kk: 'Қаныққан май мөлшері жоғары',
+  ),
+  'insufficient data': (ru: 'Недостаточно данных', kk: 'Деректер жеткіліксіз'),
+  'insufficient_data': (ru: 'Недостаточно данных', kk: 'Деректер жеткіліксіз'),
+  'requires review': (ru: 'Требуется проверка', kk: 'Тексеру қажет'),
+  'requires_review': (ru: 'Требуется проверка', kk: 'Тексеру қажет'),
+  'calculated': (ru: 'Рассчитано', kk: 'Есептелді'),
 };
 
 const _missingFieldLabels = {
-  'energykcal': 'Калорийность',
-  'energy_kcal': 'Калорийность',
-  'protein': 'Белки',
-  'carbohydrates': 'Углеводы',
-  'sugars': 'Сахар',
-  'fat': 'Жиры',
-  'saturatedfat': 'Насыщенные жиры',
-  'saturated_fat': 'Насыщенные жиры',
-  'fiber': 'Клетчатка',
-  'salt': 'Соль',
-  'fruitvegetablelegumepercent': 'Доля фруктов, овощей и бобовых',
-  'fruit_vegetable_legume_percent': 'Доля фруктов, овощей и бобовых',
-  'containsnonsugarsweeteners': 'Наличие некалорийных подсластителей',
-  'contains_non_sugar_sweeteners': 'Наличие некалорийных подсластителей',
+  'energykcal': (ru: 'Калорийность', kk: 'Калориялылық'),
+  'energy_kcal': (ru: 'Калорийность', kk: 'Калориялылық'),
+  'protein': (ru: 'Белки', kk: 'Ақуыз'),
+  'carbohydrates': (ru: 'Углеводы', kk: 'Көмірсулар'),
+  'sugars': (ru: 'Сахар', kk: 'Қант'),
+  'fat': (ru: 'Жиры', kk: 'Май'),
+  'saturatedfat': (ru: 'Насыщенные жиры', kk: 'Қаныққан майлар'),
+  'saturated_fat': (ru: 'Насыщенные жиры', kk: 'Қаныққан майлар'),
+  'fiber': (ru: 'Клетчатка', kk: 'Тағамдық талшықтар'),
+  'salt': (ru: 'Соль', kk: 'Тұз'),
+  'fruitvegetablelegumepercent': (
+    ru: 'Доля фруктов, овощей и бобовых',
+    kk: 'Жеміс, көкөніс және бұршақ үлесі',
+  ),
+  'fruit_vegetable_legume_percent': (
+    ru: 'Доля фруктов, овощей и бобовых',
+    kk: 'Жеміс, көкөніс және бұршақ үлесі',
+  ),
+  'containsnonsugarsweeteners': (
+    ru: 'Наличие некалорийных подсластителей',
+    kk: 'Некалориялық тәттілендіргіштердің болуы',
+  ),
+  'contains_non_sugar_sweeteners': (
+    ru: 'Наличие некалорийных подсластителей',
+    kk: 'Некалориялық тәттілендіргіштердің болуы',
+  ),
 };

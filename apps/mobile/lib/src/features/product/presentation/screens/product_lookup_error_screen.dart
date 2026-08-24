@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 
@@ -17,7 +18,7 @@ class ProductLookupErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск продукта')),
+      appBar: AppBar(title: Text(context.t.productSearch)),
       body: ResponsivePage(
         child: Center(
           child: Column(
@@ -45,14 +46,14 @@ class ProductLookupErrorScreen extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Попробовать снова'),
+                child: Text(context.t.pick(ru: 'Попробовать снова', kk: 'Қайта көру')),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: () => Navigator.of(
                   context,
                 ).pushNamed(AppRoutes.productSubmission, arguments: barcode),
-                child: const Text('Добавить товар'),
+                child: Text(context.t.addProduct),
               ),
             ],
           ),

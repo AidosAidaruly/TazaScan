@@ -72,22 +72,25 @@ Initial MVP storage need is low for product records, but uploaded images can gro
 | Product image upload validation | READY | `multer` memory storage, 5 MB limit, image decode/normalization through `sharp`. |
 | Submission image upload validation | READY | Max 4 images, 5 MB each, normalized to JPEG. |
 | Filename/path safety | READY | Stored filenames use generated UUIDs; admin file serving validates filenames. |
-| Product image persistence | BLOCKER | Local `uploads/products` is not safe on ephemeral hosts. |
-| Submission image persistence | BLOCKER | Local `uploads/submissions` must persist until moderation/deletion. |
-| Recommended storage | NEEDS_CODE_CHANGE | Add a storage adapter that writes to object/blob storage and stores object keys or public HTTPS URLs in DB. Keep local adapter for development. |
+| Product image persistence | NEEDS_CONFIGURATION | Uploads now go through a storage abstraction. The implemented provider is local filesystem storage and must use persistent disk in production. |
+| Submission image persistence | NEEDS_CONFIGURATION | Submission photos use the same storage abstraction. Persistent disk or object storage is required. |
+| Recommended storage | NEEDS_CODE_CHANGE | Add an object/blob provider implementation before relying on ephemeral managed hosts. Keep local adapter for development and persistent-disk deployments. |
 
 Smallest production-safe architecture:
 
 ```text
 API upload endpoint
   -> image normalization
-  -> storage adapter
-  -> object/blob storage
-  -> DB stores URL or object key
-  -> Flutter renders HTTPS URL
+  -> FileStorage
+  -> LocalFileStorage today
+  -> future object/blob provider
+  -> DB stores compatible imageUrl
+  -> Flutter renders URL
 ```
 
 Do not silently overwrite manually verified images during external imports.
+
+See `docs/image-storage.md` for the current abstraction and future object storage path.
 
 ## CORS, Networking, And HTTPS
 
@@ -197,6 +200,32 @@ Synchronous OCR is acceptable for a small beta with rate limits and monitoring.
 | Russian/Kazakh localization | NEEDS_CONFIGURATION | Consumer localization exists; final legal text should be reviewed in both languages. |
 
 This is not legal advice.
+
+## Halal Check
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Methodology | READY | `halal-check-v1.2` is documented separately from TazaScore. |
+| Ingredient screening | READY | V1 uses explicit conservative ingredient rules and does not infer halal from missing risks. |
+| Certification evidence | NEEDS_CONFIGURATION | Admin can enter, verify, expire, and clear product-specific certification records; trusted issuer policy still needs operational review. |
+| Religious/legal review | NEEDS_CONFIGURATION | Final consumer wording should be reviewed before public release. |
+
+See `docs/halal-check-methodology.md`.
+
+### Admin Certification Workflow
+
+Admin flow:
+
+```text
+find product
+-> inspect ingredient screening
+-> inspect certification evidence
+-> enter certification data
+-> explicitly verify
+-> backend recalculates derived Halal Check result
+```
+
+Certification applies only to the current product record. It is not inherited by canonical family members, does not affect TazaScore, and does not overwrite ingredients. A certification conflict requires manual investigation.
 
 ## Performance
 

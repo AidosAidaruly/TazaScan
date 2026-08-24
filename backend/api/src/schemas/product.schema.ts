@@ -102,8 +102,19 @@ export const tazaScorePreviewBodySchema = officialNutriScorePreviewBodySchema.ex
   dataStatus: z.enum(['unverified', 'community', 'verified']).default('unverified')
 });
 
+export const halalCertificationBodySchema = z.object({
+  status: z.enum(['verified', 'unverified', 'expired']),
+  issuer: z.string().trim().min(1),
+  certificateNumber: z.string().trim().min(1).nullable().optional(),
+  validUntil: z.string().datetime().nullable().optional(),
+  source: z.string().trim().min(1),
+  evidenceUrl: z.string().url().nullable().optional(),
+  verifiedAt: z.string().datetime().nullable().optional()
+});
+
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
 export type ProductBody = z.infer<typeof productBodySchema>;
 export type UpdateProductBody = z.infer<typeof updateProductBodySchema>;
 export type OfficialNutriScorePreviewBody = z.infer<typeof officialNutriScorePreviewBodySchema>;
 export type TazaScorePreviewBody = z.infer<typeof tazaScorePreviewBodySchema>;
+export type HalalCertificationBody = z.infer<typeof halalCertificationBodySchema>;

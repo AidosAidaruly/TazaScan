@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../generated/prisma/client';
-import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type {
+  HalalCertificationBody,
+  ListProductsQuery,
+  ProductBody,
+  UpdateProductBody
+} from '../schemas/product.schema';
 import type { ProductWithCanonicalFamily } from '../types/product';
 import {
   officialNutriScorePreviewBodySchema,
@@ -125,9 +130,11 @@ class FakeScoreEngine implements ScoreEngine {
 class FakeProductRepository {
   products: ProductWithCanonicalFamily[] = [];
   deletedIds: string[] = [];
+  clearedHalalCertificationProductIds: string[] = [];
   lastListFilters: unknown;
   lastCreateData: ProductBody | null = null;
   lastUpdateData: UpdateProductBody | null = null;
+  lastHalalCertificationData: HalalCertificationBody | null = null;
   lastScoreResult: ScoreResult | null = null;
   failImageUpdate = false;
 
@@ -201,6 +208,42 @@ class FakeProductRepository {
     const product = createProduct({ ...existing, id, imageUrl });
     this.products = this.products.map((item) => (item.id === id ? product : item));
     return Promise.resolve(product);
+  }
+
+  replaceHalalCertification(productId: string, data: HalalCertificationBody) {
+    this.lastHalalCertificationData = data;
+    const existing = this.products.find((product) => product.id === productId);
+
+    if (existing) {
+      const product = {
+        ...existing,
+        halalCertifications: [
+          {
+            status: data.status,
+            issuer: data.issuer,
+            certificateNumber: data.certificateNumber ?? null,
+            validUntil: data.validUntil ? new Date(data.validUntil) : null,
+            source: data.source,
+            evidenceUrl: data.evidenceUrl ?? null,
+            verifiedAt: data.verifiedAt ? new Date(data.verifiedAt) : null
+          }
+        ]
+      };
+      this.products = this.products.map((item) =>
+        item.id === productId ? product : item
+      );
+    }
+
+    return Promise.resolve(this.products.find((product) => product.id === productId));
+  }
+
+  clearHalalCertification(productId: string) {
+    this.clearedHalalCertificationProductIds.push(productId);
+    this.products = this.products.map((product) =>
+      product.id === productId ? { ...product, halalCertifications: [] } : product
+    );
+
+    return Promise.resolve(undefined);
   }
 
   delete(id: string) {
@@ -649,6 +692,75 @@ describe('ProductService', () => {
     expect(repository.lastScoreResult?.algorithm).toBe('test');
     expect(repository.lastScoreResult?.score).toBe(65);
     expect(repository.lastScoreResult?.grade).toBe('D');
+  });
+
+  it('updates halal certification and returns refreshed derived Halal Check status', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        ingredients: ['Water', 'Sugar']
+      })
+    ];
+    const { service } = createService(repository);
+
+    const product = await service.replaceHalalCertification(
+      '11111111-1111-4111-8111-111111111111',
+      {
+        status: 'verified',
+        issuer: 'Trusted halal body',
+        certificateNumber: 'HAL-123',
+        validUntil: '2027-01-01T00:00:00.000Z',
+        source: 'Admin-reviewed certificate',
+        evidenceUrl: 'https://example.com/cert/HAL-123',
+        verifiedAt: '2026-08-23T00:00:00.000Z'
+      }
+    );
+
+    expect(repository.lastHalalCertificationData).toMatchObject({
+      status: 'verified',
+      issuer: 'Trusted halal body'
+    });
+    expect(product.halalCheck.status).toBe('halal_confirmed');
+    expect(product.halalCheck.certification.status).toBe('verified');
+    expect(repository.lastScoreResult).toBeNull();
+  });
+
+  it('clears halal certification without changing product data or legacy scoring', async () => {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      {
+        ...createProduct({
+          ingredients: ['Water', 'Sugar'],
+          calculatedScore: 65,
+          calculatedGrade: 'D'
+        }),
+        halalCertifications: [
+          {
+            status: 'verified',
+            issuer: 'Trusted halal body',
+            certificateNumber: 'HAL-123',
+            validUntil: new Date('2027-01-01T00:00:00.000Z'),
+            source: 'Admin-reviewed certificate',
+            evidenceUrl: 'https://example.com/cert/HAL-123',
+            verifiedAt: new Date('2026-08-23T00:00:00.000Z')
+          }
+        ]
+      }
+    ];
+    const { service } = createService(repository);
+
+    const product = await service.clearHalalCertification(
+      '11111111-1111-4111-8111-111111111111'
+    );
+
+    expect(repository.clearedHalalCertificationProductIds).toContain(
+      '11111111-1111-4111-8111-111111111111'
+    );
+    expect(product.halalCheck.status).toBe('screening_clear');
+    expect(product.halalCheck.certification.records).toEqual([]);
+    expect(product.nutritionScore.score).toBe(65);
+    expect(product.nutritionScore.grade).toBe('D');
+    expect(repository.lastScoreResult).toBeNull();
   });
 
   it('deletes a product', async () => {

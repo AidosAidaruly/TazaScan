@@ -1,5 +1,6 @@
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
+import 'package:project/src/features/product/domain/entities/halal_check.dart';
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/data/models/product_score_preview_model.dart';
 
@@ -18,6 +19,7 @@ class ProductModel extends Product {
     super.source,
     super.scoreSource,
     super.ingredientsIsTranslated,
+    super.halalCheck,
     super.tazaScore,
     super.brand,
     super.category,
@@ -41,6 +43,7 @@ class ProductModel extends Product {
         fallbackDate: json['updatedAt'] as String,
       ),
       tazaScore: _parseTazaScore(json['tazaScore']),
+      halalCheck: _parseHalalCheck(json['halalCheck']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       dataStatus: json['dataStatus'] as String? ?? 'unverified',
@@ -64,6 +67,65 @@ class ProductModel extends Product {
       'tazaScore': value,
       'nutriScore': nutriScore,
     }).tazaScore;
+  }
+
+  static HalalCheck? _parseHalalCheck(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final signalsJson = value['matchedSignals'];
+    final certificationJson = value['certification'];
+    final ingredientScreeningJson = value['ingredientScreening'];
+
+    return HalalCheck(
+      status: _parseHalalStatus(value['status']),
+      ingredientScreeningStatus: _parseIngredientScreeningStatus(
+        ingredientScreeningJson is Map
+            ? ingredientScreeningJson['status']
+            : value['ingredientScreeningStatus'],
+      ),
+      reasons: NutritionScoreModel._stringList(value['reasons']),
+      matchedSignals: signalsJson is List
+          ? signalsJson
+              .whereType<Map>()
+              .map(
+                (signal) => HalalMatchedSignal(
+                  reasonCode: signal['reasonCode']?.toString() ?? '',
+                  severity: signal['severity']?.toString() ?? '',
+                  matchedText: signal['matchedText']?.toString() ?? '',
+                ),
+              )
+              .where((signal) => signal.reasonCode.isNotEmpty)
+              .toList()
+          : const [],
+      certificationStatus: certificationJson is Map
+          ? certificationJson['status']?.toString() ?? 'not_verified'
+          : 'not_verified',
+      methodology: value['methodology']?.toString() ?? 'halal-check-v1.2',
+    );
+  }
+
+  static HalalCheckStatus _parseHalalStatus(Object? value) {
+    return switch (value?.toString()) {
+      'halal_confirmed' => HalalCheckStatus.halalConfirmed,
+      'screening_clear' => HalalCheckStatus.screeningClear,
+      'non_halal' => HalalCheckStatus.nonHalal,
+      'review_required' => HalalCheckStatus.reviewRequired,
+      _ => HalalCheckStatus.insufficientData,
+    };
+  }
+
+  static HalalIngredientScreeningStatus _parseIngredientScreeningStatus(
+    Object? value,
+  ) {
+    return switch (value?.toString()) {
+      'clear' => HalalIngredientScreeningStatus.clear,
+      'review_required' => HalalIngredientScreeningStatus.reviewRequired,
+      'non_halal_detected' =>
+        HalalIngredientScreeningStatus.nonHalalDetected,
+      _ => HalalIngredientScreeningStatus.insufficientData,
+    };
   }
 }
 

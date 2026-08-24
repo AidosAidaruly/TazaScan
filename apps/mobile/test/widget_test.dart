@@ -42,7 +42,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Избранное'), findsWidgets);
-    expect(find.text('В избранном пока пусто.'), findsOneWidget);
+    expect(find.text('В избранном пока ничего нет'), findsOneWidget);
   });
 
   testWidgets('product not found can open submission flow', (tester) async {

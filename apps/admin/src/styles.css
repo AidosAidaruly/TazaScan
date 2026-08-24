@@ -221,6 +221,16 @@ button:disabled {
   color: #b3261e;
 }
 
+.alert.warning {
+  border-color: #ffd8a8;
+  background: #fff8ed;
+  color: #8a4b00;
+}
+
+.alert.warning p {
+  margin: 8px 0 0;
+}
+
 .page-state {
   display: grid;
   place-items: center;
@@ -341,6 +351,62 @@ th {
   gap: 3px;
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+.halal-admin-section {
+  background: #fbfdfb;
+}
+
+.halal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.halal-status-block {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #edf2ee;
+}
+
+.halal-status-block span {
+  color: #557065;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.halal-reason-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.halal-certification-form {
+  display: grid;
+  gap: 14px;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #293a31;
+  font-weight: 800;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.success-message {
+  color: #17664b;
+  font-weight: 900;
 }
 
 .details-grid {
@@ -485,10 +551,11 @@ dd {
     padding: 20px;
   }
 
-  .toolbar,
-  .form-grid,
-  .details-grid,
-  .image-upload-field {
+    .toolbar,
+    .form-grid,
+    .halal-summary-grid,
+    .details-grid,
+    .image-upload-field {
     grid-template-columns: 1fr;
   }
 }

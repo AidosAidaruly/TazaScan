@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/photo_search/data/repositories/http_photo_search_repository.dart';
@@ -14,7 +15,16 @@ import 'package:project/src/features/photo_search/presentation/widgets/photo_sou
 import 'package:project/src/features/product/domain/entities/product.dart';
 
 class PhotoSearchScreen extends StatefulWidget {
-  const PhotoSearchScreen({super.key});
+  const PhotoSearchScreen({
+    this.initialResult,
+    this.initialErrorMessage,
+    this.photoSearchService,
+    super.key,
+  });
+
+  final PhotoSearchResult? initialResult;
+  final String? initialErrorMessage;
+  final PhotoSearchService? photoSearchService;
 
   @override
   State<PhotoSearchScreen> createState() => _PhotoSearchScreenState();
@@ -22,11 +32,21 @@ class PhotoSearchScreen extends StatefulWidget {
 
 class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
   final _picker = ImagePicker();
-  final _service = const PhotoSearchService(HttpPhotoSearchRepository());
 
   bool _isLoading = false;
   String? _errorMessage;
   PhotoSearchResult? _result;
+
+  PhotoSearchService get _service =>
+      widget.photoSearchService ??
+      const PhotoSearchService(HttpPhotoSearchRepository());
+
+  @override
+  void initState() {
+    super.initState();
+    _result = widget.initialResult;
+    _errorMessage = widget.initialErrorMessage;
+  }
 
   Future<void> _pickAndSearch(ImageSource source) async {
     setState(() {
@@ -43,7 +63,12 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
       );
 
       if (image == null) {
-        _setError('Поиск по фото отменен.');
+        _setError(
+          context.t.pick(
+            ru: 'Поиск по фото отменён.',
+            kk: 'Фото бойынша іздеу тоқтатылды.',
+          ),
+        );
         return;
       }
 
@@ -55,10 +80,21 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
         _isLoading = false;
       });
     } on AppException catch (error) {
-      _setError(error.message);
+      _setError(_photoErrorMessage(error));
     } catch (_) {
-      _setError('Не удалось прочитать это фото. Попробуй другое изображение.');
+      _setError(context.t.cannotOpenImage);
     }
+  }
+
+  String _photoErrorMessage(AppException error) {
+    if (error is RequestTimeoutException) {
+      return context.t.serverSlow;
+    }
+    if (error is NetworkException) {
+      return context.t.checkConnectionAndRetry;
+    }
+
+    return context.t.cannotUploadPhoto;
   }
 
   void _setError(String message) {
@@ -75,8 +111,12 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     ).pushNamed(AppRoutes.productDetails, arguments: product);
   }
 
-  void _openSubmission() {
-    Navigator.of(context).pushNamed(AppRoutes.productSubmission);
+  void _openScanner() {
+    Navigator.of(context).pushNamed(AppRoutes.scanner);
+  }
+
+  void _openProductSearch() {
+    Navigator.of(context).pushNamed(AppRoutes.productSearch);
   }
 
   @override
@@ -84,28 +124,40 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     final result = _result;
     final isDesktop =
         Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final t = context.t;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск по фото')),
+      appBar: AppBar(title: Text(t.photoSearch)),
       body: ResponsivePage(
         child: ListView(
           children: [
             Text(
-              'Найди продукт по фото',
+              t.pick(ru: 'Найди продукт по фото', kk: 'Өнімді фото арқылы тап'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Сделай четкое фото лицевой стороны упаковки или выбери изображение из галереи.',
+              t.pick(
+                ru: 'Сделай чёткое фото лицевой стороны упаковки или выбери изображение из галереи.',
+                kk: 'Қаптаманың алдыңғы жағын анық түсір немесе галереядан сурет таңда.',
+              ),
               style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              t.photoGuidance,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 24),
             if (!isDesktop) ...[
               PhotoSourceButton(
                 icon: Icons.photo_camera_rounded,
-                label: 'Сделать фото',
+                label: t.takePhoto,
                 onPressed: _isLoading
                     ? null
                     : () => _pickAndSearch(ImageSource.camera),
@@ -114,7 +166,9 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
             ],
             PhotoSourceButton(
               icon: Icons.photo_library_rounded,
-              label: isDesktop ? 'Выбрать файл' : 'Выбрать из галереи',
+              label: isDesktop
+                  ? t.pick(ru: 'Выбрать файл', kk: 'Файл таңдау')
+                  : t.choosePhoto,
               onPressed: _isLoading
                   ? null
                   : () => _pickAndSearch(ImageSource.gallery),
@@ -125,20 +179,22 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
               PhotoSearchEmptyState(message: _errorMessage!),
             ],
             if (result != null && result.matches.isEmpty) ...[
-              PhotoSearchEmptyState(
-                message: result.message ?? 'Похожие продукты не найдены',
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _openSubmission,
-                child: const Text('Добавить продукт'),
+              _PhotoSearchNoMatchState(
+                onScan: _openScanner,
+                onSearchByName: _openProductSearch,
+                onTryAnotherPhoto: _isLoading
+                    ? null
+                    : () => _pickAndSearch(ImageSource.gallery),
               ),
             ],
             if (result != null && result.matches.isNotEmpty) ...[
               Text(
                 result.query == null
-                    ? 'Совпадения'
-                    : 'Совпадения для «${result.query}»',
+                    ? t.pick(ru: 'Совпадения', kk: 'Сәйкестіктер')
+                    : t.pick(
+                        ru: 'Совпадения для «${result.query}»',
+                        kk: '«${result.query}» үшін сәйкестіктер',
+                      ),
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -152,6 +208,82 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PhotoSearchNoMatchState extends StatelessWidget {
+  const _PhotoSearchNoMatchState({
+    required this.onScan,
+    required this.onSearchByName,
+    required this.onTryAnotherPhoto,
+  });
+
+  final VoidCallback onScan;
+  final VoidCallback onSearchByName;
+  final VoidCallback? onTryAnotherPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final t = context.t;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.image_search_rounded,
+            color: colorScheme.primary,
+            size: 38,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            t.photoNoMatchTitle,
+            textAlign: TextAlign.center,
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t.photoNoMatchMessage,
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onScan,
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: Text(t.scanBarcode),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onSearchByName,
+              icon: const Icon(Icons.search_rounded),
+              label: Text(t.findByName),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: onTryAnotherPhoto,
+            child: Text(t.chooseAnotherPhoto),
+          ),
+        ],
       ),
     );
   }

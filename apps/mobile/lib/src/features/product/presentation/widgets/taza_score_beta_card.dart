@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/presentation/scoring/taza_score_consumer_presentation.dart';
 import 'package:project/src/features/product/presentation/widgets/product_grade_colors.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class TazaScoreBetaCard extends StatefulWidget {
   const TazaScoreBetaCard({
@@ -112,7 +114,7 @@ class _ScoreHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            _scoreCategory(score),
+            context.t.scoreCategory(score),
             textAlign: TextAlign.center,
             style: textTheme.titleMedium?.copyWith(
               color: _scoreColor(score),
@@ -121,7 +123,10 @@ class _ScoreHero extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Оценка пищевого профиля продукта',
+            context.t.pick(
+              ru: 'Оценка пищевого профиля продукта',
+              kk: 'Өнімнің тағамдық профилін бағалау',
+            ),
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
@@ -141,16 +146,26 @@ class _WhyThisScore extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reasons = data.reasonLabels.isEmpty
-        ? const ['Дополнительных замечаний нет.']
-        : data.reasonLabels.take(3).toList();
+    final reasonValues =
+        data.reasonCodes.isNotEmpty ? data.reasonCodes : data.reasonLabels;
+    final reasons = reasonValues.isEmpty
+        ? [context.t.noAdditionalNotes]
+        : reasonValues
+            .map(
+              (reason) => ProductPresentationLocalization.insight(
+                reason,
+                locale: context.tazaLocaleController.locale,
+              ),
+            )
+            .take(3)
+            .toList();
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Почему такая оценка',
+          context.t.whyThisScore,
           style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 10),
@@ -210,14 +225,19 @@ class _ConsumerNotices extends StatelessWidget {
   Widget build(BuildContext context) {
     final notices = <String>[
       if (data.isPartialData)
-        'Некоторые данные о продукте отсутствуют. Оценка рассчитана по доступной информации.',
+        context.t.partialDataNotice,
       if (data.safeguardsApplied.contains('beverage_official_metadata_cap'))
-        'Для напитка не хватает части данных, поэтому итоговая оценка ограничена.',
+        context.t.pick(
+          ru:
+              'Для напитка не хватает части данных, поэтому итоговая оценка ограничена.',
+          kk:
+              'Сусын үшін кейбір деректер жоқ, сондықтан қорытынды баға шектелді.',
+        ),
       if (data.hasSafeguardApplied &&
           !data.safeguardsApplied.contains('beverage_official_metadata_cap'))
-        'Оценка ограничена из-за неполных данных.',
+        context.t.scoreLimitedByMissingData,
       if (data.confidence == TazaScoreConfidence.low)
-        'Данных недостаточно для высокой точности оценки.',
+        context.t.lowConfidenceNotice,
     ];
 
     if (notices.isEmpty) return const SizedBox.shrink();
@@ -259,51 +279,63 @@ class _ReliabilityDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Достоверность оценки',
+            context.t.scoreReliability,
             style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           _InfoRow(
-            label: 'Достоверность данных',
-            value: _confidenceLabel(data.confidence),
+            label: context.t.dataReliability,
+            value: _confidenceLabel(context, data.confidence),
           ),
           if (data.nutritionCoverage != null)
             _InfoRow(
-              label: 'Доступно ключевых данных',
+              label: context.t.keyDataAvailable,
               value: _coverageLabel(data.nutritionCoverage!),
             ),
-          _InfoRow(label: 'Добавки', value: 'Информационный анализ'),
-          _InfoRow(label: 'Степень обработки', value: 'Пока не учитывается'),
+          _InfoRow(
+            label: context.t.additives,
+            value: context.t.informationalAnalysis,
+          ),
+          _InfoRow(
+            label: context.t.processingDegree,
+            value: context.t.processingNotScored,
+          ),
           if (data.nutritionComponent != null)
             _InfoRow(
-              label: 'Питательный профиль',
+              label: context.t.nutritionProfile,
               value: '${data.nutritionComponent} / ${data.nutritionMax}',
             ),
           if (data.ingredientComponent != null)
             _InfoRow(
-              label: 'Состав и добавки',
+              label: context.t.ingredientsAndAdditives,
               value: '${data.ingredientComponent} / ${data.ingredientMax}',
             ),
           if (data.missingCriticalFields.isNotEmpty) ...[
             const SizedBox(height: 8),
             _FieldList(
-              title: 'Не хватает важных данных',
-              values: data.missingCriticalFields,
+              title: context.t.missingImportantData,
+              values: data.missingCriticalFieldKeys.isNotEmpty
+                  ? data.missingCriticalFieldKeys
+                  : data.missingCriticalFields,
             ),
           ] else if (data.missingFields.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _FieldList(title: 'Не хватает данных', values: data.missingFields),
+            _FieldList(
+              title: context.t.missingData,
+              values: data.missingFieldKeys.isNotEmpty
+                  ? data.missingFieldKeys
+                  : data.missingFields,
+            ),
           ],
           if (data.hasSafeguardApplied) ...[
             const SizedBox(height: 8),
-            const _NoticeRow(
-              text:
-                  'Для защиты от завышенной оценки применено ограничение.',
+            _NoticeRow(
+              text: context.t.scoreLimitApplied,
             ),
           ],
           const SizedBox(height: 12),
           Text(
-            'TazaScore — информационная оценка пищевого профиля продукта на основе Nutri-Score V2-2023 и доступных данных о составе. Не является медицинской рекомендацией.',
+            context.t.tazaScoreDisclosure,
             style: textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
               height: 1.35,
@@ -368,7 +400,10 @@ class _LoadingPreview extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Загрузка оценки продукта...',
+              context.t.pick(
+                ru: 'Загрузка оценки продукта...',
+                kk: 'Өнім бағасы жүктелуде...',
+              ),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
@@ -394,7 +429,7 @@ class _ErrorPreview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Не удалось загрузить данные продукта.',
+          context.t.productDataUnavailable,
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
@@ -407,7 +442,7 @@ class _ErrorPreview extends StatelessWidget {
             padding: EdgeInsets.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: const Text('Повторить'),
+          child: Text(context.t.retry),
         ),
       ],
     );
@@ -427,7 +462,7 @@ class _InsufficientData extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'TazaScore пока недоступен',
+          context.t.scoreUnavailable,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -435,16 +470,24 @@ class _InsufficientData extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           data.missingFields.isEmpty
-              ? 'Недостаточно данных для расчёта.'
-              : 'Не хватает: ${data.missingFields.join(', ')}.',
+              ? context.t.pick(
+                  ru: 'Недостаточно данных для расчёта.',
+                  kk: 'Есептеу үшін деректер жеткіліксіз.',
+                )
+              : context.t.pick(
+                  ru:
+                      'Не хватает: ${_localizedFields(context, data.missingFieldKeys.isNotEmpty ? data.missingFieldKeys : data.missingFields).join(', ')}.',
+                  kk:
+                      'Жетіспейді: ${_localizedFields(context, data.missingFieldKeys.isNotEmpty ? data.missingFieldKeys : data.missingFields).join(', ')}.',
+                ),
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 14),
         _InfoRow(
-          label: 'Достоверность данных',
-          value: _confidenceLabel(data.confidence),
+          label: context.t.dataReliability,
+          value: _confidenceLabel(context, data.confidence),
         ),
       ],
     );
@@ -482,7 +525,7 @@ class _NutriScoreRow extends StatelessWidget {
             if (gradeLabel == null)
               Flexible(
                 child: Text(
-                  'Недоступен из-за неполных данных',
+                  context.t.unavailableBecausePartial,
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
@@ -518,7 +561,7 @@ class _DetailsToggle extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Подробнее об оценке',
+                context.t.detailsAboutScore,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.primary,
                   fontWeight: FontWeight.w900,
@@ -573,7 +616,10 @@ class _FieldList extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    value,
+                    ProductPresentationLocalization.missingField(
+                      value,
+                      locale: context.tazaLocaleController.locale,
+                    ),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -741,11 +787,6 @@ class _GradeBadge extends StatelessWidget {
   }
 }
 
-String _scoreCategory(int? score) {
-  if (score == null) return 'Недостаточно данных';
-  return TazaScoreConsumerPresentation.categoryLabel(score);
-}
-
 Color _scoreColor(int? score) {
   return TazaScoreConsumerPresentation.colorForScore(score);
 }
@@ -754,10 +795,12 @@ Color _reasonColor(String reason) {
   final normalized = reason.toLowerCase();
   if (normalized.contains('много') ||
       normalized.contains('высок') ||
+      normalized.contains('жоғары') ||
       normalized.contains('подсласт')) {
     return const Color(0xFFF59E42);
   }
   if (normalized.contains('низкое содержание соли') ||
+      normalized.contains('мөлшері төмен') ||
       normalized.contains('волокн') ||
       normalized.contains('белк')) {
     return const Color(0xFF24C78E);
@@ -770,20 +813,32 @@ IconData _reasonIcon(String reason, {required bool isNeutral}) {
   final normalized = reason.toLowerCase();
   if (normalized.contains('много') ||
       normalized.contains('высок') ||
+      normalized.contains('жоғары') ||
       normalized.contains('подсласт')) {
     return Icons.warning_amber_rounded;
   }
   return Icons.check_circle_outline_rounded;
 }
 
-String _confidenceLabel(TazaScoreConfidence confidence) {
+String _confidenceLabel(BuildContext context, TazaScoreConfidence confidence) {
   return switch (confidence) {
-    TazaScoreConfidence.high => 'Высокая',
-    TazaScoreConfidence.medium => 'Средняя',
-    TazaScoreConfidence.low => 'Низкая',
+    TazaScoreConfidence.high => context.t.confidenceLabel('high'),
+    TazaScoreConfidence.medium => context.t.confidenceLabel('medium'),
+    TazaScoreConfidence.low => context.t.confidenceLabel('low'),
   };
 }
 
 String _coverageLabel(double value) {
   return '${(value * 100).round()}%';
+}
+
+List<String> _localizedFields(BuildContext context, List<String> values) {
+  return values
+      .map(
+        (value) => ProductPresentationLocalization.missingField(
+          value,
+          locale: context.tazaLocaleController.locale,
+        ),
+      )
+      .toList();
 }

@@ -1,6 +1,8 @@
 import type { Product } from '../generated/prisma/client';
 import type { ProductDataQualityResult } from '../data-quality/product-data-quality.evaluator';
 import { productImageQualityEvaluator } from '../data-quality/product-image-quality.evaluator';
+import { HalalCheckEngine } from '../halal/halal-check.engine';
+import type { HalalCheckResult } from '../halal/types';
 import type { OfficialNutriScoreResult } from '../scoring/types/official-nutri-score-result';
 import type { ScoreResult } from '../scoring/types/score-result';
 import type { TazaScoreResult } from '../scoring/types/taza-score-result';
@@ -35,6 +37,7 @@ export type ProductDto = {
   healthScore: number;
   nutritionScore: ScoreResult;
   tazaScore: TazaScoreResult | null;
+  halalCheck: HalalCheckResult;
   scoreSource: 'product_record' | 'canonical_recipe';
   canonicalFamilyId: string | null;
   canonicalProductId: string | null;
@@ -66,7 +69,18 @@ export type ProductWithCanonicalFamily = Product & {
     canonicalProductId: string;
     canonicalProduct: Product;
   } | null;
+  halalCertifications?: Array<{
+    status: 'verified' | 'unverified' | 'expired';
+    issuer: string;
+    certificateNumber: string | null;
+    validUntil: Date | null;
+    source: string;
+    evidenceUrl: string | null;
+    verifiedAt: Date | null;
+  }>;
 };
+
+const halalCheckEngine = new HalalCheckEngine();
 
 export function toProductDto(
   product: ProductWithCanonicalFamily,
@@ -103,6 +117,15 @@ export function toProductDto(
     healthScore: product.healthScore,
     nutritionScore,
     tazaScore,
+    halalCheck: halalCheckEngine.calculate({
+      ingredients: product.ingredients,
+      ingredientsTextOriginal: product.ingredientsTextOriginal,
+      ingredientsTextOriginalLanguage: product.ingredientsTextOriginalLanguage,
+      ingredientsTextRu: product.ingredientsTextRu,
+      ingredientsTextTranslatedRu: product.ingredientsTextTranslatedRu,
+      ingredientsTranslationSource: product.ingredientsTranslationSource,
+      certifications: product.halalCertifications ?? []
+    }),
     scoreSource: canonicalFamily ? 'canonical_recipe' : 'product_record',
     canonicalFamilyId: canonicalFamily?.id ?? null,
     canonicalProductId: canonicalFamily?.canonicalProductId ?? null,

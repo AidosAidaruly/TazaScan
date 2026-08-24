@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/history/data/datasources/history_local_data_source.dart';
 import 'package:project/src/features/history/data/repositories/local_history_repository.dart';
 import 'package:project/src/features/history/domain/entities/history_entry.dart';
 import 'package:project/src/features/product/domain/entities/product_details_args.dart';
-import 'package:project/src/features/product/presentation/widgets/cached_product_card.dart';
+import 'package:project/src/features/product/presentation/widgets/consumer_product_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -50,16 +51,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Очистить историю?'),
-        content: const Text('Это удалит всю локальную историю сканирования.'),
+        title: Text(context.t.clearHistoryQuestion),
+        content: Text(context.t.clearHistoryMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: Text(context.t.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Очистить'),
+            child: Text(context.t.pick(ru: 'Очистить', kk: 'Тазалау')),
           ),
         ],
       ),
@@ -81,15 +82,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  void _openScanner() {
+    Navigator.of(context).pushNamed(AppRoutes.scanner);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('История'),
+        title: Text(context.t.history),
         actions: [
           if (_entries.isNotEmpty)
             IconButton(
-              tooltip: 'Очистить историю',
+              tooltip: context.t.clearHistory,
               onPressed: _clear,
               icon: const Icon(Icons.delete_sweep_rounded),
             ),
@@ -98,7 +103,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: ResponsivePage(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _HistoryList(entries: _entries, onTap: _open, onDelete: _delete),
+            : _HistoryList(
+                entries: _entries,
+                onTap: _open,
+                onDelete: _delete,
+                onScan: _openScanner,
+              ),
       ),
     );
   }
@@ -109,16 +119,27 @@ class _HistoryList extends StatelessWidget {
     required this.entries,
     required this.onTap,
     required this.onDelete,
+    required this.onScan,
   });
 
   final List<HistoryEntry> entries;
   final ValueChanged<HistoryEntry> onTap;
   final ValueChanged<HistoryEntry> onDelete;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return const Center(child: Text('История пока пуста.'));
+      return _EmptyState(
+        icon: Icons.history_rounded,
+        title: context.t.historyEmpty,
+        message: context.t.pick(
+          ru: 'Здесь появятся продукты, которые вы открывали или сканировали.',
+          kk: 'Сіз ашқан немесе сканерлеген өнімдер осы жерде пайда болады.',
+        ),
+        actionLabel: context.t.scanProduct,
+        onActionTap: onScan,
+      );
     }
 
     String? lastDate;
@@ -126,36 +147,92 @@ class _HistoryList extends StatelessWidget {
     return ListView(
       children: [
         for (final entry in entries) ...[
-          if (_dateLabel(entry.viewedAt) != lastDate)
+          if (_dateLabel(context, entry.viewedAt) != lastDate)
             Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 8),
               child: Text(
-                lastDate = _dateLabel(entry.viewedAt),
+                lastDate = _dateLabel(context, entry.viewedAt),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-          CachedProductCard(
+          ConsumerProductCard.fromCached(
             product: entry.product,
             onTap: () => onTap(entry),
             trailing: IconButton(
-              tooltip: 'Удалить',
+              tooltip: context.t.pick(ru: 'Удалить', kk: 'Өшіру'),
               onPressed: () => onDelete(entry),
               icon: const Icon(Icons.delete_outline_rounded),
             ),
           ),
+          const SizedBox(height: 12),
         ],
       ],
     );
   }
 
-  String _dateLabel(DateTime date) {
+  String _dateLabel(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final value = DateTime(date.year, date.month, date.day);
 
-    if (value == today) return 'Сегодня';
-    if (value == today.subtract(const Duration(days: 1))) return 'Вчера';
+    if (value == today) return context.t.pick(ru: 'Сегодня', kk: 'Бүгін');
+    if (value == today.subtract(const Duration(days: 1))) {
+      return context.t.pick(ru: 'Вчера', kk: 'Кеше');
+    }
 
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onActionTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onActionTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 72, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 38),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: onActionTap, child: Text(actionLabel)),
+          ],
+        ),
+      ),
+    );
   }
 }

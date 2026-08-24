@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/features/product/presentation/widgets/ingredient_knowledge_map.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class IngredientExplanationRow extends StatelessWidget {
   const IngredientExplanationRow({required this.info, super.key});
@@ -11,6 +13,11 @@ class IngredientExplanationRow extends StatelessWidget {
     final color = IngredientKnowledgeMap.toneColor(info.tone);
     final textTheme = Theme.of(context).textTheme;
     final secondaryColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    final locale = context.tazaLocaleController.locale;
+    final displayName = ProductPresentationLocalization.ingredient(
+      info.displayName,
+      locale: locale,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -32,14 +39,14 @@ class IngredientExplanationRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  info.displayName,
+                  displayName,
                   style: textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  info.explanation,
+                  _localizedExplanation(context, info.explanation),
                   style: textTheme.bodySmall?.copyWith(
                     color: secondaryColor,
                     height: 1.25,
@@ -48,7 +55,7 @@ class IngredientExplanationRow extends StatelessWidget {
                 if (info.semanticLabel != null) ...[
                   const SizedBox(height: 5),
                   Text(
-                    info.semanticLabel!,
+                    _localizedExplanation(context, info.semanticLabel!),
                     style: textTheme.bodySmall?.copyWith(
                       color: color,
                       fontWeight: FontWeight.w700,
@@ -75,5 +82,25 @@ class IngredientExplanationRow extends StatelessWidget {
       return Icons.science_rounded;
     }
     return Icons.info_rounded;
+  }
+
+  String _localizedExplanation(BuildContext context, String value) {
+    final kk = context.tazaLocaleController.locale == TazaLocale.kk;
+    if (!kk) return value;
+
+    return switch (value) {
+      'Источник добавленных сахаров.' => 'Қосылған қант көзі.',
+      'Высокое содержание сахара учитывается в пищевой оценке.' =>
+        'Қант мөлшерінің жоғары болуы тағамдық бағалауда ескеріледі.',
+      'Стимулирующее вещество, естественно присутствующее или добавляемое в некоторые напитки.' =>
+        'Кейбір сусындарда табиғи түрде болатын немесе қосылатын сергіткіш зат.',
+      'Регулятор кислотности.' => 'Қышқылдықты реттегіш.',
+      'Пищевой краситель.' => 'Тағамдық бояғыш.',
+      'Вода, насыщенная углекислым газом.' => 'Көмірқышқыл газымен қанықтырылған су.',
+      'Используются для формирования вкуса и аромата продукта.' =>
+        'Өнімнің дәмі мен хош иісін қалыптастыру үшін қолданылады.',
+      'Консервант.' => 'Консервант.',
+      _ => value,
+    };
   }
 }

@@ -1,11 +1,16 @@
 import express from 'express';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import request from 'supertest';
-import { afterEach, describe, expect, it } from 'vitest';
-import { errorHandler } from './error-handler';
-import { uploadSubmissionImages, uploadedFileUrl } from './submission-upload';
+import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+let uploadSubmissionImages: RequestHandler;
+let uploadedFileUrl: (file?: Express.Multer.File) => string | null;
+let errorHandler: ErrorRequestHandler;
+let tempUploadRoot: string;
 
 function createTestApp() {
   const app = express();
@@ -39,16 +44,23 @@ function toFileDto(file?: Express.Multer.File) {
 }
 
 describe('submission image upload middleware', () => {
-  const uploadedFiles: string[] = [];
+  beforeEach(async () => {
+    vi.resetModules();
+    tempUploadRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tazascan-upload-'));
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/tazascan');
+    vi.stubEnv('UPLOAD_ROOT', tempUploadRoot);
+
+    const submissionUpload = await import('./submission-upload.js');
+    const errorHandlerModule = await import('./error-handler.js');
+    uploadSubmissionImages = submissionUpload.uploadSubmissionImages;
+    uploadedFileUrl = submissionUpload.uploadedFileUrl;
+    errorHandler = errorHandlerModule.errorHandler;
+  });
 
   afterEach(async () => {
-    await Promise.all(
-      uploadedFiles.splice(0).map((filename) =>
-        fs.rm(path.resolve(process.cwd(), 'uploads', 'submissions', filename), {
-          force: true
-        })
-      )
-    );
+    vi.unstubAllEnvs();
+    await fs.rm(tempUploadRoot, { recursive: true, force: true });
   });
 
   it('normalizes front, nutrition and ingredients images through the same pipeline', async () => {
@@ -74,10 +86,12 @@ describe('submission image upload middleware', () => {
     expect(response.status).toBe(201);
     for (const key of ['frontImage', 'nutritionImage', 'ingredientsImage']) {
       const file = response.body.data[key];
-      uploadedFiles.push(file.filename);
       expect(file.mimetype).toBe('image/jpeg');
       expect(file.filename).toMatch(/\.jpg$/);
       expect(file.url).toMatch(/\.jpg$/);
+      await expect(
+        fs.stat(path.join(tempUploadRoot, 'submissions', file.filename))
+      ).resolves.toBeTruthy();
     }
   });
 

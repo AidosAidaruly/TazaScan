@@ -1,8 +1,6 @@
 import type { RequestHandler } from 'express';
-import path from 'node:path';
+import { getLocalFileStorage } from '../storage/storage-provider';
 import { HttpError } from '../utils/http-error';
-
-const uploadRoot = path.resolve(process.cwd(), 'uploads', 'submissions');
 
 export const getSubmissionUpload: RequestHandler = (request, response) => {
   const filename = request.params.filename;
@@ -11,5 +9,13 @@ export const getSubmissionUpload: RequestHandler = (request, response) => {
     throw new HttpError(400, 'Invalid upload filename');
   }
 
-  response.sendFile(path.join(uploadRoot, filename));
+  const localPath = getLocalFileStorage().resolveLocalPathFromUrl(
+    `/product-submissions/uploads/${filename}`
+  );
+
+  if (!localPath) {
+    throw new HttpError(400, 'Invalid upload filename');
+  }
+
+  response.sendFile(localPath);
 };

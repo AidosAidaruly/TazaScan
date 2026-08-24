@@ -1,9 +1,24 @@
 import { prisma } from '../prisma/client';
-import type { ListProductsQuery, ProductBody, UpdateProductBody } from '../schemas/product.schema';
+import type {
+  HalalCertificationBody,
+  ListProductsQuery,
+  ProductBody,
+  UpdateProductBody
+} from '../schemas/product.schema';
 import type { Prisma } from '../generated/prisma/client';
 import type { ScoreResult } from '../scoring/types/score-result';
+import type { ProductWithCanonicalFamily } from '../types/product';
 
 const productWithCanonicalFamily = {
+  canonicalProductFamily: {
+    include: {
+      canonicalProduct: true
+    }
+  },
+  halalCertifications: true
+} as const;
+
+const productWithCanonicalFamilyOnly = {
   canonicalProductFamily: {
     include: {
       canonicalProduct: true
@@ -12,48 +27,113 @@ const productWithCanonicalFamily = {
 } as const;
 
 export class ProductRepository {
-  list(filters: ListProductsQuery) {
+  async list(filters: ListProductsQuery): Promise<[ProductWithCanonicalFamily[], number]> {
     const where = this.buildWhere(filters);
     const skip = (filters.page - 1) * filters.pageSize;
 
-    return prisma.$transaction([
-      prisma.product.findMany({
+    try {
+      return await prisma.$transaction([
+        prisma.product.findMany({
+          where,
+          include: productWithCanonicalFamily,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: filters.pageSize
+        }),
+        prisma.product.count({ where })
+      ]);
+    } catch (error) {
+      if (!isMissingHalalCertificationTableError(error)) {
+        throw error;
+      }
+
+      const [products, count] = await prisma.$transaction([
+        prisma.product.findMany({
+          where,
+          include: productWithCanonicalFamilyOnly,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: filters.pageSize
+        }),
+        prisma.product.count({ where })
+      ]);
+
+      return [withEmptyHalalCertifications(products), count];
+    }
+  }
+
+  async findById(id: string): Promise<ProductWithCanonicalFamily | null> {
+    try {
+      return await prisma.product.findUnique({
+        where: { id },
+        include: productWithCanonicalFamily
+      });
+    } catch (error) {
+      if (!isMissingHalalCertificationTableError(error)) {
+        throw error;
+      }
+
+      const product = await prisma.product.findUnique({
+        where: { id },
+        include: productWithCanonicalFamilyOnly
+      });
+
+      return product ? withEmptyHalalCertification(product) : null;
+    }
+  }
+
+  async findByBarcode(barcode: string): Promise<ProductWithCanonicalFamily | null> {
+    try {
+      return await prisma.product.findUnique({
+        where: { barcode },
+        include: productWithCanonicalFamily
+      });
+    } catch (error) {
+      if (!isMissingHalalCertificationTableError(error)) {
+        throw error;
+      }
+
+      const product = await prisma.product.findUnique({
+        where: { barcode },
+        include: productWithCanonicalFamilyOnly
+      });
+
+      return product ? withEmptyHalalCertification(product) : null;
+    }
+  }
+
+  async searchByNameOrBrand(
+    query: string,
+    limit: number
+  ): Promise<ProductWithCanonicalFamily[]> {
+    const where = {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { brand: { contains: query, mode: 'insensitive' } }
+      ]
+    } satisfies Prisma.ProductWhereInput;
+
+    try {
+      return await prisma.product.findMany({
         where,
         include: productWithCanonicalFamily,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: filters.pageSize
-      }),
-      prisma.product.count({ where })
-    ]);
-  }
+        orderBy: { updatedAt: 'desc' },
+        take: limit
+      });
+    } catch (error) {
+      if (!isMissingHalalCertificationTableError(error)) {
+        throw error;
+      }
 
-  findById(id: string) {
-    return prisma.product.findUnique({
-      where: { id },
-      include: productWithCanonicalFamily
-    });
-  }
+      const products = await prisma.product.findMany({
+        where,
+        include: productWithCanonicalFamilyOnly,
+        orderBy: { updatedAt: 'desc' },
+        take: limit
+      });
 
-  findByBarcode(barcode: string) {
-    return prisma.product.findUnique({
-      where: { barcode },
-      include: productWithCanonicalFamily
-    });
-  }
-
-  searchByNameOrBrand(query: string, limit: number) {
-    return prisma.product.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { brand: { contains: query, mode: 'insensitive' } }
-        ]
-      },
-      include: productWithCanonicalFamily,
-      orderBy: { updatedAt: 'desc' },
-      take: limit
-    });
+      return withEmptyHalalCertifications(products);
+    }
   }
 
   create(data: ProductBody, scoreResult: ScoreResult) {
@@ -89,6 +169,31 @@ export class ProductRepository {
   delete(id: string) {
     return prisma.product.delete({
       where: { id }
+    });
+  }
+
+  async replaceHalalCertification(productId: string, data: HalalCertificationBody) {
+    await prisma.productHalalCertification.deleteMany({
+      where: { productId }
+    });
+
+    return prisma.productHalalCertification.create({
+      data: {
+        productId,
+        status: data.status,
+        issuer: data.issuer,
+        certificateNumber: data.certificateNumber ?? null,
+        validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        source: data.source,
+        evidenceUrl: data.evidenceUrl ?? null,
+        verifiedAt: data.verifiedAt ? new Date(data.verifiedAt) : null
+      }
+    });
+  }
+
+  async clearHalalCertification(productId: string) {
+    await prisma.productHalalCertification.deleteMany({
+      where: { productId }
     });
   }
 
@@ -253,4 +358,28 @@ export class ProductRepository {
       target[key] = value;
     }
   }
+}
+
+function withEmptyHalalCertifications<T extends object>(
+  products: T[]
+): Array<T & { halalCertifications: [] }> {
+  return products.map(withEmptyHalalCertification);
+}
+
+function withEmptyHalalCertification<T extends object>(
+  product: T
+): T & { halalCertifications: [] } {
+  return {
+    ...product,
+    halalCertifications: []
+  };
+}
+
+function isMissingHalalCertificationTableError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    String(error.message).includes('product_halal_certifications')
+  );
 }

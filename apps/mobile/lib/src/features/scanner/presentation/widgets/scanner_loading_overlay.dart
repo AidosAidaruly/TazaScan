@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 
 class ScannerLoadingOverlay extends StatelessWidget {
   const ScannerLoadingOverlay({super.key});
@@ -23,7 +24,10 @@ class ScannerLoadingOverlay extends StatelessWidget {
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
               Text(
-                'Считываем штрихкод...',
+                context.t.pick(
+                  ru: 'Считываем штрихкод...',
+                  kk: 'Штрихкод оқылуда...',
+                ),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],

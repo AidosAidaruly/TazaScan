@@ -18,8 +18,12 @@ class TazaScorePreviewData {
     this.nutriScoreGrade,
     this.reasonLabels = const [],
     this.technicalReasonLabels = const [],
+    this.reasonCodes = const [],
+    this.technicalReasonCodes = const [],
     this.missingFields = const [],
     this.missingCriticalFields = const [],
+    this.missingFieldKeys = const [],
+    this.missingCriticalFieldKeys = const [],
     this.nutritionCoverage,
     this.scoreBeforeSafeguard,
     this.scoreCap,
@@ -37,8 +41,12 @@ class TazaScorePreviewData {
   final TazaScoreConfidence confidence;
   final List<String> reasonLabels;
   final List<String> technicalReasonLabels;
+  final List<String> reasonCodes;
+  final List<String> technicalReasonCodes;
   final List<String> missingFields;
   final List<String> missingCriticalFields;
+  final List<String> missingFieldKeys;
+  final List<String> missingCriticalFieldKeys;
   final double? nutritionCoverage;
   final int? scoreBeforeSafeguard;
   final int? scoreCap;

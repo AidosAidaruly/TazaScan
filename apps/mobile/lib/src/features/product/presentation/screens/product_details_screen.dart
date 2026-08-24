@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/network/api_client.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/favorites/data/datasources/favorites_local_data_source.dart';
@@ -11,6 +12,7 @@ import 'package:project/src/features/product/domain/entities/taza_score_preview.
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
 import 'package:project/src/features/product/presentation/widgets/expandable_technical_details.dart';
+import 'package:project/src/features/product/presentation/widgets/halal_check_card.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_score_details_section.dart';
 import 'package:project/src/features/product/presentation/widgets/product_disclaimer.dart';
 import 'package:project/src/features/product/presentation/widgets/product_data_reliability_section.dart';
@@ -157,12 +159,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Детали продукта'),
+        title: Text(context.t.productDetails),
         actions: [
           IconButton(
             tooltip: _isFavorite
-                ? 'Убрать из избранного'
-                : 'Добавить в избранное',
+                ? context.t.pick(
+                    ru: 'Убрать из избранного',
+                    kk: 'Таңдаулылардан алып тастау',
+                  )
+                : context.t.pick(
+                    ru: 'Добавить в избранное',
+                    kk: 'Таңдаулыларға қосу',
+                  ),
             onPressed: _toggleFavorite,
             icon: Icon(
               _isFavorite ? Icons.favorite_rounded : Icons.favorite_border,
@@ -192,6 +200,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               )
             else
               ProductScoreSummaryCard(product: _product),
+            const SizedBox(height: 16),
+            HalalCheckCard(halalCheck: _product.halalCheck),
             const SizedBox(height: 24),
             ProductNutritionSection(product: _product),
             if (!widget.enableTazaScorePreview) ...[
@@ -225,10 +235,13 @@ class _OfflineNotice extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.secondaryContainer,
       borderRadius: BorderRadius.circular(8),
-      child: const Padding(
-        padding: EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
         child: Text(
-          'Офлайн-данные. Мы обновим детали, когда появится интернет.',
+          context.t.pick(
+            ru: 'Офлайн-данные. Мы обновим детали, когда появится интернет.',
+            kk: 'Офлайн деректер. Интернет пайда болғанда мәліметтер жаңартылады.',
+          ),
         ),
       ),
     );

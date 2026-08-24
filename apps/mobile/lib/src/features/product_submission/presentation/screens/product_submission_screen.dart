@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/product_submission/data/repositories/http_product_submission_repository.dart';
 import 'package:project/src/features/product_submission/domain/entities/product_submission_draft.dart';
@@ -91,7 +92,10 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   Future<void> _recognizeNutrition(XFile image) async {
     setState(() {
       _processingOcr = 'nutrition';
-      _ocrMessage = 'Распознаём пищевую ценность...';
+      _ocrMessage = context.t.pick(
+        ru: 'Распознаём пищевую ценность...',
+        kk: 'Тағамдық құндылық анықталуда...',
+      );
       _ocrErrorMessage = null;
     });
 
@@ -121,15 +125,26 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
 
       setState(() {
         _ocrMessage = filledCount > 0
-            ? 'Данные распознаны с фото. Проверьте их перед отправкой.'
-            : 'Некоторые поля не распознаны — их можно оставить пустыми.';
+            ? context.t.pick(
+                ru:
+                    'Данные распознаны с фото. Проверьте их перед отправкой.',
+                kk:
+                    'Деректер фотодан анықталды. Жібермес бұрын тексеріңіз.',
+              )
+            : context.t.pick(
+                ru: 'Некоторые поля не распознаны — их можно оставить пустыми.',
+                kk: 'Кейбір өрістер анықталмады — оларды бос қалдыруға болады.',
+              );
         _ocrErrorMessage = null;
       });
-    } on AppException catch (error) {
+    } on AppException {
       if (!mounted) return;
       setState(() {
         _ocrErrorMessage =
-            '${error.message} Можно заполнить поля вручную или сделать другое фото.';
+            '${context.t.cannotOpenImage}. ${context.t.pick(
+          ru: 'Можно заполнить поля вручную или сделать другое фото.',
+          kk: 'Өрістерді қолмен толтыруға немесе басқа фото түсіруге болады.',
+        )}';
       });
     } finally {
       if (mounted) {
@@ -141,7 +156,10 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   Future<void> _recognizeIngredients(XFile image) async {
     setState(() {
       _processingOcr = 'ingredients';
-      _ocrMessage = 'Распознаём состав...';
+      _ocrMessage = context.t.pick(
+        ru: 'Распознаём состав...',
+        kk: 'Құрамы анықталуда...',
+      );
       _ocrErrorMessage = null;
     });
 
@@ -156,15 +174,26 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
 
       setState(() {
         _ocrMessage = applied
-            ? 'Состав распознан с фото. Проверьте текст перед отправкой.'
-            : 'Состав не распознан — его можно оставить пустым или заполнить вручную.';
+            ? context.t.pick(
+                ru: 'Состав распознан с фото. Проверьте текст перед отправкой.',
+                kk: 'Құрамы фотодан анықталды. Жібермес бұрын мәтінді тексеріңіз.',
+              )
+            : context.t.pick(
+                ru:
+                    'Состав не распознан — его можно оставить пустым или заполнить вручную.',
+                kk:
+                    'Құрамы анықталмады — оны бос қалдыруға немесе қолмен толтыруға болады.',
+              );
         _ocrErrorMessage = null;
       });
-    } on AppException catch (error) {
+    } on AppException {
       if (!mounted) return;
       setState(() {
         _ocrErrorMessage =
-            '${error.message} Можно заполнить поля вручную или сделать другое фото.';
+            '${context.t.cannotOpenImage}. ${context.t.pick(
+          ru: 'Можно заполнить поля вручную или сделать другое фото.',
+          kk: 'Өрістерді қолмен толтыруға немесе басқа фото түсіруге болады.',
+        )}';
       });
     } finally {
       if (mounted) {
@@ -215,13 +244,23 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
 
     final draft = _draft();
     if (!draft.hasIdentifyingData) {
-      _showError('Добавь штрихкод, название продукта или фото упаковки.');
+      _showError(
+        context.t.pick(
+          ru: 'Добавь штрихкод, название продукта или фото упаковки.',
+          kk: 'Штрихкодты, өнім атауын немесе қаптама фотосын қосыңыз.',
+        ),
+      );
       return;
     }
 
     if (_isUnknownBarcodeFlow && !draft.hasFrontPackagePhoto) {
       _showError(
-        'Добавь фото лицевой стороны упаковки, чтобы модератор проверил товар.',
+        context.t.pick(
+          ru:
+              'Добавь фото лицевой стороны упаковки, чтобы модератор проверил продукт.',
+          kk:
+              'Модератор өнімді тексеруі үшін қаптаманың алдыңғы жағының фотосын қосыңыз.',
+        ),
       );
       return;
     }
@@ -244,12 +283,12 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
         _isSubmitting = false;
         _isSuccess = true;
       });
-    } on AppException catch (error) {
+    } on AppException {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
       });
-      _showError(error.message);
+      _showError(context.t.checkConnectionAndRetry);
     }
   }
 
@@ -290,13 +329,16 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Отправить на проверку?'),
+        title: Text(context.t.submitForReviewQuestion),
         content: Text(
           [
-            if (draft.barcode.isNotEmpty) 'Штрихкод: ${draft.barcode}',
-            if (draft.name.isNotEmpty) 'Название: ${draft.name}',
-            if (draft.brand.isNotEmpty) 'Бренд: ${draft.brand}',
-            'Фото: ${[
+            if (draft.barcode.isNotEmpty)
+              '${context.t.pick(ru: 'Штрихкод', kk: 'Штрихкод')}: ${draft.barcode}',
+            if (draft.name.isNotEmpty)
+              '${context.t.pick(ru: 'Название', kk: 'Атауы')}: ${draft.name}',
+            if (draft.brand.isNotEmpty)
+              '${context.t.pick(ru: 'Бренд', kk: 'Бренд')}: ${draft.brand}',
+            '${context.t.pick(ru: 'Фото', kk: 'Фото')}: ${[
               draft.frontImage,
               draft.ingredientsImage,
               draft.nutritionImage,
@@ -307,11 +349,11 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Изменить'),
+            child: Text(context.t.edit),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Отправить'),
+            child: Text(context.t.submit),
           ),
         ],
       ),
@@ -322,22 +364,22 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
   Widget build(BuildContext context) {
     if (_isSuccess) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Заявка отправлена')),
-        body: const ResponsivePage(
+        appBar: AppBar(title: Text(context.t.submittedTitle)),
+        body: ResponsivePage(
           child: Center(
-            child: Text('Спасибо. Продукт отправлен на модерацию.'),
+            child: Text(context.t.submittedMessage),
           ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Добавить продукт')),
+      appBar: AppBar(title: Text(context.t.addProductTitle)),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(16),
         child: FilledButton(
           onPressed: _isSubmitting ? null : _submit,
-          child: Text(_isSubmitting ? 'Отправляем...' : 'Проверить и отправить'),
+          child: Text(_isSubmitting ? context.t.submitting : context.t.checkAndSubmit),
         ),
       ),
       body: ResponsivePage(
@@ -345,14 +387,19 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text(
-                'Фото лицевой стороны обязательно для товара, найденного по неизвестному штрихкоду. Данные с этикетки можно добавить вручную, неизвестные поля оставь пустыми.',
+              Text(
+                context.t.pick(
+                  ru:
+                      'Фото лицевой стороны обязательно для продукта, найденного по неизвестному штрихкоду. Данные с этикетки можно добавить вручную, неизвестные поля оставь пустыми.',
+                  kk:
+                      'Белгісіз штрихкод бойынша табылған өнім үшін қаптаманың алдыңғы жағының фотосы міндетті. Жапсырма деректерін қолмен қосуға болады, белгісіз өрістерді бос қалдырыңыз.',
+                ),
               ),
               if (_processingOcr != null) ...[
                 const SizedBox(height: 12),
                 const LinearProgressIndicator(),
                 const SizedBox(height: 8),
-                Text(_ocrMessage ?? 'Распознаём данные...'),
+                Text(_ocrMessage ?? context.t.recognizingData),
               ] else if (_ocrMessage != null) ...[
                 const SizedBox(height: 12),
                 Text(_ocrMessage!),
@@ -367,28 +414,31 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
               const SizedBox(height: 16),
               _TextInput(
                 controller: _controllers['barcode']!,
-                label: 'Штрихкод',
+                label: context.t.pick(ru: 'Штрихкод', kk: 'Штрихкод'),
               ),
               _TextInput(
                 controller: _controllers['name']!,
-                label: 'Название продукта',
+                label: context.t.pick(ru: 'Название продукта', kk: 'Өнім атауы'),
               ),
-              _TextInput(controller: _controllers['brand']!, label: 'Бренд'),
+              _TextInput(
+                controller: _controllers['brand']!,
+                label: context.t.pick(ru: 'Бренд', kk: 'Бренд'),
+              ),
               _TextInput(
                 controller: _controllers['category']!,
-                label: 'Категория',
+                label: context.t.pick(ru: 'Категория', kk: 'Санат'),
               ),
               _TextInput(
                 controller: _controllers['ingredients']!,
-                label: 'Состав',
+                label: context.t.ingredients,
                 maxLines: 4,
               ),
               DropdownButtonFormField<String>(
                 initialValue: _servingType,
-                decoration: const InputDecoration(labelText: 'Тип порции'),
-                items: const [
-                  DropdownMenuItem(value: 'per100g', child: Text('на 100 г')),
-                  DropdownMenuItem(value: 'per100ml', child: Text('на 100 мл')),
+                decoration: InputDecoration(labelText: context.t.portionType),
+                items: [
+                  DropdownMenuItem(value: 'per100g', child: Text(context.t.per100g)),
+                  DropdownMenuItem(value: 'per100ml', child: Text(context.t.per100ml)),
                 ],
                 onChanged: (value) =>
                     setState(() => _servingType = value ?? 'per100g'),
@@ -397,33 +447,39 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
               for (final field in _nutritionFields)
                 _TextInput(
                   controller: _controllers[field.key]!,
-                  label: field.label,
+                  label: field.label(context),
                   keyboardType: TextInputType.number,
                 ),
               const SizedBox(height: 12),
               _PhotoButton(
-                label: 'Фото лицевой стороны',
+                label: context.t.packagePhoto,
                 image: _frontImage,
                 onTap: () => _pickImage('front'),
               ),
               _PhotoButton(
-                label: 'Фото состава',
-                hint:
-                    'Сфотографируйте состав крупно, чтобы текст был читаемым.',
+                label: context.t.ingredientsPhoto,
+                hint: context.t.pick(
+                  ru: 'Сфотографируйте состав крупно, чтобы текст был читаемым.',
+                  kk: 'Мәтін оқылуы үшін құрамды жақыннан түсіріңіз.',
+                ),
                 image: _ingredientsImage,
                 onTap: () => _pickImage('ingredients'),
                 isProcessing: _processingOcr == 'ingredients',
               ),
               _PhotoButton(
-                label: 'Фото пищевой ценности',
-                hint:
-                    'Сфотографируйте таблицу пищевой ценности крупно, без бликов.',
+                label: context.t.nutritionPhoto,
+                hint: context.t.pick(
+                  ru:
+                      'Сфотографируйте таблицу пищевой ценности крупно, без бликов.',
+                  kk:
+                      'Тағамдық құндылық кестесін жарқылсыз, жақыннан түсіріңіз.',
+                ),
                 image: _nutritionImage,
                 onTap: () => _pickImage('nutrition'),
                 isProcessing: _processingOcr == 'nutrition',
               ),
               _PhotoButton(
-                label: 'Фото штрихкода',
+                label: context.t.barcodePhoto,
                 image: _barcodeImage,
                 onTap: () => _pickImage('barcode'),
               ),
@@ -503,10 +559,16 @@ class _PhotoButton extends StatelessWidget {
             ),
             label: Text(
               isProcessing
-                  ? '$label: распознаём...'
+                  ? context.t.pick(
+                      ru: '$label: распознаём...',
+                      kk: '$label: анықталуда...',
+                    )
                   : image == null
                       ? label
-                      : '$label выбрано',
+                      : context.t.pick(
+                          ru: '$label выбрано',
+                          kk: '$label таңдалды',
+                        ),
             ),
           ),
           if (hint != null) ...[
@@ -539,19 +601,32 @@ const _fieldNames = [
 ];
 
 const _nutritionFields = [
-  _NutritionField('energyKcal', 'Ккал'),
-  _NutritionField('protein', 'Белки'),
-  _NutritionField('carbohydrates', 'Углеводы'),
-  _NutritionField('sugars', 'Сахар'),
-  _NutritionField('fat', 'Жиры'),
-  _NutritionField('saturatedFat', 'Насыщенные жиры'),
-  _NutritionField('fiber', 'Клетчатка'),
-  _NutritionField('salt', 'Соль'),
+  _NutritionField('energyKcal'),
+  _NutritionField('protein'),
+  _NutritionField('carbohydrates'),
+  _NutritionField('sugars'),
+  _NutritionField('fat'),
+  _NutritionField('saturatedFat'),
+  _NutritionField('fiber'),
+  _NutritionField('salt'),
 ];
 
 class _NutritionField {
-  const _NutritionField(this.key, this.label);
+  const _NutritionField(this.key);
 
   final String key;
-  final String label;
+
+  String label(BuildContext context) {
+    return switch (key) {
+      'energyKcal' => context.t.pick(ru: 'Ккал', kk: 'Ккал'),
+      'protein' => context.t.protein,
+      'carbohydrates' => context.t.carbohydrates,
+      'sugars' => context.t.sugars,
+      'fat' => context.t.fat,
+      'saturatedFat' => context.t.saturatedFat,
+      'fiber' => context.t.fiber,
+      'salt' => context.t.salt,
+      _ => key,
+    };
+  }
 }

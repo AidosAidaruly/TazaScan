@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project/src/features/product/data/models/product_model.dart';
+import 'package:project/src/features/product/domain/entities/halal_check.dart';
 
 void main() {
   test('parses product DTO from API response data', () {
@@ -59,6 +60,21 @@ void main() {
         'safeguardsApplied': [],
         'methodologyVersion': 'taza-score-v1',
       },
+      'halalCheck': {
+        'status': 'screening_clear',
+        'reasons': ['NO_ISSUES_DETECTED_BUT_NOT_CONFIRMED'],
+        'matchedSignals': [],
+        'ingredientScreening': {
+          'status': 'clear',
+          'reasons': ['NO_ISSUES_DETECTED_BUT_NOT_CONFIRMED'],
+          'matchedSignals': [],
+        },
+        'certification': {
+          'status': 'not_verified',
+          'records': [],
+        },
+        'methodology': 'halal-check-v1.2',
+      },
       'createdAt': '2026-07-31T00:00:00.000Z',
       'updatedAt': '2026-07-31T00:00:00.000Z',
     });
@@ -74,6 +90,13 @@ void main() {
     expect(product.source, 'Open Food Facts');
     expect(product.scoreSource, 'canonical_recipe');
     expect(product.ingredientsIsTranslated, isTrue);
+    expect(product.halalCheck?.status, HalalCheckStatus.screeningClear);
+    expect(
+      product.halalCheck?.ingredientScreeningStatus,
+      HalalIngredientScreeningStatus.clear,
+    );
+    expect(product.halalCheck?.certificationStatus, 'not_verified');
+    expect(product.halalCheck?.methodology, 'halal-check-v1.2');
     expect(
       product.nutritionScore.negativeReasons,
       contains('High sugar content.'),

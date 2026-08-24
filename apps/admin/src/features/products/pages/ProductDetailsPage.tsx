@@ -6,6 +6,7 @@ import { PageLoader } from "../../../shared/components/PageLoader";
 import { resolveAssetUrl } from "../../../shared/utils/asset-url";
 import { formatDate } from "../../../shared/utils/date";
 import { ProductsApi } from "../api/products-api";
+import { HalalCertificationSection } from "../components/HalalCertificationSection";
 import type { ProductDto } from "../types";
 
 const productsApi = new ProductsApi(new ApiClient());
@@ -127,6 +128,8 @@ export function ProductDetailsPage() {
         <h2>Ingredients</h2>
         <p>{product.ingredients.join(", ") || "No ingredients recorded."}</p>
       </section>
+
+      <HalalCertificationSection halalCheck={product.halalCheck} />
 
       <section className="details-card">
         <h2>Nutrition facts</h2>

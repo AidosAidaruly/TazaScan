@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
@@ -10,11 +11,15 @@ class ProductScoreSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.tazaLocaleController.locale;
     final reasons = [
       ...product.nutritionScore.negativeReasons,
       ...product.nutritionScore.warnings,
       ...product.nutritionScore.positiveReasons,
-    ].map(ProductPresentationLocalization.insight).take(3).toList();
+    ]
+        .map((value) => ProductPresentationLocalization.insight(value, locale: locale))
+        .take(3)
+        .toList();
 
     return TazaSurfaceCard(
       padding: const EdgeInsets.all(18),
@@ -22,14 +27,14 @@ class ProductScoreSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _summaryTitle(product.nutritionScore.grade),
+            _summaryTitle(context, product.nutritionScore.grade),
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           Text(
-            reasons.isEmpty ? 'Дополнительных замечаний нет.' : reasons.first,
+            reasons.isEmpty ? context.t.noAdditionalNotes : reasons.first,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -53,14 +58,14 @@ class ProductScoreSummaryCard extends StatelessWidget {
     );
   }
 
-  String _summaryTitle(String? grade) {
+  String _summaryTitle(BuildContext context, String? grade) {
     return switch (grade?.toUpperCase()) {
-      'A' => 'Высокая пищевая оценка',
-      'B' => 'Хорошая пищевая оценка',
-      'C' => 'Средняя пищевая оценка',
-      'D' => 'Низкая пищевая оценка',
-      'E' => 'Очень низкая пищевая оценка',
-      _ => 'Оценка требует данных',
+      'A' => context.t.pick(ru: 'Высокая пищевая оценка', kk: 'Жоғары тағамдық баға'),
+      'B' => context.t.pick(ru: 'Хорошая пищевая оценка', kk: 'Жақсы тағамдық баға'),
+      'C' => context.t.pick(ru: 'Средняя пищевая оценка', kk: 'Орташа тағамдық баға'),
+      'D' => context.t.pick(ru: 'Низкая пищевая оценка', kk: 'Төмен тағамдық баға'),
+      'E' => context.t.pick(ru: 'Очень низкая пищевая оценка', kk: 'Өте төмен тағамдық баға'),
+      _ => context.t.pick(ru: 'Оценка требует данных', kk: 'Бағалау үшін деректер қажет'),
     };
   }
 }

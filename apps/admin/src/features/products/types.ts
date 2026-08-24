@@ -10,6 +10,70 @@ export type OfficialNutriScoreCategory =
   | 'fats_oils_nuts_seeds'
   | 'red_meat'
 
+export type HalalCheckStatus =
+  | 'halal_confirmed'
+  | 'screening_clear'
+  | 'non_halal'
+  | 'review_required'
+  | 'insufficient_data'
+
+export type HalalIngredientScreeningStatus =
+  | 'clear'
+  | 'review_required'
+  | 'non_halal_detected'
+  | 'insufficient_data'
+
+export type HalalCertificationStatus =
+  | 'verified'
+  | 'not_verified'
+  | 'expired'
+  | 'conflict'
+  | 'unknown'
+
+export type HalalCertificationRecordStatus =
+  | 'verified'
+  | 'unverified'
+  | 'expired'
+
+export type HalalMatchedSignalDto = {
+  ruleId: string
+  reasonCode: string
+  severity: 'non_halal' | 'review_required' | 'informational'
+  matchedText: string
+  sourceKind: string
+}
+
+export type HalalCertificationRecordDto = {
+  status: HalalCertificationRecordStatus
+  issuer: string
+  certificateNumber: string | null
+  validUntil: string | null
+  source: string | null
+  evidenceUrl: string | null
+  verifiedAt: string | null
+}
+
+export type HalalCheckDto = {
+  status: HalalCheckStatus
+  reasons: string[]
+  matchedSignals: HalalMatchedSignalDto[]
+  ingredientScreening: {
+    status: HalalIngredientScreeningStatus
+    reasons: string[]
+    matchedSignals: HalalMatchedSignalDto[]
+  }
+  certification: {
+    status: HalalCertificationStatus
+    records: HalalCertificationRecordDto[]
+  }
+  dataCoverage: {
+    ingredientsAvailable: boolean
+    authoritativeIngredientSource: boolean
+    generatedTranslationUsedOnlyAsAssistance: boolean
+  }
+  methodology: 'halal-check-v1.2'
+}
+
 export type NutritionFactsDto = {
   servingType: ServingType
   energyKcal: number | null
@@ -43,6 +107,11 @@ export type ProductDto = {
     algorithmVersion: string
     calculatedAt: string
   }
+  tazaScore: TazaScorePreviewResponse['data'] | null
+  halalCheck: HalalCheckDto
+  scoreSource: 'product_record' | 'canonical_recipe'
+  canonicalFamilyId: string | null
+  canonicalProductId: string | null
   manualScoreOverride: number | null
   manualOverrideReason: string | null
   manualOverrideAt: string | null
@@ -87,6 +156,16 @@ export type ProductPayload = {
   dataStatus: ProductDataStatus
   source?: string | null
   lastVerifiedAt?: string | null
+}
+
+export type HalalCertificationPayload = {
+  status: HalalCertificationRecordStatus
+  issuer: string
+  certificateNumber?: string | null
+  validUntil?: string | null
+  source: string
+  evidenceUrl?: string | null
+  verifiedAt?: string | null
 }
 
 export type OfficialNutriScorePreviewResponse = {

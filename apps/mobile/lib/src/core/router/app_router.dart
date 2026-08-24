@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/features/home/presentation/screens/home_screen.dart';
 import 'package:project/src/features/photo_search/presentation/screens/photo_search_screen.dart';
 import 'package:project/src/features/favorites/presentation/screens/favorites_screen.dart';
@@ -73,15 +74,21 @@ abstract final class AppRouter {
         settings: settings,
       ),
       AppRoutes.privacy => MaterialPageRoute(
-        builder: (_) => const LegalDocumentScreen(
-          title: 'Политика конфиденциальности',
+        builder: (context) => LegalDocumentScreen(
+          title: context.t.pick(
+            ru: 'Политика конфиденциальности',
+            kk: 'Құпиялық саясаты',
+          ),
           body: privacyPolicyText,
         ),
         settings: settings,
       ),
       AppRoutes.terms => MaterialPageRoute(
-        builder: (_) => const LegalDocumentScreen(
-          title: 'Условия использования',
+        builder: (context) => LegalDocumentScreen(
+          title: context.t.pick(
+            ru: 'Условия использования',
+            kk: 'Пайдалану шарттары',
+          ),
           body: termsOfUseText,
         ),
         settings: settings,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/core/widgets/taza_list_card.dart';
@@ -27,6 +28,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final t = context.t;
 
     return Scaffold(
       backgroundColor: const Color(0xFF020305),
@@ -56,36 +58,36 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 32),
                     TazaPrimaryActionCard(
                       icon: Icons.qr_code_scanner_rounded,
-                      title: 'Сканировать продукт',
-                      subtitle: 'Наведи камеру на штрихкод',
+                      title: t.scanProduct,
+                      subtitle: t.pointCameraAtBarcode,
                       onTap: () => _openScanner(context),
                     ),
                     const SizedBox(height: 18),
                     TazaListCard(
                       icon: Icons.photo_camera_rounded,
-                      title: 'Поиск по фото',
-                      subtitle: 'Найти продукт по изображению',
+                      title: t.photoSearch,
+                      subtitle: t.findProductFromImage,
                       onTap: () => _openPhotoSearch(context),
                     ),
                     const SizedBox(height: 18),
                     TazaListCard(
                       icon: Icons.search_rounded,
-                      title: 'Поиск продукта',
-                      subtitle: 'Найти по названию или штрихкоду',
+                      title: t.productSearch,
+                      subtitle: t.searchByNameOrBarcode,
                       onTap: () => _openProductSearch(context),
                     ),
                     const SizedBox(height: 18),
                     TazaListCard(
                       icon: Icons.history_rounded,
-                      title: 'История',
-                      subtitle: 'Посмотреть отсканированные продукты',
+                      title: t.history,
+                      subtitle: t.scannedProducts,
                       onTap: () =>
                           Navigator.of(context).pushNamed(AppRoutes.history),
                     ),
                     const SizedBox(height: 32),
                     TazaSectionHeader(
-                      title: 'Недавние сканы',
-                      actionLabel: 'Все',
+                      title: t.recentScans,
+                      actionLabel: t.all,
                       onActionTap: () =>
                           Navigator.of(context).pushNamed(AppRoutes.history),
                     ),

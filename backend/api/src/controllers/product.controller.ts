@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { ProductRepository } from '../repositories/product.repository';
 import type {
+  HalalCertificationBody,
   ListProductsQuery,
   OfficialNutriScorePreviewBody,
   ProductBody,
@@ -97,6 +98,27 @@ export const uploadProductImage: RequestHandler = async (request, response) => {
 export const removeProductImage: RequestHandler = async (request, response) => {
   const id = requireParam(request, 'id');
   const product = await productService.removeImage(id);
+
+  response.status(200).json({
+    data: product
+  });
+};
+
+export const replaceProductHalalCertification: RequestHandler = async (request, response) => {
+  const id = requireParam(request, 'id');
+  const product = await productService.replaceHalalCertification(
+    id,
+    request.body as HalalCertificationBody
+  );
+
+  response.status(200).json({
+    data: product
+  });
+};
+
+export const clearProductHalalCertification: RequestHandler = async (request, response) => {
+  const id = requireParam(request, 'id');
+  const product = await productService.clearHalalCertification(id);
 
   response.status(200).json({
     data: product

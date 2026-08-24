@@ -3,6 +3,7 @@ import { ProductDataQualityEvaluator } from '../data-quality/product-data-qualit
 import type {
   ListProductsQuery,
   OfficialNutriScorePreviewBody,
+  HalalCertificationBody,
   ProductBody,
   TazaScorePreviewBody,
   UpdateProductBody
@@ -26,6 +27,8 @@ type ProductRepositoryContract = {
   create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   update(id: string, data: UpdateProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   updateImageUrl(id: string, imageUrl: string | null): Promise<Product>;
+  replaceHalalCertification?(productId: string, data: HalalCertificationBody): Promise<unknown>;
+  clearHalalCertification?(productId: string): Promise<unknown>;
   delete(id: string): Promise<Product>;
 };
 
@@ -166,6 +169,28 @@ export class ProductService {
     await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
 
     return this.toProductDto(product);
+  }
+
+  async replaceHalalCertification(id: string, data: HalalCertificationBody) {
+    if (!this.productRepository.replaceHalalCertification) {
+      throw new HttpError(500, 'Halal certification storage is unavailable');
+    }
+
+    await this.ensureExists(id);
+    await this.productRepository.replaceHalalCertification(id, data);
+
+    return this.getById(id);
+  }
+
+  async clearHalalCertification(id: string) {
+    if (!this.productRepository.clearHalalCertification) {
+      throw new HttpError(500, 'Halal certification storage is unavailable');
+    }
+
+    await this.ensureExists(id);
+    await this.productRepository.clearHalalCertification(id);
+
+    return this.getById(id);
   }
 
   private toProductDto(product: ProductWithCanonicalFamily): ProductDto {

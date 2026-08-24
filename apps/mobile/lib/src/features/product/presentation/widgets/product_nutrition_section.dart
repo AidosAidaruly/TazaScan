@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/widgets/nutrition_metric_card.dart';
 
@@ -9,22 +10,24 @@ class ProductNutritionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     final mainMetrics = [
-      _metric('energyKcal', 'Энергия', 'ккал', Icons.bolt_rounded),
-      _metric('protein', 'Белки', 'г', Icons.fitness_center_rounded),
-      _metric('carbohydrates', 'Углеводы', 'г', Icons.grain_rounded),
-      _metric('sugars', 'Сахар', 'г', Icons.cookie_rounded),
+      _metric(context, 'energyKcal', t.energy, 'ккал', Icons.bolt_rounded),
+      _metric(context, 'protein', t.protein, 'г', Icons.fitness_center_rounded),
+      _metric(context, 'carbohydrates', t.carbohydrates, 'г', Icons.grain_rounded),
+      _metric(context, 'sugars', t.sugars, 'г', Icons.cookie_rounded),
     ];
     final secondaryMetrics = [
-      _nutritionMetric('fat', 'Жиры', 'г', Icons.water_drop_rounded),
+      _nutritionMetric(context, 'fat', t.fat, 'г', Icons.water_drop_rounded),
       _nutritionMetric(
+        context,
         'saturatedFat',
-        'Насыщенные жиры',
+        t.saturatedFat,
         'г',
         Icons.opacity_rounded,
       ),
-      _nutritionMetric('fiber', 'Клетчатка', 'г', Icons.spa_rounded),
-      _nutritionMetric('salt', 'Соль', 'г', Icons.scatter_plot_rounded),
+      _nutritionMetric(context, 'fiber', t.fiber, 'г', Icons.spa_rounded),
+      _nutritionMetric(context, 'salt', t.salt, 'г', Icons.scatter_plot_rounded),
     ];
     final basisLabel = _nutritionBasisLabel();
 
@@ -56,7 +59,10 @@ class ProductNutritionSection extends StatelessWidget {
         if (basisLabel != null) ...[
           const SizedBox(height: 10),
           Text(
-            'Данные указаны $basisLabel',
+            t.pick(
+              ru: 'Данные указаны $basisLabel',
+              kk: 'Деректер $basisLabel көрсетілген',
+            ),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -67,13 +73,14 @@ class ProductNutritionSection extends StatelessWidget {
   }
 
   _NutritionMetric _nutritionMetric(
+    BuildContext context,
     String key,
     String label,
     String unit,
     IconData icon,
   ) {
     final value = _readNumber(product.nutritionFacts[key]);
-    final interpretation = _interpret(key, value);
+    final interpretation = _interpret(context.t, key, value);
 
     return _NutritionMetric(
       label: label,
@@ -86,12 +93,13 @@ class ProductNutritionSection extends StatelessWidget {
   }
 
   NutritionMetricCard _metric(
+    BuildContext context,
     String key,
     String label,
     String unit,
     IconData icon,
   ) {
-    final metric = _nutritionMetric(key, label, unit, icon);
+    final metric = _nutritionMetric(context, key, label, unit, icon);
 
     return NutritionMetricCard(
       label: metric.label,
@@ -137,83 +145,89 @@ class ProductNutritionSection extends StatelessWidget {
     return null;
   }
 
-  _MetricInterpretation _interpret(String key, num? value) {
+  _MetricInterpretation _interpret(TazaStrings t, String key, num? value) {
     if (value == null) {
-      return const _MetricInterpretation('Нет данных', MetricTone.unknown);
+      return _MetricInterpretation(t.noData, MetricTone.unknown);
     }
 
     return switch (key) {
       'sugars' =>
         value >= 10
-            ? const _MetricInterpretation(
-                'Высокое содержание',
+            ? _MetricInterpretation(
+                t.highContent,
                 MetricTone.negative,
               )
             : value >= 5
-            ? const _MetricInterpretation(
-                'Умеренное содержание',
+            ? _MetricInterpretation(
+                t.moderateContent,
                 MetricTone.moderate,
               )
-            : const _MetricInterpretation(
-                'Низкое содержание',
+            : _MetricInterpretation(
+                t.lowContent,
                 MetricTone.positive,
               ),
       'saturatedFat' =>
         value >= 5
-            ? const _MetricInterpretation(
-                'Высокое содержание',
+            ? _MetricInterpretation(
+                t.highContent,
                 MetricTone.negative,
               )
             : value >= 1.5
-            ? const _MetricInterpretation(
-                'Умеренное содержание',
+            ? _MetricInterpretation(
+                t.moderateContent,
                 MetricTone.moderate,
               )
-            : const _MetricInterpretation(
-                'Низкое содержание',
+            : _MetricInterpretation(
+                t.lowContent,
                 MetricTone.positive,
               ),
       'salt' =>
         value >= 1.5
-            ? const _MetricInterpretation(
-                'Высокое содержание',
+            ? _MetricInterpretation(
+                t.highContent,
                 MetricTone.negative,
               )
             : value >= 0.3
-            ? const _MetricInterpretation(
-                'Умеренное содержание',
+            ? _MetricInterpretation(
+                t.moderateContent,
                 MetricTone.moderate,
               )
-            : const _MetricInterpretation(
-                'Низкое содержание',
+            : _MetricInterpretation(
+                t.lowContent,
                 MetricTone.positive,
               ),
       'fiber' =>
         value >= 3
-            ? const _MetricInterpretation('Есть клетчатка', MetricTone.positive)
-            : const _MetricInterpretation(
-                'Низкое содержание',
+            ? _MetricInterpretation(
+                t.pick(ru: 'Есть клетчатка', kk: 'Талшық бар'),
+                MetricTone.positive,
+              )
+            : _MetricInterpretation(
+                t.lowContent,
                 MetricTone.moderate,
               ),
       'protein' =>
         value >= 5
-            ? const _MetricInterpretation(
-                'Заметное содержание',
+            ? _MetricInterpretation(
+                t.pick(ru: 'Заметное содержание', kk: 'Айтарлықтай мөлшер'),
                 MetricTone.positive,
               )
-            : const _MetricInterpretation(
-                'Низкое содержание',
+            : _MetricInterpretation(
+                t.lowContent,
                 MetricTone.unknown,
               ),
-      'energyKcal' => const _MetricInterpretation(
-        'Информация о калорийности',
+      'energyKcal' => _MetricInterpretation(
+        t.pick(ru: 'Информация о калорийности', kk: 'Калория туралы ақпарат'),
         MetricTone.unknown,
       ),
-      'carbohydrates' => const _MetricInterpretation(
-        'Всего углеводов',
+      'carbohydrates' => _MetricInterpretation(
+        t.pick(ru: 'Всего углеводов', kk: 'Көмірсулардың жалпы мөлшері'),
         MetricTone.unknown,
       ),
-      _ => const _MetricInterpretation('Показатель', MetricTone.unknown),
+      _ => _MetricInterpretation(
+        t.pick(ru: 'Показатель', kk: 'Көрсеткіш'),
+        MetricTone.unknown,
+      ),
     };
   }
 }
@@ -232,7 +246,7 @@ class _SectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Пищевая ценность',
+          context.t.nutritionTitle,
           style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
         ),
         if (basisLabel != null) ...[

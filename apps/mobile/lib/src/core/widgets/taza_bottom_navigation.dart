@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 
 class TazaBottomNavigation extends StatelessWidget {
   const TazaBottomNavigation({
@@ -15,6 +16,7 @@ class TazaBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final t = context.t;
 
     return SafeArea(
       top: false,
@@ -67,28 +69,28 @@ class TazaBottomNavigation extends StatelessWidget {
                           _NavItem(
                             icon: Icons.home_outlined,
                             activeIcon: Icons.home_rounded,
-                            label: 'Главная',
+                            label: t.home,
                             isSelected: selectedIndex == 0,
                             onTap: () => onDestinationSelected(0),
                           ),
                           _NavItem(
                             icon: Icons.qr_code_scanner_outlined,
                             activeIcon: Icons.qr_code_scanner_rounded,
-                            label: 'Скан',
+                            label: t.scan,
                             isSelected: selectedIndex == 1,
                             onTap: () => onDestinationSelected(1),
                           ),
                           _NavItem(
                             icon: Icons.favorite_border_rounded,
                             activeIcon: Icons.favorite_rounded,
-                            label: 'Избранное',
+                            label: t.favorites,
                             isSelected: selectedIndex == 2,
                             onTap: () => onDestinationSelected(2),
                           ),
                           _NavItem(
                             icon: Icons.person_outline_rounded,
                             activeIcon: Icons.person_rounded,
-                            label: 'Профиль',
+                            label: t.profile,
                             isSelected: selectedIndex == 3,
                             onTap: () => onDestinationSelected(3),
                           ),

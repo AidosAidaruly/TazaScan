@@ -157,6 +157,30 @@ describe('toProductDto image suitability', () => {
     expect(dto.nutritionScore.grade).toBe('B');
   });
 
+  it('keeps Halal Check classification separate from TazaScore', () => {
+    const tazaScore = {
+      score: 90,
+      status: 'calculated',
+      methodology: 'TazaScore',
+      methodologyVersion: 'taza-score-v1.1'
+    } as TazaScoreResult;
+
+    const dto = toProductDto(
+      createProduct({
+        ingredients: ['pork'],
+        calculatedScore: 90,
+        calculatedGrade: 'A'
+      }),
+      tazaScore
+    );
+
+    expect(dto.tazaScore).toBe(tazaScore);
+    expect(dto.tazaScore?.score).toBe(90);
+    expect(dto.nutritionScore.score).toBe(83);
+    expect(dto.halalCheck.status).toBe('non_halal');
+    expect(dto.halalCheck.reasons).toContain('PORK_DETECTED');
+  });
+
   it('keeps verified manual images visible', () => {
     const dto = toProductDto(
       createProduct({

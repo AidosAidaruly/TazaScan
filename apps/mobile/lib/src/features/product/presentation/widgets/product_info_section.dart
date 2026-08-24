@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/presentation/widgets/ingredient_explanation_row.dart';
 import 'package:project/src/features/product/presentation/widgets/ingredient_knowledge_map.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class ProductInfoSection extends StatelessWidget {
   const ProductInfoSection({required this.product, super.key});
@@ -35,6 +37,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final t = context.t;
     final ingredients = product.ingredients;
     final hasIngredients = ingredients.isNotEmpty;
     final hasLongList = ingredients.length > _collapsedIngredientCount;
@@ -52,6 +55,7 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
         : explanations;
     final additives = explanations.where((info) => info.isAdditive).toList();
     final summary = _summary(
+      context,
       hasIngredients: hasIngredients,
       hasAddedSugar: explanations.any((info) => info.displayName == 'Сахар'),
       hasCaffeine: explanations.any((info) => info.displayName == 'Кофеин'),
@@ -64,21 +68,21 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionTitle(
-            title: 'Состав',
+            title: t.ingredients,
             trailing: hasIngredients
-                ? _ingredientCountLabel(ingredients.length)
+                ? _ingredientCountLabel(context, ingredients.length)
                 : null,
           ),
           const SizedBox(height: 12),
           if (!hasIngredients)
-            _SecondaryText('Состав пока не указан.')
+            _SecondaryText(t.ingredientsNotProvided)
           else ...[
             if (product.ingredientsIsTranslated) ...[
-              const _SecondaryText('Переведено автоматически'),
+              _SecondaryText(t.translatedAutomatically),
               const SizedBox(height: 8),
             ],
             Text(
-              _ingredientSentence(visibleIngredients),
+              _ingredientSentence(context, visibleIngredients),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(height: 1.35),
@@ -87,16 +91,16 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => setState(() => _expanded = !_expanded),
-                child: Text(_expanded ? 'Скрыть' : 'Показать полностью'),
+                child: Text(_expanded ? t.hide : t.showFully),
               ),
             ],
             const SizedBox(height: 18),
-            const _SectionTitle(title: 'Кратко о составе'),
+            _SectionTitle(title: t.compositionSummary),
             const SizedBox(height: 8),
             _SummaryText(summary),
             if (explanations.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const _SectionTitle(title: 'Что в составе'),
+              _SectionTitle(title: t.whatIsInside),
               const SizedBox(height: 4),
               for (
                 var index = 0;
@@ -113,23 +117,27 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
                   onPressed: () => setState(
                     () => _showAllExplanations = !_showAllExplanations,
                   ),
-                  child: Text(_showAllExplanations ? 'Скрыть' : 'Показать все'),
+                  child: Text(_showAllExplanations ? t.hide : t.showAll),
                 ),
               ],
             ],
             if (additives.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const _SectionTitle(title: 'Пищевые добавки'),
+              _SectionTitle(title: t.foodAdditives),
               const SizedBox(height: 6),
               _AdditiveList(additives: additives),
             ],
           ],
           const SizedBox(height: 18),
-          const _SectionTitle(title: 'Аллергены'),
+          _SectionTitle(title: t.allergens),
           const SizedBox(height: 8),
           _SecondaryText(
-            'Информация об аллергенах не указана.\n'
-            'При аллергии всегда проверяйте упаковку продукта.',
+            t.pick(
+              ru:
+                  'Информация об аллергенах не указана.\nПри аллергии всегда проверяйте упаковку продукта.',
+              kk:
+                  'Аллергендер туралы ақпарат көрсетілмеген.\nАллергия болса, әрқашан өнім қаптамасын тексеріңіз.',
+            ),
           ),
           if (product.dataStatus == 'unverified' ||
               product.dataStatus == 'community') ...[
@@ -188,47 +196,72 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
     return 3;
   }
 
-  String _summary({
+  String _summary(
+    BuildContext context, {
     required bool hasIngredients,
     required bool hasAddedSugar,
     required bool hasCaffeine,
     required int additiveCount,
   }) {
+    final t = context.t;
     if (!hasIngredients) {
-      return 'Состав пока не указан.\nИнформация об аллергенах не указана.';
+      return t.pick(
+        ru: 'Состав пока не указан.\nИнформация об аллергенах не указана.',
+        kk: 'Құрамы көрсетілмеген.\nАллергендер туралы ақпарат көрсетілмеген.',
+      );
     }
 
     final fragments = <String>[];
     if (hasAddedSugar) {
-      fragments.add('содержит добавленный сахар');
+      fragments.add(
+        t.pick(ru: 'содержит добавленный сахар', kk: 'қосылған қант бар'),
+      );
     }
     if (hasCaffeine) {
-      fragments.add('содержит кофеин');
+      fragments.add(t.pick(ru: 'содержит кофеин', kk: 'кофеин бар'));
     }
     if (additiveCount > 0) {
-      fragments.add(_additiveSummaryFragment(additiveCount));
+      fragments.add(_additiveSummaryFragment(context, additiveCount));
     }
 
     final firstSentence = fragments.isEmpty
-        ? 'Известные ингредиенты перечислены ниже.'
-        : '${_capitalize(_joinFragments(fragments))}.';
-    return '$firstSentence\nИнформация об аллергенах не указана.';
+        ? t.pick(
+            ru: 'Известные ингредиенты перечислены ниже.',
+            kk: 'Белгілі ингредиенттер төменде көрсетілген.',
+          )
+        : '${_capitalize(_joinFragments(context, fragments))}.';
+    return t.pick(
+      ru: '$firstSentence\nИнформация об аллергенах не указана.',
+      kk: '$firstSentence\nАллергендер туралы ақпарат көрсетілмеген.',
+    );
   }
 
-  String _ingredientSentence(List<String> ingredients) {
+  String _ingredientSentence(BuildContext context, List<String> ingredients) {
     final localized = ingredients
         .map(IngredientKnowledgeMap.displayName)
+        .map(
+          (value) => ProductPresentationLocalization.ingredient(
+            value,
+            locale: context.tazaLocaleController.locale,
+          ),
+        )
         .where((value) => value.trim().isNotEmpty)
         .toList();
     final sentence = localized.join(', ');
     return sentence.endsWith('.') ? sentence : '$sentence.';
   }
 
-  String _ingredientCountLabel(int count) {
+  String _ingredientCountLabel(BuildContext context, int count) {
+    if (context.tazaLocaleController.locale == TazaLocale.kk) {
+      return '$count ингредиент';
+    }
     return '$count ${_plural(count, 'ингредиент', 'ингредиента', 'ингредиентов')}';
   }
 
-  String _additiveSummaryFragment(int count) {
+  String _additiveSummaryFragment(BuildContext context, int count) {
+    if (context.tazaLocaleController.locale == TazaLocale.kk) {
+      return '$count тағамдық қоспа анықталды';
+    }
     return count == 1
         ? 'обнаружена 1 пищевая добавка'
         : 'обнаружено $count ${_plural(count, 'пищевая добавка', 'пищевые добавки', 'пищевых добавок')}';
@@ -246,14 +279,16 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
     return many;
   }
 
-  String _joinFragments(List<String> fragments) {
+  String _joinFragments(BuildContext context, List<String> fragments) {
+    final conjunction =
+        context.tazaLocaleController.locale == TazaLocale.kk ? 'және' : 'и';
     if (fragments.length == 1) {
       return fragments.first;
     }
     if (fragments.length == 2) {
-      return '${fragments.first} и ${fragments.last}';
+      return '${fragments.first} $conjunction ${fragments.last}';
     }
-    return '${fragments.take(fragments.length - 1).join(', ')} и ${fragments.last}';
+    return '${fragments.take(fragments.length - 1).join(', ')} $conjunction ${fragments.last}';
   }
 
   String _capitalize(String value) {
@@ -389,13 +424,24 @@ class _AdditiveLine extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
             TextSpan(
-              text: ' — $description',
+              text: ' — ${_localizedAdditiveDescription(context, description)}',
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _localizedAdditiveDescription(BuildContext context, String value) {
+    if (context.tazaLocaleController.locale != TazaLocale.kk) return value;
+
+    return switch (value) {
+      'регулятор кислотности' => 'қышқылдықты реттегіш',
+      'карамельный краситель' => 'карамельді бояғыш',
+      'консервант' => 'консервант',
+      _ => value,
+    };
   }
 }
 
@@ -417,7 +463,10 @@ class _DataQualityNote extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'Данные требуют проверки.',
+            context.t.pick(
+              ru: 'Данные требуют проверки.',
+              kk: 'Деректер тексеруді қажет етеді.',
+            ),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,

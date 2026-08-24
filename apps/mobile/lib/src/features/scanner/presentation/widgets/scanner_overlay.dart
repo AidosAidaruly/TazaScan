@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 
 class ScannerOverlay extends StatelessWidget {
   const ScannerOverlay({required this.onCancel, super.key});
@@ -8,6 +9,7 @@ class ScannerOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final t = context.t;
 
     return SafeArea(
       child: Padding(
@@ -19,11 +21,14 @@ class ScannerOverlay extends StatelessWidget {
                 IconButton.filledTonal(
                   onPressed: onCancel,
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Отменить сканирование',
+                  tooltip: t.pick(
+                    ru: 'Отменить сканирование',
+                    kk: 'Сканерлеуді тоқтату',
+                  ),
                 ),
                 const Spacer(),
                 Text(
-                  'Сканирование',
+                  t.pick(ru: 'Сканирование', kk: 'Сканерлеу'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -45,7 +50,10 @@ class ScannerOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Помести штрихкод EAN или UPC внутрь рамки.',
+              t.pick(
+                ru: 'Помести штрихкод EAN или UPC внутрь рамки.',
+                kk: 'EAN немесе UPC штрихкодын жақтаудың ішіне орналастыр.',
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white.withValues(alpha: 0.88),

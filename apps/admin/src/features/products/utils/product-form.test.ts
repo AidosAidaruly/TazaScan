@@ -5,6 +5,28 @@ import {
   productToFormValues,
 } from './product-form'
 import { isValidBarcode } from './barcode'
+import type { HalalCheckDto } from '../types'
+
+const halalCheckFixture: HalalCheckDto = {
+  status: 'screening_clear',
+  reasons: ['NO_ISSUES_DETECTED_BUT_NOT_CONFIRMED'],
+  matchedSignals: [],
+  ingredientScreening: {
+    status: 'clear',
+    reasons: ['NO_ISSUES_DETECTED_BUT_NOT_CONFIRMED'],
+    matchedSignals: [],
+  },
+  certification: {
+    status: 'not_verified',
+    records: [],
+  },
+  dataCoverage: {
+    ingredientsAvailable: true,
+    authoritativeIngredientSource: true,
+    generatedTranslationUsedOnlyAsAssistance: false,
+  },
+  methodology: 'halal-check-v1.2',
+}
 
 describe('product form mapping', () => {
   it('sends unknown nutrition values as null', () => {
@@ -75,6 +97,11 @@ describe('product form mapping', () => {
         algorithmVersion: '1',
         calculatedAt: '2026-01-01T00:00:00.000Z',
       },
+      tazaScore: null,
+      halalCheck: halalCheckFixture,
+      scoreSource: 'product_record',
+      canonicalFamilyId: null,
+      canonicalProductId: null,
       manualScoreOverride: null,
       manualOverrideReason: null,
       manualOverrideAt: null,
@@ -141,6 +168,11 @@ describe('product form mapping', () => {
         algorithmVersion: '1',
         calculatedAt: '2026-01-01T00:00:00.000Z',
       },
+      tazaScore: null,
+      halalCheck: halalCheckFixture,
+      scoreSource: 'product_record',
+      canonicalFamilyId: null,
+      canonicalProductId: null,
       manualScoreOverride: null,
       manualOverrideReason: null,
       manualOverrideAt: null,

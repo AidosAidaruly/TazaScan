@@ -1,4 +1,5 @@
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
+import 'package:project/src/features/product/domain/entities/halal_check.dart';
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 
 class Product {
@@ -17,6 +18,7 @@ class Product {
     this.source,
     this.scoreSource = 'product_record',
     this.ingredientsIsTranslated = false,
+    this.halalCheck,
     this.brand,
     this.category,
     this.imageUrl,
@@ -37,6 +39,7 @@ class Product {
   final int healthScore;
   final NutritionScore nutritionScore;
   final TazaScorePreviewData? tazaScore;
+  final HalalCheck? halalCheck;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

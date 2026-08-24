@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/network/asset_url_resolver.dart';
 import 'package:project/src/features/product/domain/entities/cached_product_summary.dart';
+import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
 class CachedProductCard extends StatelessWidget {
   const CachedProductCard({
@@ -18,6 +20,10 @@ class CachedProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = resolveApiAssetUrl(product.imageUrl);
     final scoreLabel = product.scoreLabel ?? 'TazaScore';
+    final category = ProductPresentationLocalization.category(
+      product.category,
+      locale: context.tazaLocaleController.locale,
+    );
 
     return Card(
       child: ListTile(
@@ -44,7 +50,7 @@ class CachedProductCard extends StatelessWidget {
         subtitle: Text(
           [
             if (product.brand != null) product.brand!,
-            product.category ?? product.barcode,
+            if (category.isNotEmpty) category else product.barcode,
           ].join(' · '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

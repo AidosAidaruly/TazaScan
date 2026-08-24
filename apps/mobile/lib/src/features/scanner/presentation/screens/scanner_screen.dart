@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/network/api_client.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/features/product/data/repositories/http_product_repository.dart';
@@ -58,8 +59,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
     if (format == null ||
         !BarcodeValidator.isSupportedProductBarcode(barcode, format)) {
       setState(() {
-        _invalidBarcodeMessage =
-            'Этот штрихкод не похож на поддерживаемый код продукта.';
+        _invalidBarcodeMessage = context.t.pick(
+          ru: 'Этот штрихкод не похож на поддерживаемый код продукта.',
+          kk: 'Бұл штрихкод қолдау көрсетілетін өнім коды емес сияқты.',
+        );
       });
       return;
     }
@@ -99,29 +102,41 @@ class _ScannerScreenState extends State<ScannerScreen> {
       final product = await _productService.findByBarcode(barcode);
       return _ProductFound(product);
     } on NotFoundException {
-      return const _ProductLookupFailed(
-        title: 'Товар не найден',
-        message: 'Этого штрихкода пока нет в нашей базе.',
+      return _ProductLookupFailed(
+        title: context.t.productNotFound,
+        message: context.t.pick(
+          ru: 'Этого штрихкода пока нет в нашей базе.',
+          kk: 'Бұл штрихкод біздің базада әзірге жоқ.',
+        ),
       );
     } on NetworkException {
-      return const _ProductLookupFailed(
-        title: 'Нет подключения к интернету',
-        message: 'Проверь соединение и попробуй сканировать снова.',
+      return _ProductLookupFailed(
+        title: context.t.pick(
+          ru: 'Нет подключения к интернету',
+          kk: 'Интернет байланысы жоқ',
+        ),
+        message: context.t.checkConnectionAndRetry,
       );
     } on RequestTimeoutException {
-      return const _ProductLookupFailed(
-        title: 'Сервер долго отвечает',
-        message: 'Сервер не успел ответить вовремя.',
+      return _ProductLookupFailed(
+        title: context.t.serverSlow,
+        message: context.t.pick(
+          ru: 'Сервер не успел ответить вовремя.',
+          kk: 'Сервер уақытында жауап бермеді.',
+        ),
       );
     } on ServerException {
-      return const _ProductLookupFailed(
-        title: 'Сервер недоступен',
-        message: 'Не удалось связаться с сервисом продуктов. Попробуй позже.',
-      );
-    } on AppException catch (error) {
       return _ProductLookupFailed(
-        title: 'Поиск не удался',
-        message: error.message,
+        title: context.t.serverUnavailable,
+        message: context.t.pick(
+          ru: 'Не удалось связаться с сервисом продуктов. Попробуй позже.',
+          kk: 'Өнім сервисімен байланысу мүмкін болмады. Кейінірек көріңіз.',
+        ),
+      );
+    } on AppException {
+      return _ProductLookupFailed(
+        title: context.t.searchFailed,
+        message: context.t.checkConnectionAndRetry,
       );
     }
   }

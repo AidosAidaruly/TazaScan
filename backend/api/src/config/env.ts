@@ -14,7 +14,13 @@ const envSchema = z.object({
   JWT_ACCESS_TOKEN_TTL: z.string().default('15m'),
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(12).optional(),
-  PUBLIC_UPLOADS_BASE_URL: z.string().url().optional()
+  PUBLIC_UPLOADS_BASE_URL: z.string().url().optional(),
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  UPLOAD_ROOT: z.string().min(1).default('uploads'),
+  ALLOW_LOCAL_PRODUCTION_STORAGE: z
+    .string()
+    .optional()
+    .transform((value) => value === 'true')
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -50,5 +56,8 @@ export const env = {
   corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
-  publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL
+  publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL,
+  storageDriver: parsedEnv.data.STORAGE_DRIVER,
+  uploadRoot: parsedEnv.data.UPLOAD_ROOT,
+  allowLocalProductionStorage: parsedEnv.data.ALLOW_LOCAL_PRODUCTION_STORAGE
 };

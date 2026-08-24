@@ -54,6 +54,12 @@ enum ProductSubmissionStatus {
   needs_correction
 }
 
+enum HalalCertificationStatus {
+  verified
+  unverified
+  expired
+}
+
 model Product {
   id             String            @id @default(uuid())
   barcode        String            @unique
@@ -97,6 +103,7 @@ model Product {
   canonicalProductFamilyId String?
   canonicalProductFamily CanonicalProductFamily? @relation("ProductFamilyMembers", fields: [canonicalProductFamilyId], references: [id], onDelete: SetNull)
   canonicalSourceForFamilies CanonicalProductFamily[] @relation("CanonicalProductFamilySource")
+  halalCertifications ProductHalalCertification[]
   submissions    ProductSubmission[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
@@ -124,6 +131,27 @@ model CanonicalProductFamily {
   @@index([brand])
   @@index([canonicalName])
   @@map("canonical_product_families")
+}
+
+model ProductHalalCertification {
+  id                String                    @id @default(uuid())
+  productId         String
+  status            HalalCertificationStatus
+  issuer            String
+  certificateNumber String?
+  validUntil        DateTime?
+  source            String
+  evidenceUrl       String?
+  verifiedAt        DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([status])
+  @@index([validUntil])
+  @@map("product_halal_certifications")
 }
 
 model ProductSubmission {

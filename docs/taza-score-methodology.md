@@ -104,6 +104,22 @@ score source identifiers, coverage, safeguards, or methodology version.
 Low-confidence or partial-data products may show a short hint such as
 `Неполные данные`; detailed diagnostics belong on Product Details.
 
+### Photo Search Fallback
+
+Photo Search is a convenience feature, not a guaranteed visual recognition
+system. If photo analysis succeeds but no matching product is found, the mobile
+UI should guide the user to reliable existing flows:
+
+```text
+photo search no match
+-> scan barcode
+or
+-> search by name
+```
+
+This state is separate from network, timeout, unreadable-image, and server
+errors.
+
 ## Component weights
 
 ### 1. Nutritional quality: 90 points

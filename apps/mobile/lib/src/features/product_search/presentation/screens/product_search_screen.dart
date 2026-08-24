@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:project/src/core/errors/app_exception.dart';
-import 'package:project/src/core/network/asset_url_resolver.dart';
+import 'package:project/src/core/localization/taza_localizations.dart';
 import 'package:project/src/core/network/api_client.dart';
 import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/responsive_page.dart';
@@ -10,7 +10,7 @@ import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/data/repositories/http_product_repository.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
-import 'package:project/src/features/product/presentation/scoring/taza_score_consumer_presentation.dart';
+import 'package:project/src/features/product/presentation/widgets/consumer_product_card.dart';
 
 class ProductSearchScreen extends StatefulWidget {
   const ProductSearchScreen({this.productService, super.key});
@@ -109,11 +109,13 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
         _recentQueries = _updatedRecentQueries(query);
       });
     } on AppException catch (error) {
+      if (!mounted) return;
       _showError(_errorTitleFor(error), _errorMessageFor(error), generation);
     } catch (_) {
+      if (!mounted) return;
       _showError(
-        'Не удалось выполнить поиск',
-        'Проверьте подключение и попробуйте снова.',
+        context.t.searchFailed,
+        context.t.checkConnectionAndRetry,
         generation,
       );
     }
@@ -121,21 +123,21 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
 
   String _errorTitleFor(AppException error) {
     if (error is RequestTimeoutException) {
-      return 'Сервер долго отвечает';
+      return context.t.serverSlow;
     }
 
-    return 'Не удалось выполнить поиск';
+    return context.t.searchFailed;
   }
 
   String _errorMessageFor(AppException error) {
     if (error is RequestTimeoutException) {
-      return 'Попробуйте снова.';
+      return context.t.tryAgain;
     }
     if (error is NetworkException) {
-      return 'Проверьте подключение и попробуйте снова.';
+      return context.t.checkConnectionAndRetry;
     }
 
-    return error.message;
+    return context.t.checkConnectionAndRetry;
   }
 
   void _showError(String title, String message, int generation) {
@@ -186,9 +188,10 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
   Widget build(BuildContext context) {
     final hasQuery = _controller.text.trim().isNotEmpty;
     final hasSearched = _lastCompletedQuery.isNotEmpty;
+    final t = context.t;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск продукта')),
+      appBar: AppBar(title: Text(t.productSearch)),
       body: ResponsivePage(
         child: ListView(
           children: [
@@ -212,29 +215,29 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
             ],
             if (_errorMessage != null) ...[
               _SearchMessage(
-                icon: Icons.wifi_off_rounded,
-                title: _errorTitle ?? 'Не удалось выполнить поиск',
+                icon: Icons.signal_wifi_off_rounded,
+                title: _errorTitle ?? t.searchFailed,
                 message: _errorMessage!,
-                actionLabel: 'Повторить',
+                actionLabel: t.retry,
                 onActionTap: () => _search(_lastSubmittedQuery),
               ),
             ] else if (!hasQuery && !hasSearched) ...[
-              const _SearchMessage(
+              _SearchMessage(
                 icon: Icons.manage_search_rounded,
-                title: 'Найдите продукт',
-                message: 'Введите название или бренд.',
+                title: t.findProduct,
+                message: t.enterNameOrBrand,
               ),
             ] else if (!_isLoading && hasSearched && _results.isEmpty) ...[
               _SearchMessage(
                 icon: Icons.search_off_rounded,
-                title: 'Ничего не найдено.',
-                message: 'Не нашли продукт? Помогите добавить его.',
-                actionLabel: 'Добавить продукт',
+                title: t.nothingFound,
+                message: t.helpAddProduct,
+                actionLabel: t.addProduct,
                 onActionTap: _openSubmission,
               ),
             ] else ...[
               for (final product in _results) ...[
-                _ProductSearchResultCard(
+                ConsumerProductCard.fromProduct(
                   product: product,
                   onTap: () => _openProduct(product),
                 ),
@@ -266,6 +269,7 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final t = context.t;
 
     return TextField(
       controller: controller,
@@ -273,7 +277,7 @@ class _SearchField extends StatelessWidget {
       onSubmitted: onSubmitted,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        hintText: 'Название, бренд или штрихкод',
+        hintText: t.searchHint,
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _SearchFieldSuffix(isLoading: isLoading, onClear: onClear),
         filled: true,
@@ -319,7 +323,7 @@ class _SearchFieldSuffix extends StatelessWidget {
     return IconButton(
       onPressed: onClear,
       icon: const Icon(Icons.close_rounded),
-      tooltip: 'Очистить',
+      tooltip: context.t.clear,
     );
   }
 }
@@ -343,188 +347,6 @@ class _RecentQueries extends StatelessWidget {
             onPressed: () => onTap(query),
           ),
       ],
-    );
-  }
-}
-
-class _ProductSearchResultCard extends StatelessWidget {
-  const _ProductSearchResultCard({required this.product, required this.onTap});
-
-  final Product product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final tazaScore = product.tazaScore;
-    final score = tazaScore?.score;
-    final scoreColor = TazaScoreConsumerPresentation.colorForScore(score);
-    final subtitleParts = [
-      if ((product.brand ?? '').trim().isNotEmpty) product.brand!.trim(),
-      if ((product.category ?? '').trim().isNotEmpty) product.category!.trim(),
-    ];
-
-    return TazaCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _ProductImage(imageUrl: product.imageUrl),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    height: 1.12,
-                  ),
-                ),
-                if (subtitleParts.isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitleParts.join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    _ScorePill(
-                      label: TazaScoreConsumerPresentation.shortLabel(
-                        tazaScore,
-                      ),
-                      color: scoreColor,
-                    ),
-                    if (TazaScoreConsumerPresentation.shouldShowIncompleteHint(
-                      tazaScore,
-                    ))
-                      const _SubtlePill(label: 'Неполные данные'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 22,
-            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.82),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({required this.imageUrl});
-
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final resolvedImageUrl = resolveApiAssetUrl(imageUrl);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        width: 72,
-        height: 72,
-        child: resolvedImageUrl == null
-            ? ColoredBox(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                child: Icon(
-                  Icons.inventory_2_outlined,
-                  color: colorScheme.primary,
-                ),
-              )
-            : Image.network(
-                resolvedImageUrl,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => ColoredBox(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    color: colorScheme.primary,
-                  ),
-                ),
-              ),
-      ),
-    );
-  }
-}
-
-class _ScorePill extends StatelessWidget {
-  const _ScorePill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            height: 1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SubtlePill extends StatelessWidget {
-  const _SubtlePill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.46),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: colorScheme.onSurfaceVariant,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            height: 1,
-          ),
-        ),
-      ),
     );
   }
 }
