@@ -82,7 +82,7 @@ void main() {
     expect(find.text('27'), findsOneWidget);
     expect(find.text('/ 100'), findsOneWidget);
     expect(find.text('Низкий'), findsOneWidget);
-    expect(find.text('Оценка пищевого профиля продукта'), findsOneWidget);
+    expect(find.text('Лучше выбирать пореже, а не на каждый день.'), findsOneWidget);
   });
 
   testWidgets('renders negative reason and hides raw enums', (tester) async {
@@ -116,13 +116,17 @@ void main() {
       findsOneWidget,
     );
 
+    // Confidence and coverage are shown once, in their own always-visible
+    // card, not duplicated inside the detailed breakdown.
+    expect(find.text('Средняя'), findsOneWidget);
+    expect(find.text('78% ключевых данных'), findsOneWidget);
+
     await tester.tap(find.text('Подробнее об оценке'));
     await tester.pumpAndSettle();
 
     expect(find.text('Достоверность оценки'), findsOneWidget);
     expect(find.text('Средняя'), findsOneWidget);
-    expect(find.text('Доступно ключевых данных'), findsOneWidget);
-    expect(find.text('78%'), findsOneWidget);
+    expect(find.text('78% ключевых данных'), findsOneWidget);
   });
 
   testWidgets('renders low confidence and safeguard consumer message', (
@@ -139,11 +143,16 @@ void main() {
     expect(find.text('scoreBeforeSafeguard'), findsNothing);
     expect(find.text('scoreCap'), findsNothing);
 
+    // Confidence and coverage are shown once, in their own always-visible
+    // card, not duplicated inside the detailed breakdown.
+    expect(find.text('Низкая'), findsOneWidget);
+    expect(find.text('31% ключевых данных'), findsOneWidget);
+
     await tester.tap(find.text('Подробнее об оценке'));
     await tester.pumpAndSettle();
 
     expect(find.text('Низкая'), findsOneWidget);
-    expect(find.text('31%'), findsOneWidget);
+    expect(find.text('31% ключевых данных'), findsOneWidget);
     expect(find.text('Не хватает важных данных'), findsOneWidget);
     expect(find.text('Сахар'), findsOneWidget);
     expect(find.text('Соль'), findsOneWidget);
