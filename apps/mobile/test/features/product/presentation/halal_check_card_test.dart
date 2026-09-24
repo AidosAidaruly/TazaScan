@@ -19,7 +19,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
     expect(find.byIcon(Icons.verified_rounded), findsNothing);
     expect(find.text('По составу явных проблем не обнаружено'), findsOneWidget);
     expect(find.text('Не подтверждена'), findsOneWidget);
@@ -40,7 +40,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.verified_rounded), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
     expect(find.text('Халяль подтверждён'), findsOneWidget);
     expect(find.text('Подтверждена'), findsOneWidget);
   });

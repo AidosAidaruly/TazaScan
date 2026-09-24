@@ -16,7 +16,6 @@ class HalalCheckCard extends StatelessWidget {
         check?.ingredientScreeningStatus ??
         HalalIngredientScreeningStatus.insufficientData;
     final color = _statusColor(status);
-    final statusIcon = _statusIcon(status);
     final reasons = check?.reasons ?? const <String>[];
     final signals = check?.matchedSignals ?? const <HalalMatchedSignal>[];
     final certificationStatus = check?.certificationStatus ?? 'not_verified';
@@ -28,15 +27,7 @@ class HalalCheckCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(statusIcon, color: color),
-              ),
+              const _HalalLogoBadge(),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -125,16 +116,6 @@ class HalalCheckCard extends StatelessWidget {
     };
   }
 
-  IconData _statusIcon(HalalCheckStatus status) {
-    return switch (status) {
-      HalalCheckStatus.halalConfirmed => Icons.verified_rounded,
-      HalalCheckStatus.screeningClear => Icons.shield_outlined,
-      HalalCheckStatus.nonHalal => Icons.block_rounded,
-      HalalCheckStatus.reviewRequired => Icons.warning_amber_rounded,
-      HalalCheckStatus.insufficientData => Icons.help_outline_rounded,
-    };
-  }
-
   Color _screeningColor(HalalIngredientScreeningStatus status) {
     return switch (status) {
       HalalIngredientScreeningStatus.clear => const Color(0xFF7FB2D9),
@@ -167,6 +148,43 @@ class HalalCheckCard extends StatelessWidget {
       'expired' || 'conflict' => Icons.warning_amber_rounded,
       _ => Icons.circle_outlined,
     };
+  }
+}
+
+/// The official halal certification seal, shown as a clean circular badge
+/// in place of the previous generic status icon. The status itself is still
+/// conveyed by the colored label text next to it — this badge is purely the
+/// certification mark, not a status indicator.
+class _HalalLogoBadge extends StatelessWidget {
+  const _HalalLogoBadge();
+
+  static const _asset = 'assets/branding/halal_certification_logo.png';
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: 44,
+      height: 44,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: colorScheme.outlineVariant, width: 1),
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          _asset,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.workspace_premium_outlined,
+            color: colorScheme.primary,
+            size: 20,
+          ),
+        ),
+      ),
+    );
   }
 }
 
