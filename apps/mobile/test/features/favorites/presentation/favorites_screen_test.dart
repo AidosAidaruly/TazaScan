@@ -24,7 +24,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Найти продукт'), findsOneWidget);
+    expect(find.text('Поиск продукта'), findsOneWidget);
   });
 
   testWidgets('favorite card renders product identity and TazaScore', (
@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
-    expect(find.text('Coca-Cola · Soft Drinks'), findsOneWidget);
+    expect(find.text('Coca-Cola · Газированные напитки'), findsOneWidget);
     expect(find.text('TazaScore 27/100 · Низкий'), findsOneWidget);
     expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
     expect(find.textContaining('canonical'), findsNothing);

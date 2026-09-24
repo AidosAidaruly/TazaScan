@@ -90,6 +90,59 @@ The repair:
 - makes no writes in dry-run mode;
 - never replaces known data with empty/null OFF data.
 
+## Ingredient Coverage Backfill
+
+Halal Check can only classify ingredients that have reliable source text. If a
+product has no `ingredientsTextOriginal`, no `ingredientsTextRu`, and an empty
+legacy `ingredients[]` list, Halal Check correctly returns
+`insufficient_data`.
+
+The controlled missing-ingredients backfill improves coverage without changing
+Halal Check rules or nutrition scoring.
+
+Dry run:
+
+```bash
+cd backend/api
+npm run repair:missing-ingredients -- --dry-run
+```
+
+Real repair:
+
+```bash
+cd backend/api
+npm run repair:missing-ingredients
+```
+
+Source priority for authoritative Halal Check analysis:
+
+1. Existing local product provenance already stored in TazaScan.
+2. Source-provided original ingredient text from Open Food Facts by barcode.
+3. Source-provided Russian ingredient text from Open Food Facts, stored
+   separately in `ingredientsTextRu`.
+4. Existing structured source ingredients.
+
+Generated Russian translation may assist consumer display under existing rules,
+but it is not written as source text and must not become the sole authority for
+a stronger Halal classification.
+
+Safe update rules:
+
+- update only products that lack reliable ingredient text;
+- skip verified/manual products;
+- preserve source-provided Russian separately from original text;
+- never overwrite better curated/manual data;
+- never replace source text with generated translation;
+- never create fake empty strings;
+- never update nutrition, score fields, image, product name, brand,
+  `dataStatus`, `lastVerifiedAt`, or halal certification data;
+- keep `ingredients[]` unchanged so TazaScore ingredient inputs are not
+  unexpectedly changed by the backfill.
+
+If Open Food Facts has no ingredient text, a placeholder, malformed text, or is
+unavailable, the product remains unresolved and Halal Check remains
+`insufficient_data` until real ingredient evidence is available.
+
 ## Prisma change
 
 The schema adds nullable metadata fields:

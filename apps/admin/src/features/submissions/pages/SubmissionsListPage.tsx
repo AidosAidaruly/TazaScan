@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClient } from '../../../core/api/api-client'
+import { useAuth } from '../../../core/auth/use-auth'
 import { ApiError } from '../../../core/errors/api-error'
 import { PageLoader } from '../../../shared/components/PageLoader'
 import { formatDate } from '../../../shared/utils/date'
@@ -11,6 +12,7 @@ const submissionsApi = new SubmissionsApi(new ApiClient())
 const statuses: Array<SubmissionStatus | ''> = ['', 'pending', 'approved', 'rejected', 'needs_correction']
 
 export function SubmissionsListPage() {
+  const { token } = useAuth()
   const [submissions, setSubmissions] = useState<ProductSubmissionDto[]>([])
   const [status, setStatus] = useState<SubmissionStatus | ''>('pending')
   const [page, setPage] = useState(1)
@@ -22,6 +24,7 @@ export function SubmissionsListPage() {
     let isMounted = true
 
     async function loadSubmissions() {
+      if (!token) return
       setIsLoading(true)
       setError('')
 
@@ -30,7 +33,7 @@ export function SubmissionsListPage() {
           page,
           pageSize: 10,
           status: status || undefined,
-        })
+        }, token)
 
         if (isMounted) {
           setSubmissions(response.data)
@@ -49,7 +52,7 @@ export function SubmissionsListPage() {
     return () => {
       isMounted = false
     }
-  }, [page, status])
+  }, [page, status, token])
 
   return (
     <section className="page">

@@ -15,9 +15,10 @@ describe('SubmissionsApi', () => {
       await createMockResponse({ data: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
     )
 
-    await api().list({ page: 1, pageSize: 10, status: 'pending' })
+    await api().list({ page: 1, pageSize: 10, status: 'pending' }, 'token')
 
     expect(fetchSpy.mock.calls[0]?.[0]).toContain('status=pending')
+    expect((fetchSpy.mock.calls[0]?.[1]?.headers as Headers).get('Authorization')).toBe('Bearer token')
   })
 
   it('loads submission details', async () => {
@@ -25,9 +26,10 @@ describe('SubmissionsApi', () => {
       await createMockResponse({ data: { id: 'submission-id' } }),
     )
 
-    await api().findById('submission-id')
+    await api().findById('submission-id', 'token')
 
     expect(fetchSpy.mock.calls[0]?.[0]).toBe('http://localhost:4000/product-submissions/submission-id')
+    expect((fetchSpy.mock.calls[0]?.[1]?.headers as Headers).get('Authorization')).toBe('Bearer token')
   })
 
   it('approves a submission', async () => {

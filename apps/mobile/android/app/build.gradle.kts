@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -8,6 +9,10 @@ plugins {
 }
 
 val keystoreProperties = Properties()
+val demoHttp = providers.gradleProperty("dart-defines").orNull
+    ?.split(",")
+    ?.any { String(Base64.getDecoder().decode(it), Charsets.UTF_8) == "TAZASCAN_DEMO_HTTP=true" }
+    ?: false
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
@@ -31,6 +36,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Explicit local-demo opt-in; normal release builds still require HTTPS.
+        manifestPlaceholders["demoCleartextTraffic"] =
+            demoHttp.toString()
     }
 
     signingConfigs {

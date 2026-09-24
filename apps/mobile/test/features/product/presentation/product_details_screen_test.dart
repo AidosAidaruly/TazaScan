@@ -202,7 +202,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Не удалось загрузить новую оценку'), findsOneWidget);
+    expect(find.text('Не удалось загрузить данные продукта.'), findsOneWidget);
     expect(repository.previewRequestCount, 1);
 
     repository.previewError = null;
@@ -220,7 +220,7 @@ void main() {
     );
 
     expect(find.text('Пищевая ценность'), findsOneWidget);
-    expect(find.text('Сахар'), findsOneWidget);
+    expect(find.text('Сахара'), findsOneWidget);
     expect(find.text('10.6 г'), findsWidgets);
     expect(find.text('Высокое содержание'), findsOneWidget);
     expect(find.text('Соль'), findsOneWidget);
@@ -493,7 +493,7 @@ void main() {
       ProductInfoSection(product: createTestProduct(ingredients: const [])),
     );
 
-    expect(find.text('Состав пока не указан.'), findsOneWidget);
+    expect(find.text('Состав не указан'), findsOneWidget);
     expect(find.text('Что в составе'), findsNothing);
   });
 

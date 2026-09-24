@@ -61,6 +61,7 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
         imageQuality: 85,
         maxWidth: 1600,
       );
+      if (!mounted) return;
 
       if (image == null) {
         _setError(
@@ -80,8 +81,10 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
         _isLoading = false;
       });
     } on AppException catch (error) {
+      if (!mounted) return;
       _setError(_photoErrorMessage(error));
     } catch (_) {
+      if (!mounted) return;
       _setError(context.t.cannotOpenImage);
     }
   }

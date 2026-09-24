@@ -80,7 +80,7 @@ void main() {
 
     expect(
       find.text(
-        'Добавь фото лицевой стороны упаковки, чтобы модератор проверил товар.',
+        'Добавь фото лицевой стороны упаковки, чтобы модератор проверил продукт.',
       ),
       findsOneWidget,
     );
@@ -119,7 +119,7 @@ void main() {
     await tester.tap(find.text('Отправить'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Нет подключения к интернету.'), findsOneWidget);
+    expect(find.text('Проверьте подключение и попробуйте снова.'), findsOneWidget);
     expect(find.text('Проверить и отправить'), findsOneWidget);
   });
 }

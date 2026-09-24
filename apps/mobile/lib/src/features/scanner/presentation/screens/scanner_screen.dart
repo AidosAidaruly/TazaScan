@@ -98,45 +98,46 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Future<_ProductLookupResult> _findProduct(String barcode) async {
+    final t = context.t;
     try {
       final product = await _productService.findByBarcode(barcode);
       return _ProductFound(product);
     } on NotFoundException {
       return _ProductLookupFailed(
-        title: context.t.productNotFound,
-        message: context.t.pick(
+        title: t.productNotFound,
+        message: t.pick(
           ru: 'Этого штрихкода пока нет в нашей базе.',
           kk: 'Бұл штрихкод біздің базада әзірге жоқ.',
         ),
       );
     } on NetworkException {
       return _ProductLookupFailed(
-        title: context.t.pick(
+        title: t.pick(
           ru: 'Нет подключения к интернету',
           kk: 'Интернет байланысы жоқ',
         ),
-        message: context.t.checkConnectionAndRetry,
+        message: t.checkConnectionAndRetry,
       );
     } on RequestTimeoutException {
       return _ProductLookupFailed(
-        title: context.t.serverSlow,
-        message: context.t.pick(
+        title: t.serverSlow,
+        message: t.pick(
           ru: 'Сервер не успел ответить вовремя.',
           kk: 'Сервер уақытында жауап бермеді.',
         ),
       );
     } on ServerException {
       return _ProductLookupFailed(
-        title: context.t.serverUnavailable,
-        message: context.t.pick(
+        title: t.serverUnavailable,
+        message: t.pick(
           ru: 'Не удалось связаться с сервисом продуктов. Попробуй позже.',
           kk: 'Өнім сервисімен байланысу мүмкін болмады. Кейінірек көріңіз.',
         ),
       );
     } on AppException {
       return _ProductLookupFailed(
-        title: context.t.searchFailed,
-        message: context.t.checkConnectionAndRetry,
+        title: t.searchFailed,
+        message: t.checkConnectionAndRetry,
       );
     }
   }

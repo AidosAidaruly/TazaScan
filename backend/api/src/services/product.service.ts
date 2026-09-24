@@ -1,4 +1,4 @@
-import type { Product } from '../generated/prisma/client';
+import type { Prisma, Product } from '../generated/prisma/client';
 import { ProductDataQualityEvaluator } from '../data-quality/product-data-quality.evaluator';
 import type {
   ListProductsQuery,
@@ -24,7 +24,7 @@ type ProductRepositoryContract = {
   list(filters: ListProductsQuery): Promise<[ProductWithCanonicalFamily[], number]>;
   findById(id: string): Promise<ProductWithCanonicalFamily | null>;
   findByBarcode(barcode: string): Promise<ProductWithCanonicalFamily | null>;
-  create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
+  create(data: ProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>, transaction?: Prisma.TransactionClient): Promise<Product>;
   update(id: string, data: UpdateProductBody, scoreResult: ReturnType<ScoreEngine['calculate']>): Promise<Product>;
   updateImageUrl(id: string, imageUrl: string | null): Promise<Product>;
   replaceHalalCertification?(productId: string, data: HalalCertificationBody): Promise<unknown>;
@@ -79,10 +79,10 @@ export class ProductService {
     return this.toProductDto(product);
   }
 
-  async create(data: ProductBody) {
+  async create(data: ProductBody, transaction?: Prisma.TransactionClient) {
     await this.ensureBarcodeAvailable(data.barcode);
     const scoreResult = this.scoreEngine.calculate(this.toScoreInput(data));
-    const product = await this.productRepository.create(data, scoreResult);
+    const product = await this.productRepository.create(data, scoreResult, transaction);
 
     return this.toProductDto(product);
   }

@@ -88,7 +88,7 @@ void main() {
 
     expect(find.byIcon(Icons.block_rounded), findsWidgets);
     expect(find.text('Обнаружен нехаляльный ингредиент'), findsOneWidget);
-    expect(find.textContaining('Свиной жир'), findsOneWidget);
+    expect(find.textContaining('Обнаружен свиной жир'), findsOneWidget);
   });
 
   testWidgets('insufficient data uses neutral info visual', (tester) async {

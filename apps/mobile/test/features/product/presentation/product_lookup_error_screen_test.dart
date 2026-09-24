@@ -21,7 +21,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Добавить товар'));
+    await tester.tap(find.text('Добавить продукт'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TextFormField, '5449000000996'), findsOneWidget);

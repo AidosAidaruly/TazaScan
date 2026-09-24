@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ProductSubmission } from '../generated/prisma/client';
 import { ProductSubmissionService } from './product-submission.service';
 
@@ -38,6 +38,10 @@ function createSubmission(overrides: Partial<ProductSubmission> = {}): ProductSu
 }
 
 class FakeSubmissionRepository {
+  transaction<T>(operation: (transaction: never) => Promise<T>): Promise<T> {
+    return operation(undefined as never);
+  }
+
   submissions: ProductSubmission[] = [];
   productBarcodeExists = false;
   approvedProductId: string | null = null;
@@ -122,6 +126,22 @@ function createService(repository = new FakeSubmissionRepository()) {
 }
 
 describe('ProductSubmissionService', () => {
+  it('does not approve when product creation fails inside the transaction', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [createSubmission()];
+    const { service, productCreator } = createService(repository);
+    const failure = new Error('insert failed');
+    vi.spyOn(productCreator, 'create').mockRejectedValue(failure);
+    const markApproved = vi.spyOn(repository, 'markApproved');
+    const transaction = vi.spyOn(repository, 'transaction');
+    await expect(service.approve(repository.submissions[0]!.id, {
+      barcode: '5449000000996', name: 'Coca-Cola', category: 'Soft Drinks',
+      ingredients: [], servingType: 'per100ml'
+    }, 'admin-id')).rejects.toBe(failure);
+    expect(transaction).toHaveBeenCalledOnce();
+    expect(markApproved).not.toHaveBeenCalled();
+  });
+
   it('creates a valid submission', async () => {
     const { service } = createService();
 

@@ -24,9 +24,9 @@ export function SubmissionDetailsPage() {
     let isMounted = true
 
     async function loadSubmission() {
-      if (!id) return
+      if (!id || !token) return
       try {
-        const response = await submissionsApi.findById(id)
+        const response = await submissionsApi.findById(id, token)
         if (isMounted) {
           setSubmission(response.data)
           setPayload(toApprovePayload(response.data))
@@ -42,7 +42,7 @@ export function SubmissionDetailsPage() {
     return () => {
       isMounted = false
     }
-  }, [id])
+  }, [id, token])
 
   async function handleApprove(event: FormEvent) {
     event.preventDefault()

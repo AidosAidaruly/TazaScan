@@ -2,6 +2,8 @@
 
 MVP draft. This document is not legal advice and should be reviewed before a large-scale public launch.
 
+Manual owner input required before publication: legal operator name, effective date, privacy/deletion contact email, and data-correction contact email. No contact address or legal identity has been invented. The in-app legal text marks the same unresolved fields.
+
 TazaScan helps users scan or search food products in Kazakhstan and view informational nutrition analysis.
 
 ## Data We Process

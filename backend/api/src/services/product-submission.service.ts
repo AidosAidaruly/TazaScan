@@ -1,4 +1,4 @@
-import type { ProductSubmission } from '../generated/prisma/client';
+import type { Prisma, ProductSubmission } from '../generated/prisma/client';
 import type { PaginatedResponse } from '../types/pagination';
 import type { ProductSubmissionDto } from '../types/product-submission';
 import { toProductSubmissionDto } from '../types/product-submission';
@@ -24,10 +24,11 @@ type SubmissionRepositoryContract = Pick<
   | 'updateStatus'
   | 'findProductByBarcode'
   | 'markApproved'
+  | 'transaction'
 >;
 
 type ProductCreatorContract = {
-  create(data: ProductBody): Promise<{ id: string }>;
+  create(data: ProductBody, transaction?: Prisma.TransactionClient): Promise<{ id: string }>;
 };
 
 export class ProductSubmissionService {
@@ -111,20 +112,23 @@ export class ProductSubmissionService {
       throw new HttpError(409, 'Barcode already exists');
     }
 
-    const product = await this.productCreator.create({
-      ...parsedProduct,
-      imageUrl: existingSubmission.frontImageUrl,
-      dataStatus: 'community',
-      source: 'user_submission',
-      lastVerifiedAt: null
-    });
+    const submission = await this.submissionRepository.transaction(async (transaction) => {
+      const product = await this.productCreator.create({
+        ...parsedProduct,
+        imageUrl: existingSubmission.frontImageUrl,
+        dataStatus: 'community',
+        source: 'user_submission',
+        lastVerifiedAt: null
+      }, transaction);
 
-    const submission = await this.submissionRepository.markApproved(
-      id,
-      product.id,
-      reviewedByUserId,
-      data.moderationNote
-    );
+      return this.submissionRepository.markApproved(
+        id,
+        product.id,
+        reviewedByUserId,
+        data.moderationNote,
+        transaction
+      );
+    });
 
     return toProductSubmissionDto(submission);
   }

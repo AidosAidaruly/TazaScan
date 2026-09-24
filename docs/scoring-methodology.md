@@ -1,6 +1,6 @@
 # TazaScan Scoring Methodology
 
-MVP draft. This methodology is informational and not medical advice.
+Legacy scoring reference. This methodology is informational and not medical advice. The consumer app now uses [TazaScore v1.1](taza-score-methodology.md); the details below concern legacy compatibility fields, not the primary consumer score.
 
 ## Current Engine
 
@@ -21,7 +21,7 @@ The app stores:
 
 ## Why The Interface Exists
 
-The application depends on `ScoreEngine`, not directly on `NutriScoreEngine`. This allows replacing the MVP scoring engine with a future `TazaScoreEngine` without rewriting controllers, repositories, or mobile/admin DTOs.
+Legacy writes depend on `ScoreEngine`. `TazaScoreEngine` already exists and is calculated separately for consumer DTOs and score previews, using `OfficialNutriScoreEngine` for its nutrition foundation.
 
 ## Missing Data
 
@@ -35,4 +35,4 @@ If contradictions are detected, such as sugars greater than carbohydrates, satur
 
 ## Limitations
 
-The MVP scoring engine does not represent final TazaScore. Some official Nutri-Score inputs are not fully modeled yet, including certain encouraged food group percentages and sweetener-specific beverage rules.
+The legacy engine does not represent consumer TazaScore. Official category, encouraged food group percentage and sweetener inputs now exist in the schema; availability varies by product.

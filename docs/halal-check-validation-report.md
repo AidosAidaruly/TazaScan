@@ -1,5 +1,7 @@
 # Halal Check v1.2 Real Data Validation Report
 
+Current-state note (2026-09-18): all 10 local Prisma migrations, including halal certifications, are applied. Missing-table statements below describe the original audit and are historical. See [AITU demo verification](aitu-demo-readiness.md) for current checks. Original audit results and later ingredient-backfill notes are preserved.
+
 Validation date: 2026-08-22
 
 Command:
@@ -206,6 +208,74 @@ Examples:
 - Chips sour cream/greens row
 
 This is correct behavior. Nutrition values and TazaScore fields had no effect on Halal Check.
+
+### Ingredient Coverage Backfill
+
+The missing-ingredient limitation is handled by a controlled source backfill,
+not by changing Halal Check rules.
+
+Commands:
+
+```bash
+cd backend/api
+npm run repair:missing-ingredients -- --dry-run
+npm run repair:missing-ingredients
+npm run audit:halal-check
+```
+
+The backfill:
+
+- audits every product for reliable ingredient availability;
+- attempts Open Food Facts lookup by barcode only for products missing reliable
+  ingredient source text;
+- writes only `ingredientsTextOriginal`,
+  `ingredientsTextOriginalLanguage`, and `ingredientsTextRu`;
+- does not write generated translation as authoritative source text;
+- does not change nutrition, TazaScore, legacy score fields, image, name,
+  brand, verification status, or halal certification records;
+- leaves products as `insufficient_data` when no real ingredient evidence is
+  available.
+
+Certification remains separate. A product may move from `insufficient_data` to
+`screening_clear` after real source ingredients are recovered, but it must not
+become `halal_confirmed` unless verified certification data exists.
+
+Current local run on 2026-08-24:
+
+| Metric | Count |
+| --- | ---: |
+| Total products | 29 |
+| Reliable ingredients before | 22 |
+| Missing ingredients before | 7 |
+| Source Russian available | 6 |
+| Generated Russian only | 0 |
+| Original foreign available | 1 |
+| Backfill candidates | 7 |
+| Repaired | 0 |
+| OFF no ingredients | 7 |
+| Failed | 0 |
+
+The real run made no database changes because Open Food Facts did not provide
+usable ingredient text for the seven missing rows. Halal Check distribution
+therefore remained:
+
+| Status | Before | After |
+| --- | ---: | ---: |
+| `halal_confirmed` | 0 | 0 |
+| `screening_clear` | 22 | 22 |
+| `non_halal` | 0 | 0 |
+| `review_required` | 0 | 0 |
+| `insufficient_data` | 7 | 7 |
+
+Still unresolved after the backfill attempt:
+
+- `4690388110277` Чипсы (Сметана и зелень)
+- `4607109843741` Батончик Чио Рио
+- `4690388121419` Lay's Maxx Двойной Гамбургер
+- `4690388123635` Lay's стейк рибай с соусом
+- `4602481106309` царь 5 злаков
+- `4607016243160` Kascha
+- `4870112006902` Halley ulker
 
 ## Certification Findings
 

@@ -14,6 +14,10 @@ export type SubmissionImageUrls = {
 };
 
 export class ProductSubmissionRepository {
+  transaction<T>(operation: (transaction: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return prisma.$transaction(operation);
+  }
+
   list(filters: ListSubmissionsQuery) {
     const where: Prisma.ProductSubmissionWhereInput = {
       ...(filters.status ? { status: filters.status } : {})
@@ -84,10 +88,11 @@ export class ProductSubmissionRepository {
     submissionId: string,
     createdProductId: string,
     reviewedByUserId: string,
-    moderationNote?: string | null
+    moderationNote?: string | null,
+    transaction: Prisma.TransactionClient = prisma
   ) {
-    return prisma.productSubmission.update({
-      where: { id: submissionId },
+    return transaction.productSubmission.update({
+      where: { id: submissionId, status: { not: 'approved' } },
       data: {
         status: 'approved',
         ...(moderationNote !== undefined ? { moderationNote } : {}),

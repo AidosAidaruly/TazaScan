@@ -44,10 +44,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Товар по фото не найден'), findsOneWidget);
+    expect(find.text('Продукт по фото не найден'), findsOneWidget);
     expect(
       find.text(
-        'Попробуйте отсканировать штрихкод или найти товар по названию.',
+        'Попробуйте отсканировать штрихкод или найти продукт по названию.',
       ),
       findsOneWidget,
     );
@@ -68,6 +68,8 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('Сканировать штрихкод'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Сканировать штрихкод'));
     await tester.pumpAndSettle();
 
@@ -85,6 +87,8 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.text('Найти по названию'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Найти по названию'));
     await tester.pumpAndSettle();
 

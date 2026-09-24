@@ -102,7 +102,7 @@ curl -X DELETE http://localhost:4000/products/PRODUCT_ID \
 
 ## Admin Panel Notes
 
-The future admin panel should store the access token in memory when possible and send it with protected requests:
+The existing Admin in `apps/admin` stores its access token in memory and `sessionStorage` and sends it with protected requests, including submission lists/details:
 
 ```text
 Authorization: Bearer ACCESS_TOKEN
@@ -116,15 +116,15 @@ Scoring lives under `src/scoring`:
 
 ```text
 contracts/  ScoreEngine interface
-engines/    NutriScoreEngine and future TazaScoreEngine
+engines/    NutriScoreEngine, OfficialNutriScoreEngine and TazaScoreEngine
 rules/      point tables and grade helpers
 utils/      validation and consistency checks
 types/      ScoreInput and ScoreResult DTO types
 ```
 
-`ProductService` depends on the `ScoreEngine` interface, not on a concrete scoring class. Today the app wires `NutriScoreEngine`; later we can replace it with `TazaScoreEngine` without changing controllers, routes, or repositories.
+`ProductService` uses the injected `NutriScoreEngine` to persist legacy compatibility fields on writes. Consumer DTOs and score previews separately calculate TazaScore v1.1 through `TazaScoreEngine` and `OfficialNutriScoreEngine`. TazaScore is already wired into the mobile product view; see `docs/taza-score-methodology.md`.
 
-The current engine is a Nutri-Score nutritional foundation. It uses per-100 g/ml nutrition facts where available: energy, sugars, saturated fat, salt, protein, and fiber. The official Nutri-Score also considers encouraged food groups and, for updated beverage rules, sweeteners. Those fields are not fully modeled yet, so this version is intentionally marked as `nutri-score-foundation-2025-01`.
+The legacy engine is marked `nutri-score-foundation-2025-01`. The current schema also models official category, fruit/vegetable/legume percentage and sweetener status for the official engine; individual products may still lack these inputs. Do not confuse legacy persisted scores with the consumer TazaScore.
 
 Every calculation stores:
 

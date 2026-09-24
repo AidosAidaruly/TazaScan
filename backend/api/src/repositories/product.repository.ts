@@ -1,4 +1,5 @@
 import { prisma } from '../prisma/client';
+import { wordPrefixFilter } from './product-search';
 import type {
   HalalCertificationBody,
   ListProductsQuery,
@@ -108,8 +109,8 @@ export class ProductRepository {
   ): Promise<ProductWithCanonicalFamily[]> {
     const where = {
       OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { brand: { contains: query, mode: 'insensitive' } }
+        wordPrefixFilter('name', query),
+        wordPrefixFilter('brand', query)
       ]
     } satisfies Prisma.ProductWhereInput;
 
@@ -136,13 +137,13 @@ export class ProductRepository {
     }
   }
 
-  create(data: ProductBody, scoreResult: ScoreResult) {
+  create(data: ProductBody, scoreResult: ScoreResult, transaction: Prisma.TransactionClient = prisma) {
     const productData: Prisma.ProductCreateInput = {
       ...this.toCreatePrismaData(data),
       ...this.toScorePrismaData(scoreResult)
     };
 
-    return prisma.product.create({
+    return transaction.product.create({
       data: productData
     });
   }
@@ -202,18 +203,16 @@ export class ProductRepository {
       ...(filters.q
         ? {
             OR: [
-              { name: { contains: filters.q, mode: 'insensitive' } },
-              { brand: { contains: filters.q, mode: 'insensitive' } },
+              wordPrefixFilter('name', filters.q),
+              wordPrefixFilter('brand', filters.q),
               { barcode: { contains: filters.q } }
             ]
           }
         : {}),
-      ...(filters.name
-        ? { name: { contains: filters.name, mode: 'insensitive' } }
-        : {}),
-      ...(filters.brand
-        ? { brand: { contains: filters.brand, mode: 'insensitive' } }
-        : {}),
+      AND: [
+        ...(filters.name ? [wordPrefixFilter('name', filters.name)] : []),
+        ...(filters.brand ? [wordPrefixFilter('brand', filters.brand)] : [])
+      ],
       ...(filters.barcode
         ? { barcode: { contains: filters.barcode } }
         : {})

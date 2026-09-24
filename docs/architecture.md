@@ -1,6 +1,6 @@
 # Architecture
 
-This document defines the initial architecture direction for TazaScan.
+This document preserves the initial architecture direction for TazaScan. Current implementation: Flutter features use presentation/domain/data/core folders; the API uses routes/controllers/services/repositories/schemas rather than the proposed `modules/` tree below. History/favorites are device-local. See the root README for current run instructions.
 
 ## High-Level Architecture
 
@@ -8,7 +8,7 @@ TazaScan is organized as a monorepo with clearly separated applications and serv
 
 ```text
 apps/mobile    Flutter mobile application
-apps/admin     Future admin application
+apps/admin     Existing React/Vite admin application
 backend/api    Express API and Prisma database access
 docs           Technical and product documentation
 ```
@@ -63,7 +63,7 @@ Each module should own its routes, controllers, services, validation schemas, an
 
 ## Database Direction
 
-PostgreSQL will be the primary database. Prisma will manage schema, migrations, and type-safe database access.
+PostgreSQL is the primary database. Prisma manages schema, migrations, and type-safe database access.
 
 The database must be designed for long-term growth:
 
