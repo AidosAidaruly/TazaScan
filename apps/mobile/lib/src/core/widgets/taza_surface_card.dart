@@ -30,26 +30,37 @@ class _TazaSurfaceCardState extends State<TazaSurfaceCard> {
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOutCubic,
       scale: _pressed ? 0.985 : 1,
-      child: Material(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: radius,
-        shadowColor: Colors.black.withValues(alpha: 0.22),
-        elevation: 3,
-        child: InkWell(
-          onTap: widget.onTap,
-          onTapDown: widget.onTap == null
-              ? null
-              : (_) => setState(() => _pressed = true),
-          onTapCancel: widget.onTap == null
-              ? null
-              : () => setState(() => _pressed = false),
-          onTapUp: widget.onTap == null
-              ? null
-              : (_) => setState(() => _pressed = false),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: radius,
-          splashColor: colorScheme.primary.withValues(alpha: 0.08),
-          highlightColor: Colors.white.withValues(alpha: 0.03),
-          child: Padding(padding: widget.padding, child: widget.child),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: radius,
+          child: InkWell(
+            onTap: widget.onTap,
+            onTapDown: widget.onTap == null
+                ? null
+                : (_) => setState(() => _pressed = true),
+            onTapCancel: widget.onTap == null
+                ? null
+                : () => setState(() => _pressed = false),
+            onTapUp: widget.onTap == null
+                ? null
+                : (_) => setState(() => _pressed = false),
+            borderRadius: radius,
+            splashColor: colorScheme.primary.withValues(alpha: 0.08),
+            highlightColor: colorScheme.primary.withValues(alpha: 0.03),
+            child: Padding(padding: widget.padding, child: widget.child),
+          ),
         ),
       ),
     );

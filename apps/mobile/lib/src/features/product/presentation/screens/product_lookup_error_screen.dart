@@ -17,6 +17,9 @@ class ProductLookupErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(title: Text(context.t.productSearch)),
       body: ResponsivePage(
@@ -24,16 +27,24 @@ class ProductLookupErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.search_off_rounded,
-                size: 56,
-                color: Theme.of(context).colorScheme.primary,
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.search_off_rounded,
+                  size: 40,
+                  color: colorScheme.primary,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -41,15 +52,63 @@ class ProductLookupErrorScreen extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
+                style: textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
-              const SizedBox(height: 24),
+              if (barcode != null && barcode!.trim().isNotEmpty) ...[
+                const SizedBox(height: 20),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      barcode!,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 28),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(context.t.pick(ru: 'Попробовать снова', kk: 'Қайта көру')),
               ),
               const SizedBox(height: 12),
-              OutlinedButton(
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          Navigator.of(context).pushNamed(AppRoutes.productSearch),
+                      child: Text(
+                        context.t.pick(ru: 'По названию', kk: 'Атауы бойынша'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          Navigator.of(context).pushNamed(AppRoutes.photoSearch),
+                      child: Text(
+                        context.t.pick(ru: 'По фото', kk: 'Фото бойынша'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
                 onPressed: () => Navigator.of(
                   context,
                 ).pushNamed(AppRoutes.productSubmission, arguments: barcode),

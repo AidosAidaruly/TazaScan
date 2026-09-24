@@ -43,8 +43,8 @@ class _ProjectAppState extends State<ProjectApp> {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 theme: AppTheme.light,
-                darkTheme: AppTheme.dark,
-                themeMode: ThemeMode.dark,
+                darkTheme: AppTheme.light,
+                themeMode: ThemeMode.light,
                 initialRoute: AppRoutes.splash,
                 onGenerateRoute: AppRouter.onGenerateRoute,
               );

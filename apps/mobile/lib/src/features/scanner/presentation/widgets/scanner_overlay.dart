@@ -45,7 +45,7 @@ class ScannerOverlay extends StatelessWidget {
               height: 180,
               decoration: BoxDecoration(
                 border: Border.all(color: colorScheme.primary, width: 3),
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(24),
               ),
             ),
             const SizedBox(height: 18),

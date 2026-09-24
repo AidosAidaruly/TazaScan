@@ -1,124 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:project/src/core/theme/app_colors.dart';
 
 abstract final class AppTheme {
   static ThemeData get light => TazaTheme.light;
-  static ThemeData get dark => TazaTheme.dark;
+  static ThemeData get dark => TazaTheme.light;
 }
 
 abstract final class TazaTheme {
   static ThemeData get light {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: AppColors.primaryBlue,
+      primary: AppColors.primaryGreen,
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFFDCEBFF),
-      onPrimaryContainer: AppColors.background,
-      secondary: AppColors.secondaryCyan,
-      onSecondary: AppColors.background,
-      secondaryContainer: Color(0xFFD9F8FC),
-      onSecondaryContainer: AppColors.background,
-      tertiary: AppColors.success,
-      onTertiary: AppColors.background,
-      tertiaryContainer: Color(0xFFD9F8EB),
-      onTertiaryContainer: AppColors.background,
-      error: AppColors.error,
-      onError: Colors.white,
-      errorContainer: Color(0xFFFFD8DE),
-      onErrorContainer: Color(0xFF4A0710),
-      surface: AppColors.lightBackground,
-      onSurface: AppColors.background,
-      surfaceContainerHighest: AppColors.lightSurface,
-      onSurfaceVariant: Color(0xFF53657A),
-      outline: Color(0xFF718199),
-      outlineVariant: Color(0xFFD8E2EE),
-      shadow: Colors.black,
-      scrim: Colors.black,
-      inverseSurface: AppColors.background,
-      onInverseSurface: AppColors.primaryText,
-      inversePrimary: AppColors.secondaryCyan,
-    );
-
-    return _buildTheme(colorScheme);
-  }
-
-  static ThemeData get dark {
-    const colorScheme = ColorScheme(
-      brightness: Brightness.dark,
-      primary: AppColors.primaryBlue,
-      onPrimary: Colors.white,
-      primaryContainer: AppColors.elevatedSurface,
-      onPrimaryContainer: AppColors.primaryText,
-      secondary: AppColors.secondaryCyan,
+      primaryContainer: AppColors.softSurface,
+      onPrimaryContainer: AppColors.primaryGreen,
+      secondary: AppColors.primaryGreen,
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFF123B52),
-      onSecondaryContainer: AppColors.primaryText,
+      secondaryContainer: AppColors.softSurface,
+      onSecondaryContainer: AppColors.primaryGreen,
       tertiary: AppColors.success,
-      onTertiary: AppColors.background,
-      tertiaryContainer: Color(0xFF153E33),
-      onTertiaryContainer: AppColors.primaryText,
+      onTertiary: Colors.white,
+      tertiaryContainer: Color(0xFFDCF5EB),
+      onTertiaryContainer: Color(0xFF0B3B2C),
       error: AppColors.error,
       onError: Colors.white,
-      errorContainer: Color(0xFF4B1720),
-      onErrorContainer: Color(0xFFFFD8DE),
+      errorContainer: Color(0xFFFCDDE1),
+      onErrorContainer: Color(0xFF4A0710),
       surface: AppColors.background,
-      onSurface: AppColors.primaryText,
-      surfaceContainerHighest: AppColors.elevatedSurface,
+      onSurface: AppColors.ink,
+      surfaceContainerHighest: AppColors.surface,
       onSurfaceVariant: AppColors.secondaryText,
-      outline: Color(0xFF4B5F78),
+      outline: Color(0xFFB9C2B7),
       outlineVariant: AppColors.divider,
       shadow: Colors.black,
       scrim: Colors.black,
-      inverseSurface: AppColors.primaryText,
+      inverseSurface: AppColors.ink,
       onInverseSurface: AppColors.background,
-      inversePrimary: AppColors.primaryBlue,
+      inversePrimary: AppColors.softSurface,
     );
 
     return _buildTheme(colorScheme);
   }
 
   static ThemeData _buildTheme(ColorScheme colorScheme) {
-    final baseTextTheme = ThemeData(
-      brightness: colorScheme.brightness,
-    ).textTheme;
+    final baseTextTheme = ThemeData(brightness: colorScheme.brightness).textTheme;
+    final manrope = GoogleFonts.manropeTextTheme(baseTextTheme);
 
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'Manrope',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
-      textTheme: baseTextTheme
+      textTheme: manrope
           .copyWith(
-            headlineLarge: baseTextTheme.headlineLarge?.copyWith(
-              fontSize: 32,
+            headlineLarge: manrope.headlineLarge?.copyWith(
+              fontSize: 30,
               fontWeight: FontWeight.w700,
               letterSpacing: 0,
             ),
-            titleLarge: baseTextTheme.titleLarge?.copyWith(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
+            headlineMedium: manrope.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
               letterSpacing: 0,
             ),
-            titleMedium: baseTextTheme.titleMedium?.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+            headlineSmall: manrope.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
               letterSpacing: 0,
             ),
-            titleSmall: baseTextTheme.titleSmall?.copyWith(
+            titleLarge: manrope.titleLarge?.copyWith(
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+            titleMedium: manrope.titleMedium?.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+            titleSmall: manrope.titleSmall?.copyWith(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               letterSpacing: 0,
             ),
-            bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+            bodyLarge: manrope.bodyLarge?.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0,
+            ),
+            bodyMedium: manrope.bodyMedium?.copyWith(
               fontSize: 14,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
               letterSpacing: 0,
             ),
-            bodySmall: baseTextTheme.bodySmall?.copyWith(
+            bodySmall: manrope.bodySmall?.copyWith(
               fontSize: 13,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
               letterSpacing: 0,
             ),
+            labelLarge: manrope.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+            labelMedium: manrope.labelMedium?.copyWith(fontWeight: FontWeight.w700),
           )
           .apply(
             bodyColor: colorScheme.onSurface,
@@ -126,7 +105,10 @@ abstract final class TazaTheme {
           ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           minimumSize: const Size.fromHeight(56),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -136,23 +118,43 @@ abstract final class TazaTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(56),
           foregroundColor: colorScheme.primary,
-          side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.55)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.6)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colorScheme.primary,
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        titleTextStyle: TextStyle(
+          fontFamily: manrope.titleLarge?.fontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurface,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
         indicatorColor: Colors.transparent,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
+      dividerTheme: DividerThemeData(
+        color: colorScheme.outlineVariant,
+        thickness: 1,
+        space: 1,
+      ),
+      iconTheme: IconThemeData(color: colorScheme.onSurface),
     );
   }
 }

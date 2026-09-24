@@ -12,18 +12,22 @@ class HomeHeader extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const TazaScanLogo(size: 46),
-          const SizedBox(height: 22),
-          Text(
-            AppConstants.appName,
-            style: textTheme.headlineLarge?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              const TazaScanLogo(size: 34),
+              const SizedBox(width: 10),
+              Text(
+                AppConstants.appName,
+                style: textTheme.titleLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(

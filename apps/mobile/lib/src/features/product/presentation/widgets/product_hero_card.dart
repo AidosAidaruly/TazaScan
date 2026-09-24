@@ -147,7 +147,7 @@ class _ImagePanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(24),
       ),
       child: imageUrl == null

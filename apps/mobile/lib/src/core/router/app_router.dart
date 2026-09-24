@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:project/src/core/localization/taza_localizations.dart';
-import 'package:project/src/features/home/presentation/screens/home_screen.dart';
 import 'package:project/src/features/photo_search/presentation/screens/photo_search_screen.dart';
 import 'package:project/src/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:project/src/features/history/presentation/screens/history_screen.dart';
@@ -15,6 +14,7 @@ import 'package:project/src/features/profile/presentation/screens/profile_screen
 import 'package:project/src/features/profile/presentation/screens/about_screen.dart';
 import 'package:project/src/features/profile/presentation/screens/legal_document_screen.dart';
 import 'package:project/src/features/scanner/presentation/screens/scanner_screen.dart';
+import 'package:project/src/features/shell/presentation/screens/app_shell_screen.dart';
 import 'package:project/src/features/splash/presentation/screens/splash_screen.dart';
 
 abstract final class AppRoutes {
@@ -42,7 +42,7 @@ abstract final class AppRouter {
         settings: settings,
       ),
       AppRoutes.home => MaterialPageRoute(
-        builder: (_) => const HomeScreen(),
+        builder: (_) => const AppShellScreen(),
         settings: settings,
       ),
       AppRoutes.scanner => MaterialPageRoute(
@@ -125,7 +125,7 @@ abstract final class AppRouter {
         settings: settings,
       ),
       _ => MaterialPageRoute(
-        builder: (_) => const HomeScreen(),
+        builder: (_) => const AppShellScreen(),
         settings: settings,
       ),
     };

@@ -4,7 +4,7 @@ class ResponsivePage extends StatelessWidget {
   const ResponsivePage({
     required this.child,
     this.maxWidth = 430,
-    this.padding = const EdgeInsets.fromLTRB(24, 18, 24, 28),
+    this.padding = const EdgeInsets.fromLTRB(20, 16, 20, 28),
     super.key,
   });
 

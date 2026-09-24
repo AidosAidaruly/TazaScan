@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project/src/app.dart';
 import 'package:project/src/core/router/app_router.dart';
+import 'package:project/src/core/widgets/taza_bottom_navigation.dart';
 import 'package:project/src/features/home/presentation/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,7 +39,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await _pumpTazaScan(tester);
 
-    await tester.tap(find.text('Избранное'));
+    await tester.tap(find.byKey(tazaBottomNavItemKey(2)));
     await tester.pumpAndSettle();
 
     expect(find.text('Избранное'), findsWidgets);
