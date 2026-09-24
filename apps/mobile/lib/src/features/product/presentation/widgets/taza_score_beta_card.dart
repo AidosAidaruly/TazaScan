@@ -701,26 +701,32 @@ class _NutriScoreLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final color = ProductGradeColors.colorFor(letter);
+    final size = isActive ? 32.0 : 20.0;
 
     return Container(
-      width: 22,
-      height: 22,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isActive ? color : Colors.transparent,
-        shape: BoxShape.circle,
-        border: isActive
-            ? null
-            : Border.all(color: colorScheme.outlineVariant, width: 1),
+        color: isActive ? color : color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(isActive ? 11 : 7),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.38),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Text(
         letter,
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+          fontSize: isActive ? 15 : 10,
+          fontWeight: isActive ? FontWeight.w900 : FontWeight.w800,
+          color: isActive ? Colors.white : color,
         ),
       ),
     );
