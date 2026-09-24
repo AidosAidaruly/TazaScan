@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:project/src/core/localization/taza_localizations.dart';
 
 class ScannerOverlay extends StatelessWidget {
-  const ScannerOverlay({required this.onCancel, super.key});
+  const ScannerOverlay({
+    required this.onCancel,
+    required this.onManualEntry,
+    super.key,
+  });
 
   final VoidCallback onCancel;
+  final VoidCallback onManualEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +65,19 @@ class ScannerOverlay extends StatelessWidget {
               ),
             ),
             const Spacer(flex: 2),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onManualEntry,
+                icon: const Icon(Icons.keyboard_alt_outlined),
+                label: Text(
+                  t.pick(
+                    ru: 'Ввести штрихкод вручную',
+                    kk: 'Штрихкодты қолмен енгізу',
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

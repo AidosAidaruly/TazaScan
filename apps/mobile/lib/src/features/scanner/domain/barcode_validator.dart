@@ -28,6 +28,16 @@ abstract final class BarcodeValidator {
     };
   }
 
+  /// Validates a manually typed barcode against every supported product
+  /// barcode format, since manual entry has no scanner-reported format to
+  /// check against (unlike [isSupportedProductBarcode], used after a camera
+  /// detection).
+  static bool isValidManualBarcode(String? value) {
+    return ProductBarcodeFormat.values.any(
+      (format) => isSupportedProductBarcode(value, format),
+    );
+  }
+
   static bool _hasValidGs1CheckDigit(String barcode) {
     final expected = int.parse(barcode[barcode.length - 1]);
     final digits = barcode

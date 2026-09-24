@@ -9,12 +9,17 @@ import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/services/product_service.dart';
 import 'package:project/src/features/scanner/domain/barcode_validator.dart';
 import 'package:project/src/features/scanner/presentation/widgets/invalid_barcode_banner.dart';
+import 'package:project/src/features/scanner/presentation/widgets/manual_barcode_sheet.dart';
 import 'package:project/src/features/scanner/presentation/widgets/scanner_camera_error_view.dart';
 import 'package:project/src/features/scanner/presentation/widgets/scanner_loading_overlay.dart';
 import 'package:project/src/features/scanner/presentation/widgets/scanner_overlay.dart';
 
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key});
+  const ScannerScreen({this.productService, super.key});
+
+  /// Overrides the barcode lookup service, for tests. Defaults to the real
+  /// HTTP-backed service used in production.
+  final ProductService? productService;
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -38,7 +43,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
         BarcodeFormat.upcE,
       ],
     );
-    _productService = ProductService(HttpProductRepository(ApiClient()));
+    _productService =
+        widget.productService ??
+        ProductService(HttpProductRepository(ApiClient()));
   }
 
   @override
@@ -67,6 +74,17 @@ class _ScannerScreenState extends State<ScannerScreen> {
       return;
     }
 
+    await _processBarcode(barcode!.trim());
+  }
+
+  /// Looks up [barcode] and navigates to the result. Shared by both the
+  /// camera detection path ([_handleDetect]) and manual entry
+  /// ([_openManualEntry]) so there is exactly one barcode-lookup code path.
+  Future<void> _processBarcode(String barcode) async {
+    if (_isProcessing) {
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _invalidBarcodeMessage = null;
@@ -74,7 +92,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
     await _controller.stop();
 
-    final lookupResult = await _findProduct(barcode!.trim());
+    final lookupResult = await _findProduct(barcode);
 
     if (!mounted) {
       return;
@@ -95,6 +113,21 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ),
         );
     }
+  }
+
+  Future<void> _openManualEntry() async {
+    final barcode = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const ManualBarcodeSheet(),
+    );
+
+    if (barcode == null || !mounted) {
+      return;
+    }
+
+    await _processBarcode(barcode);
   }
 
   Future<_ProductLookupResult> _findProduct(String barcode) async {
@@ -169,7 +202,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
             },
             onDetect: _handleDetect,
           ),
-          ScannerOverlay(onCancel: _cancelScan),
+          ScannerOverlay(
+            onCancel: _cancelScan,
+            onManualEntry: _openManualEntry,
+          ),
           if (_invalidBarcodeMessage != null)
             InvalidBarcodeBanner(message: _invalidBarcodeMessage!),
           if (_isProcessing) const ScannerLoadingOverlay(),
