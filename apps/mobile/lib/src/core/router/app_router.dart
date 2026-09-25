@@ -5,8 +5,10 @@ import 'package:project/src/features/favorites/presentation/screens/favorites_sc
 import 'package:project/src/features/history/presentation/screens/history_screen.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
 import 'package:project/src/features/product/domain/entities/product_details_args.dart';
+import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/presentation/screens/product_details_screen.dart';
 import 'package:project/src/features/product/presentation/screens/product_lookup_error_screen.dart';
+import 'package:project/src/features/product/presentation/screens/taza_score_details_screen.dart';
 import 'package:project/src/features/product_submission/presentation/screens/product_submission_screen.dart';
 import 'package:project/src/features/product_search/presentation/screens/product_search_screen.dart';
 import 'package:project/src/features/profile/domain/legal_texts.dart';
@@ -30,6 +32,7 @@ abstract final class AppRoutes {
   static const privacy = '/privacy';
   static const terms = '/terms';
   static const productDetails = '/product-details';
+  static const tazaScoreDetails = '/taza-score-details';
   static const productLookupError = '/product-lookup-error';
   static const productSubmission = '/product-submission';
 }
@@ -101,6 +104,19 @@ abstract final class AppRouter {
             product: args.product,
             refreshFromNetwork: args.refreshFromNetwork,
           );
+        },
+        settings: settings,
+      ),
+      AppRoutes.tazaScoreDetails => MaterialPageRoute(
+        builder: (_) {
+          final data = settings.arguments;
+          if (data is! TazaScorePreviewData) {
+            throw ArgumentError(
+              'Route ${settings.name} requires a TazaScorePreviewData argument.',
+            );
+          }
+
+          return TazaScoreDetailsScreen(data: data);
         },
         settings: settings,
       ),

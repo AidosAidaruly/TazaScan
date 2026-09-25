@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:project/src/core/localization/taza_localizations.dart';
+import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/core/widgets/taza_surface_card.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
@@ -9,7 +10,7 @@ import 'package:project/src/features/product/presentation/scoring/taza_score_con
 import 'package:project/src/features/product/presentation/widgets/product_grade_colors.dart';
 import 'package:project/src/features/product/presentation/widgets/product_presentation_localization.dart';
 
-class TazaScoreBetaCard extends StatefulWidget {
+class TazaScoreBetaCard extends StatelessWidget {
   const TazaScoreBetaCard({
     this.data,
     this.isLoading = false,
@@ -28,16 +29,7 @@ class TazaScoreBetaCard extends StatefulWidget {
   final bool showLegacyComparison;
 
   @override
-  State<TazaScoreBetaCard> createState() => _TazaScoreBetaCardState();
-}
-
-class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final data = widget.data;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,52 +38,43 @@ class _TazaScoreBetaCardState extends State<TazaScoreBetaCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (widget.isLoading)
+              if (isLoading)
                 const _LoadingPreview()
-              else if (widget.errorMessage != null)
-                _ErrorPreview(onRetry: widget.onRetry)
+              else if (errorMessage != null)
+                _ErrorPreview(onRetry: onRetry)
               else if (data == null)
-                _ErrorPreview(onRetry: widget.onRetry)
-              else if (data.status == TazaScorePreviewStatus.insufficientData)
-                _InsufficientData(data: data)
+                _ErrorPreview(onRetry: onRetry)
+              else if (data!.status == TazaScorePreviewStatus.insufficientData)
+                _InsufficientData(data: data!)
               else ...[
-                _ScoreHero(data: data),
+                _ScoreHero(data: data!),
                 const SizedBox(height: 10),
-                _ScoreScale(score: data.score),
+                _ScoreScale(score: data!.score),
                 const SizedBox(height: 14),
-                _WhyThisScore(data: data),
-                _ConsumerNotices(data: data),
+                _WhyThisScore(data: data!),
+                _ConsumerNotices(data: data!),
               ],
               if (data != null) ...[
                 const SizedBox(height: 6),
                 _DetailsToggle(
-                  expanded: _expanded,
-                  onTap: () => setState(() => _expanded = !_expanded),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  child: _expanded
-                      ? _ReliabilityDetails(
-                          data: data,
-                          legacyScore: widget.legacyScore,
-                          showLegacyComparison: widget.showLegacyComparison,
-                        )
-                      : const SizedBox.shrink(),
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.tazaScoreDetails,
+                    arguments: data,
+                  ),
                 ),
               ],
             ],
           ),
         ),
-        if (data != null && data.status == TazaScorePreviewStatus.calculated) ...[
+        if (data != null && data!.status == TazaScorePreviewStatus.calculated) ...[
           const SizedBox(height: 10),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _NutriScoreCard(grade: data.nutriScoreGrade)),
+                Expanded(child: _NutriScoreCard(grade: data!.nutriScoreGrade)),
                 const SizedBox(width: 10),
-                Expanded(child: _ConfidenceCard(data: data)),
+                Expanded(child: _ConfidenceCard(data: data!)),
               ],
             ),
           ),
@@ -440,91 +423,6 @@ class _ConsumerNotices extends StatelessWidget {
   }
 }
 
-class _ReliabilityDetails extends StatelessWidget {
-  const _ReliabilityDetails({
-    required this.data,
-    required this.legacyScore,
-    required this.showLegacyComparison,
-  });
-
-  final TazaScorePreviewData data;
-  final NutritionScore? legacyScore;
-  final bool showLegacyComparison;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.t.scoreReliability,
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          _InfoRow(
-            label: context.t.additives,
-            value: context.t.informationalAnalysis,
-          ),
-          _InfoRow(
-            label: context.t.processingDegree,
-            value: context.t.processingNotScored,
-          ),
-          if (data.nutritionComponent != null)
-            _InfoRow(
-              label: context.t.nutritionProfile,
-              value: '${data.nutritionComponent} / ${data.nutritionMax}',
-            ),
-          if (data.ingredientComponent != null)
-            _InfoRow(
-              label: context.t.ingredientsAndAdditives,
-              value: '${data.ingredientComponent} / ${data.ingredientMax}',
-            ),
-          if (data.missingCriticalFields.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _FieldList(
-              title: context.t.missingImportantData,
-              values: data.missingCriticalFieldKeys.isNotEmpty
-                  ? data.missingCriticalFieldKeys
-                  : data.missingCriticalFields,
-            ),
-          ] else if (data.missingFields.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _FieldList(
-              title: context.t.missingData,
-              values: data.missingFieldKeys.isNotEmpty
-                  ? data.missingFieldKeys
-                  : data.missingFields,
-            ),
-          ],
-          if (data.hasSafeguardApplied) ...[
-            const SizedBox(height: 8),
-            _NoticeRow(
-              text: context.t.scoreLimitApplied,
-            ),
-          ],
-          const SizedBox(height: 12),
-          Text(
-            context.t.tazaScoreDisclosure,
-            style: textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              height: 1.35,
-            ),
-          ),
-          if (showLegacyComparison && legacyScore != null) ...[
-            const SizedBox(height: 14),
-            _LegacyComparison(score: legacyScore!),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _LoadingPreview extends StatelessWidget {
   const _LoadingPreview();
 
@@ -634,7 +532,7 @@ class _InsufficientData extends StatelessWidget {
         const SizedBox(height: 14),
         _InfoRow(
           label: context.t.dataReliability,
-          value: _confidenceLabel(context, data.confidence),
+          value: tazaScoreConfidenceLabel(context, data.confidence),
         ),
       ],
     );
@@ -762,13 +660,13 @@ class _ConfidenceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            _confidenceLabel(context, data.confidence),
+            tazaScoreConfidenceLabel(context, data.confidence),
             style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           if (coverage != null) ...[
             const SizedBox(height: 2),
             Text(
-              _coverageCaption(context, coverage),
+              tazaScoreCoverageCaption(context, coverage),
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -780,10 +678,10 @@ class _ConfidenceCard extends StatelessWidget {
   }
 }
 
+/// Compact row that opens the dedicated "Как рассчитан TazaScore" screen.
 class _DetailsToggle extends StatelessWidget {
-  const _DetailsToggle({required this.expanded, required this.onTap});
+  const _DetailsToggle({required this.onTap});
 
-  final bool expanded;
   final VoidCallback onTap;
 
   @override
@@ -814,9 +712,7 @@ class _DetailsToggle extends StatelessWidget {
                   ),
                 ),
                 Icon(
-                  expanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.chevron_right_rounded,
+                  Icons.chevron_right_rounded,
                   size: 18,
                   color: colorScheme.primary,
                 ),
@@ -825,57 +721,6 @@ class _DetailsToggle extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _FieldList extends StatelessWidget {
-  const _FieldList({required this.title, required this.values});
-
-  final String title;
-  final List<String> values;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 6),
-        for (final value in values)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.remove_rounded,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    ProductPresentationLocalization.missingField(
-                      value,
-                      locale: context.tazaLocaleController.locale,
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 }
@@ -963,48 +808,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _LegacyComparison extends StatelessWidget {
-  const _LegacyComparison({required this.score});
-
-  final NutritionScore score;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final legacyValue = score.score == null ? '—' : '${score.score}/100';
-    final legacyGrade = score.grade ?? '—';
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Text(
-              'Legacy',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '$legacyValue + $legacyGrade',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 Color _scoreColor(int? score) {
   return TazaScoreConsumerPresentation.colorForScore(score);
 }
@@ -1070,7 +873,12 @@ IconData _reasonIcon(String reason, {required bool isNeutral}) {
   return Icons.check_circle_outline_rounded;
 }
 
-String _confidenceLabel(BuildContext context, TazaScoreConfidence confidence) {
+/// Localized confidence level label ("Высокая" / "Средняя" / "Низкая").
+/// Public so [TazaScoreDetailsScreen] can reuse the exact same mapping.
+String tazaScoreConfidenceLabel(
+  BuildContext context,
+  TazaScoreConfidence confidence,
+) {
   return switch (confidence) {
     TazaScoreConfidence.high => context.t.confidenceLabel('high'),
     TazaScoreConfidence.medium => context.t.confidenceLabel('medium'),
@@ -1078,12 +886,15 @@ String _confidenceLabel(BuildContext context, TazaScoreConfidence confidence) {
   };
 }
 
-String _coverageLabel(double value) {
+/// Formats a 0..1 coverage fraction as a rounded percentage, e.g. "78%".
+String tazaScoreCoverageLabel(double value) {
   return '${(value * 100).round()}%';
 }
 
-String _coverageCaption(BuildContext context, double value) {
-  final percent = _coverageLabel(value);
+/// "78% ключевых данных" style caption combining [tazaScoreCoverageLabel]
+/// with a localized suffix.
+String tazaScoreCoverageCaption(BuildContext context, double value) {
+  final percent = tazaScoreCoverageLabel(value);
   return context.tazaLocaleController.locale == TazaLocale.kk
       ? '$percent негізгі деректер'
       : '$percent ключевых данных';

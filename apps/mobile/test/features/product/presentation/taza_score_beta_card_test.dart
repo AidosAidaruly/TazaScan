@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:project/src/core/router/app_router.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/taza_score_preview.dart';
 import 'package:project/src/features/product/presentation/widgets/taza_score_beta_card.dart';
@@ -121,12 +122,13 @@ void main() {
     expect(find.text('Средняя'), findsOneWidget);
     expect(find.text('78% ключевых данных'), findsOneWidget);
 
+    // "Подробнее об оценке" now opens the dedicated details screen instead
+    // of expanding inline (content covered by
+    // taza_score_details_screen_test.dart).
     await tester.tap(find.text('Подробнее об оценке'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Достоверность оценки'), findsOneWidget);
-    expect(find.text('Средняя'), findsOneWidget);
-    expect(find.text('78% ключевых данных'), findsOneWidget);
+    expect(find.text('Как рассчитан TazaScore'), findsOneWidget);
   });
 
   testWidgets('renders low confidence and safeguard consumer message', (
@@ -148,19 +150,13 @@ void main() {
     expect(find.text('Низкая'), findsOneWidget);
     expect(find.text('31% ключевых данных'), findsOneWidget);
 
+    // "Подробнее об оценке" now opens the dedicated details screen instead
+    // of expanding inline; the missing-data list and safeguard notice live
+    // there (covered by taza_score_details_screen_test.dart).
     await tester.tap(find.text('Подробнее об оценке'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Низкая'), findsOneWidget);
-    expect(find.text('31% ключевых данных'), findsOneWidget);
-    expect(find.text('Не хватает важных данных'), findsOneWidget);
-    expect(find.text('Сахар'), findsOneWidget);
-    expect(find.text('Соль'), findsOneWidget);
-    expect(find.text('Насыщенные жиры'), findsOneWidget);
-    expect(
-      find.text('Для защиты от завышенной оценки применено ограничение.'),
-      findsOneWidget,
-    );
+    expect(find.text('Как рассчитан TazaScore'), findsOneWidget);
   });
 
   testWidgets('renders beverage safeguard without raw id', (tester) async {
@@ -193,27 +189,26 @@ void main() {
     expect(find.text('0'), findsNothing);
   });
 
-  testWidgets('keeps disclosure collapsed and hides legacy by default', (
-    tester,
-  ) async {
-    await _pumpCard(tester, data: cocaColaPreview);
+  testWidgets(
+    'details row opens the dedicated TazaScore details screen',
+    (tester) async {
+      await _pumpCard(tester, data: cocaColaPreview);
 
-    expect(find.text('Подробнее об оценке'), findsOneWidget);
-    expect(find.text('Достоверность оценки'), findsNothing);
-    expect(find.textContaining('Не является медицинской рекомендацией'), findsNothing);
-    expect(find.text('Legacy'), findsNothing);
+      expect(find.text('Подробнее об оценке'), findsOneWidget);
+      expect(find.text('Достоверность оценки'), findsNothing);
+      expect(
+        find.textContaining('Не является медицинской рекомендацией'),
+        findsNothing,
+      );
 
-    await tester.tap(find.text('Подробнее об оценке'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Подробнее об оценке'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Достоверность оценки'), findsOneWidget);
-    expect(find.text('Высокая'), findsOneWidget);
-    expect(find.text('Питательный профиль'), findsOneWidget);
-    expect(find.text('17 / 90'), findsOneWidget);
-    expect(find.text('Состав и добавки'), findsOneWidget);
-    expect(find.text('10 / 10'), findsOneWidget);
-    expect(find.textContaining('Не является медицинской рекомендацией'), findsOneWidget);
-  });
+      // Navigated to the dedicated screen (its own content is covered by
+      // taza_score_details_screen_test.dart).
+      expect(find.text('Как рассчитан TazaScore'), findsOneWidget);
+    },
+  );
 
   testWidgets('renders loading and error states', (tester) async {
     await tester.pumpWidget(
@@ -263,6 +258,7 @@ Future<void> _pumpCard(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      onGenerateRoute: AppRouter.onGenerateRoute,
       home: Scaffold(
         body: SingleChildScrollView(
           child: Padding(
