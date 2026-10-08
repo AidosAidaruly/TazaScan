@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import zlib from 'node:zlib';
 import sharp from 'sharp';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
@@ -125,7 +126,7 @@ describe('product image upload middleware', () => {
       });
 
     expect(response.status).toBe(415);
-    expect(response.body.error.message).toBe('Unreadable image');
+    expect(response.body.error.message).toBe('Unsupported image format');
   });
 
   it('accepts uppercase extensions when the image content is valid', async () => {
@@ -156,7 +157,7 @@ describe('product image upload middleware', () => {
     expect(response.body.data.mimetype).toBe('image/jpeg');
   });
 
-  it('accepts AVIF when the runtime decoder supports it', async () => {
+  it('rejects AVIF even when the runtime decoder supports it', async () => {
     const image = await createOptionalImage('avif');
     if (!image) {
       return;
@@ -170,8 +171,63 @@ describe('product image upload middleware', () => {
         contentType: 'image/avif'
       });
 
+    expect(response.status).toBe(415);
+  });
+
+  it('does not let a misleading image/jpeg MIME type bypass format detection', async () => {
+    const gif = await createImage('gif');
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', gif, {
+        filename: 'photo.jpg',
+        contentType: 'image/jpeg'
+      });
+
+    expect(response.status).toBe(415);
+    expect(response.body.error.message).toBe('Unsupported image format');
+  });
+
+  it('rejects SVG disguised as PNG', async () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>');
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', svg, {
+        filename: 'logo.png',
+        contentType: 'image/png'
+      });
+
+    expect(response.status).toBe(415);
+    expect(response.body.error.message).toBe('Unsupported image format');
+  });
+
+  it('accepts a JPEG sent as application/octet-stream (Flutter http default)', async () => {
+    const image = await createImage('jpeg');
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', image, {
+        filename: 'image_picker_123.jpg',
+        contentType: 'application/octet-stream'
+      });
+
     expect(response.status).toBe(200);
     expect(response.body.data.mimetype).toBe('image/jpeg');
+  });
+
+  it('rejects images whose dimensions exceed the pixel limit with a clean 413', async () => {
+    const response = await request(createTestApp(adminUser))
+      .post('/products/11111111-1111-4111-8111-111111111111/image')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', createPngBomb(20_000, 20_000), {
+        filename: 'bomb.png',
+        contentType: 'image/png'
+      });
+
+    expect(response.status).toBe(413);
+    expect(response.body.error.message).toBe('Image dimensions are too large');
+    expect(JSON.stringify(response.body)).not.toMatch(/pixel limit|vips|sharp/i);
   });
 
   it('rejects oversized images', async () => {
@@ -213,7 +269,7 @@ describe('product image upload middleware', () => {
   });
 });
 
-async function createImage(format: 'jpeg' | 'png' | 'webp' | 'avif') {
+async function createImage(format: 'jpeg' | 'png' | 'webp' | 'avif' | 'gif') {
   return sharp({
     create: {
       width: 24,
@@ -232,4 +288,30 @@ async function createOptionalImage(format: 'avif') {
   } catch {
     return null;
   }
+}
+
+// Decompression-bomb style PNG: IHDR declares width x height, IDAT holds only a few bytes.
+function createPngBomb(width: number, height: number) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(Buffer.alloc(4096))),
+    pngChunk('IEND', Buffer.alloc(0))
+  ]);
+}
+
+function pngChunk(type: string, data: Buffer) {
+  const typeBytes = Buffer.from(type, 'latin1');
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(zlib.crc32(Buffer.concat([typeBytes, data])), 0);
+
+  return Buffer.concat([length, typeBytes, data, crc]);
 }

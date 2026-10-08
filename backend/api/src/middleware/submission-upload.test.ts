@@ -104,9 +104,56 @@ describe('submission image upload middleware', () => {
       });
 
     expect(response.status).toBe(415);
-    expect(response.body.error.message).toBe('Unreadable image');
+    expect(response.body.error.message).toBe('Unsupported image format');
+    await expect(listStoredSubmissions()).resolves.toEqual([]);
+  });
+
+  it('accepts mobile uploads sent as application/octet-stream', async () => {
+    const response = await request(createTestApp())
+      .post('/product-submissions')
+      .attach('frontImage', await createImage('jpeg'), {
+        filename: 'image_picker_front.jpg',
+        contentType: 'application/octet-stream'
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.frontImage.mimetype).toBe('image/jpeg');
+  });
+
+  it('rejects SVG disguised as JPEG on the public endpoint without persisting it', async () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>');
+    const response = await request(createTestApp())
+      .post('/product-submissions')
+      .attach('frontImage', svg, {
+        filename: 'front.jpg',
+        contentType: 'image/jpeg'
+      });
+
+    expect(response.status).toBe(415);
+    expect(response.body.error.message).toBe('Unsupported image format');
+    await expect(listStoredSubmissions()).resolves.toEqual([]);
+  });
+
+  it('rejects GIF content sent as application/octet-stream', async () => {
+    const gif = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#08111c' }
+    })
+      .gif()
+      .toBuffer();
+    const response = await request(createTestApp())
+      .post('/product-submissions')
+      .attach('frontImage', gif, {
+        filename: 'front.jpg',
+        contentType: 'application/octet-stream'
+      });
+
+    expect(response.status).toBe(415);
   });
 });
+
+async function listStoredSubmissions() {
+  return fs.readdir(path.join(tempUploadRoot, 'submissions')).catch(() => []);
+}
 
 async function createImage(format: 'jpeg' | 'png' | 'webp') {
   return sharp({
