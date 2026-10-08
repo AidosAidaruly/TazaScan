@@ -1,11 +1,12 @@
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import type { ProductSubmission } from '../generated/prisma/client';
+import { Prisma, type ProductSubmission } from '../generated/prisma/client';
 import { asyncHandler } from '../middleware/async-handler';
 import { errorHandler } from '../middleware/error-handler';
 import { validate } from '../middleware/validate';
 import {
+  approveSubmissionBodySchema,
   submissionIdParamsSchema,
   updateSubmissionStatusBodySchema,
   type UpdateSubmissionStatusBody
@@ -106,6 +107,70 @@ describe('submission moderation status transitions', () => {
     expect(store.products.size).toBe(1);
   });
 
+  it('returns a clean 409 to the loser of two racing approvals with the same barcode', async () => {
+    const { app, store } = createHarness();
+    // Hold both inserts until both requests have passed the up-front checks.
+    let arrived = 0;
+    let releaseBoth!: () => void;
+    const bothChecked = new Promise<void>((resolve) => { releaseBoth = resolve; });
+    store.beforeProductInsert = async () => {
+      arrived += 1;
+      if (arrived === 2) {
+        releaseBoth();
+      }
+      await bothChecked;
+    };
+
+    const responses = await Promise.all([postApprove(app), postApprove(app)]);
+
+    expect(arrived).toBe(2);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    const loser = responses.find((response) => response.status === 409)!;
+    expect(loser.body).toEqual({ error: { message: 'Submission is already approved' } });
+    expect(loser.text).not.toMatch(/prisma|barcode`|Product_|modelName/);
+    expect(store.products.size).toBe(1);
+    expect(store.submission.createdProductId).toBe([...store.products.keys()][0]);
+  });
+
+  it('returns a clean 409 when racing approvals use different barcodes', async () => {
+    const { app, store } = createHarness();
+    let releaseFirst!: () => void;
+    const firstMayInsert = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let inserts = 0;
+    // Both pass the "not approved" check; the second commits first, then the first
+    // inserts its own product and its guarded markApproved matches nothing.
+    store.beforeProductInsert = async () => {
+      inserts += 1;
+      if (inserts === 1) {
+        await firstMayInsert;
+      }
+    };
+
+    const first = postApprove(app, { ...approveBody, barcode: '4870001234567' }).then((r) => r);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const second = await postApprove(app);
+    releaseFirst();
+    const firstResponse = await first;
+
+    expect(second.status).toBe(201);
+    expect(firstResponse.status).toBe(409);
+    expect(firstResponse.body).toEqual({ error: { message: 'Submission is already approved' } });
+    expect(store.products.size).toBe(1); // the loser's product insert rolled back
+    expect([...store.products.values()][0]!.barcode).toBe(approveBody.barcode);
+    expect(store.submission.createdProductId).toBe([...store.products.keys()][0]);
+  });
+
+  it('returns 201 for a normal approval over HTTP', async () => {
+    const { app, store } = createHarness();
+
+    const response = await postApprove(app);
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.status).toBe('approved');
+    expect(store.products.size).toBe(1);
+  });
+
   it('approves once and returns 409 on repeated approval without creating another product', async () => {
     const { store, service } = createHarness();
 
@@ -120,6 +185,17 @@ describe('submission moderation status transitions', () => {
   });
 });
 
+function prismaError(code: string) {
+  return new Prisma.PrismaClientKnownRequestError(
+    'Invalid `prisma.product.create()` invocation: Unique constraint failed (`barcode`)',
+    { code, clientVersion: '7.0.0', meta: { target: ['barcode'], modelName: 'Product' } }
+  );
+}
+
+function postApprove(app: express.Express, body: Record<string, unknown> = approveBody) {
+  return request(app).post(`/product-submissions/${submissionId}/approve`).send(body);
+}
+
 function putStatus(app: express.Express, body: Record<string, unknown>) {
   return request(app).put(`/product-submissions/${submissionId}/status`).send(body);
 }
@@ -129,7 +205,9 @@ function createHarness() {
     submission: createSubmission(),
     products: new Map<string, ProductBody>(),
     statusWrites: 0,
-    beforeStatusWrite: null as null | (() => Promise<unknown>)
+    beforeStatusWrite: null as null | (() => Promise<unknown>),
+    beforeProductInsert: null as null | (() => Promise<unknown>),
+    productSequence: 0
   };
 
   const submissionRepository = {
@@ -137,8 +215,18 @@ function createHarness() {
       id === store.submission.id ? { ...store.submission, createdProduct: null } : null,
     findProductByBarcode: async (barcode: string) =>
       [...store.products.values()].find((product) => product.barcode === barcode) ?? null,
-    transaction: async <T>(operation: (transaction: never) => Promise<T>) =>
-      operation({} as never),
+    transaction: async <T>(operation: (transaction: never) => Promise<T>) => {
+      const transaction = { insertedProductIds: [] as string[] };
+      try {
+        return await operation(transaction as never);
+      } catch (error) {
+        // Roll back only this transaction's product insert.
+        for (const id of transaction.insertedProductIds) {
+          store.products.delete(id);
+        }
+        throw error;
+      }
+    },
     // Same contract as the Prisma repository: the write only matches non-approved rows.
     updateStatus: async (id: string, data: UpdateSubmissionStatusBody, reviewedByUserId: string) => {
       const pending = store.beforeStatusWrite;
@@ -159,8 +247,9 @@ function createHarness() {
       return store.submission;
     },
     markApproved: async (id: string, createdProductId: string, reviewedByUserId: string) => {
+      // Same as Prisma: the guarded update (status != approved) matches no row.
       if (id !== store.submission.id || store.submission.status === 'approved') {
-        throw new Error('Record to update not found');
+        throw prismaError('P2025');
       }
       store.submission = {
         ...store.submission,
@@ -174,9 +263,15 @@ function createHarness() {
   };
 
   const productCreator = {
-    create: async (data: ProductBody) => {
-      const id = `product-${store.products.size + 1}`;
+    create: async (data: ProductBody, transaction?: unknown) => {
+      await store.beforeProductInsert?.();
+      // Same as the Product.barcode unique index.
+      if ([...store.products.values()].some((product) => product.barcode === data.barcode)) {
+        throw prismaError('P2002');
+      }
+      const id = `product-${++store.productSequence}`;
       store.products.set(id, data);
+      (transaction as { insertedProductIds?: string[] } | undefined)?.insertedProductIds?.push(id);
       return { id };
     }
   };
@@ -205,6 +300,15 @@ function createHarness() {
         'admin-id'
       );
       res.status(200).json({ data: submission });
+    })
+  );
+  app.post(
+    '/product-submissions/:id/approve',
+    validate(submissionIdParamsSchema, 'params'),
+    asyncHandler(async (req, res) => {
+      const body = approveSubmissionBodySchema.parse(req.body);
+      const submission = await service.approve(String(req.params.id), body, 'admin-id');
+      res.status(201).json({ data: submission });
     })
   );
   app.use(errorHandler);

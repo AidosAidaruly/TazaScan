@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ProductSubmission } from '../generated/prisma/client';
+import { Prisma, type ProductSubmission } from '../generated/prisma/client';
 import { ProductSubmissionService } from './product-submission.service';
 
 const now = new Date('2026-08-01T00:00:00.000Z');
@@ -583,6 +583,109 @@ describe('ProductSubmissionService', () => {
         'admin-id'
       )
     ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  describe('approval racing a concurrent approval', () => {
+    const approveBody = {
+      barcode: '5449000000996',
+      name: 'Cola',
+      category: 'Soft Drinks',
+      ingredients: []
+    };
+
+    function prismaError(code: string) {
+      return new Prisma.PrismaClientKnownRequestError('Unique constraint failed on Product_barcode_key', {
+        code,
+        clientVersion: '7.0.0',
+        meta: { target: ['barcode'] }
+      });
+    }
+
+    function setup(winnerApproves = true) {
+      const repository = new FakeSubmissionRepository();
+      repository.submissions = [
+        createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+      ];
+      const created = createService(repository);
+      const commitWinner = () => {
+        if (winnerApproves) {
+          repository.submissions[0] = {
+            ...repository.submissions[0]!,
+            status: 'approved',
+            createdProductId: 'winner-product-id'
+          };
+        }
+      };
+      return { commitWinner, ...created };
+    }
+
+    it('returns 409 when the product insert loses the barcode race (P2002)', async () => {
+      const { service, productCreator, productImages, commitWinner } = setup();
+      vi.spyOn(productCreator, 'create').mockImplementation(async () => {
+        commitWinner();
+        throw prismaError('P2002');
+      });
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toMatchObject({ statusCode: 409, message: 'Submission is already approved' });
+      expect(productImages.deleted).toEqual(['/uploads/products/copied-front.jpg']);
+    });
+
+    it('returns 409 when the guarded approval update matches nothing (P2025)', async () => {
+      const { service, repository, productImages, commitWinner } = setup();
+      vi.spyOn(repository, 'markApproved').mockImplementation(async () => {
+        commitWinner();
+        throw prismaError('P2025');
+      });
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toMatchObject({ statusCode: 409, message: 'Submission is already approved' });
+      expect(productImages.deleted).toEqual(['/uploads/products/copied-front.jpg']);
+      expect(repository.submissions[0]!.createdProductId).toBe('winner-product-id');
+    });
+
+    it('returns 409 "Barcode already exists" when another product took the barcode', async () => {
+      const { service, productCreator } = setup(false);
+      vi.spyOn(productCreator, 'create').mockRejectedValue(prismaError('P2002'));
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toMatchObject({ statusCode: 409, message: 'Barcode already exists' });
+    });
+
+    it('returns 404 when the submission disappeared during approval', async () => {
+      const { service, repository } = setup(false);
+      vi.spyOn(repository, 'markApproved').mockImplementation(async () => {
+        repository.submissions = [];
+        throw prismaError('P2025');
+      });
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toMatchObject({ statusCode: 404, message: 'Product submission not found' });
+    });
+
+    it('rethrows P2025 unchanged when the submission is still unapproved', async () => {
+      const { service, repository } = setup(false);
+      const failure = prismaError('P2025');
+      vi.spyOn(repository, 'markApproved').mockRejectedValue(failure);
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toBe(failure);
+    });
+
+    it('rethrows other database errors unchanged', async () => {
+      const { service, productCreator } = setup();
+      const failure = prismaError('P2034');
+      vi.spyOn(productCreator, 'create').mockRejectedValue(failure);
+
+      await expect(service.approve(
+        '11111111-1111-4111-8111-111111111111', approveBody, 'admin-id'
+      )).rejects.toBe(failure);
+    });
   });
 
   it('keeps returning 409 for repeated approval', async () => {

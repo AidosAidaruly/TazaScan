@@ -3,6 +3,7 @@ import type { PaginatedResponse } from '../types/pagination';
 import type { ProductSubmissionDto } from '../types/product-submission';
 import { toProductSubmissionDto } from '../types/product-submission';
 import { HttpError } from '../utils/http-error';
+import { prismaErrorCode } from '../utils/prisma-errors';
 import type {
   SubmissionImageUrls,
   ProductSubmissionRepository
@@ -174,8 +175,40 @@ export class ProductSubmissionService {
       return toProductSubmissionDto(submission);
     } catch (error) {
       await this.discardCopiedImage(productImageUrl);
-      throw error;
+      throw await this.toApprovalConflict(id, error);
     }
+  }
+
+  /**
+   * A concurrent approval of the same submission can win between our checks and our
+   * transaction: the loser then hits the product barcode unique constraint (P2002) or
+   * the guarded markApproved matches no row (P2025). The transaction has rolled back,
+   * so report the same clean responses as the up-front checks.
+   */
+  private async toApprovalConflict(id: string, error: unknown): Promise<unknown> {
+    const code = prismaErrorCode(error);
+    if (code !== 'P2002' && code !== 'P2025') {
+      return error;
+    }
+
+    let current: ProductSubmission | null;
+    try {
+      current = await this.submissionRepository.findById(id);
+    } catch {
+      return error;
+    }
+
+    if (!current) {
+      return new HttpError(404, 'Product submission not found');
+    }
+    if (current.status === 'approved') {
+      return new HttpError(409, 'Submission is already approved');
+    }
+    if (code === 'P2002') {
+      return new HttpError(409, 'Barcode already exists');
+    }
+
+    return error;
   }
 
   private async copyFrontImageForProduct(submission: ProductSubmission) {
