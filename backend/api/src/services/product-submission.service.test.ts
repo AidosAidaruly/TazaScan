@@ -78,14 +78,22 @@ class FakeSubmissionRepository {
     return Promise.resolve(submission);
   }
 
+  // Mirrors the repository's guarded write: approved rows are never updated.
   updateStatus(id: string, data: { status: 'rejected' | 'needs_correction'; moderationNote: string }) {
-    const submission = createSubmission({
-      id,
+    const index = this.submissions.findIndex((item) => item.id === id);
+    const current = this.submissions[index];
+    if (!current || current.status === 'approved') {
+      return Promise.resolve(null);
+    }
+
+    const submission = {
+      ...current,
       status: data.status,
       moderationNote: data.moderationNote,
       reviewedAt: now,
       reviewedByUserId: 'admin-id'
-    });
+    };
+    this.submissions[index] = submission;
     return Promise.resolve(submission);
   }
 
@@ -418,5 +426,112 @@ describe('ProductSubmissionService', () => {
     );
 
     expect(submission.status).toBe('needs_correction');
+  });
+
+  it.each([
+    ['needs_correction', 'rejected'],
+    ['needs_correction', 'needs_correction'],
+    ['rejected', 'needs_correction'],
+    ['rejected', 'rejected']
+  ] as const)('still allows %s -> %s', async (from, to) => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [createSubmission({ status: from })];
+    const { service } = createService(repository);
+
+    const submission = await service.updateStatus(
+      '11111111-1111-4111-8111-111111111111',
+      { status: to, moderationNote: 'Moderator note' },
+      'admin-id'
+    );
+
+    expect(submission.status).toBe(to);
+  });
+
+  it.each(['rejected', 'needs_correction', 'pending'] as const)(
+    'returns 409 for approved -> %s without writing',
+    async (status) => {
+      const repository = new FakeSubmissionRepository();
+      const approved = createSubmission({
+        status: 'approved',
+        createdProductId: 'created-product-id',
+        moderationNote: 'Looks good'
+      });
+      repository.submissions = [approved];
+      const updateStatus = vi.spyOn(repository, 'updateStatus');
+      const { service } = createService(repository);
+
+      await expect(
+        service.updateStatus(
+          '11111111-1111-4111-8111-111111111111',
+          // 'pending' is rejected by the route schema; the service must still refuse it.
+          { status, moderationNote: 'Changed my mind' } as never,
+          'admin-id'
+        )
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: 'Approved submissions cannot change moderation status'
+      });
+
+      expect(updateStatus).not.toHaveBeenCalled();
+      expect(repository.submissions[0]).toEqual(approved);
+    }
+  );
+
+  it('returns 409 when approval commits between the read and the status write', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [createSubmission({ status: 'pending' })];
+    const { service } = createService(repository);
+    // Stale admin request: it reads "pending", then another admin's approval commits.
+    const findById = repository.findById.bind(repository);
+    vi.spyOn(repository, 'findById').mockImplementationOnce(async (id) => {
+      const stale = await findById(id);
+      repository.submissions[0] = {
+        ...repository.submissions[0]!,
+        status: 'approved',
+        createdProductId: 'created-product-id'
+      };
+      return stale;
+    });
+
+    await expect(
+      service.updateStatus(
+        '11111111-1111-4111-8111-111111111111',
+        { status: 'rejected', moderationNote: 'Stale reject' },
+        'admin-id'
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(repository.submissions[0]).toMatchObject({
+      status: 'approved',
+      createdProductId: 'created-product-id',
+      moderationNote: null
+    });
+  });
+
+  it('returns 404 for status updates on a missing submission', async () => {
+    const { service } = createService(new FakeSubmissionRepository());
+
+    await expect(
+      service.updateStatus(
+        '11111111-1111-4111-8111-111111111111',
+        { status: 'rejected', moderationNote: 'Missing' },
+        'admin-id'
+      )
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('keeps returning 409 for repeated approval', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [createSubmission({ status: 'approved' })];
+    const { service, productCreator } = createService(repository);
+
+    await expect(
+      service.approve(
+        '11111111-1111-4111-8111-111111111111',
+        { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+        'admin-id'
+      )
+    ).rejects.toMatchObject({ statusCode: 409, message: 'Submission is already approved' });
+    expect(productCreator.createdBody).toBeUndefined();
   });
 });

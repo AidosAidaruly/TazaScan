@@ -68,9 +68,14 @@ export class ProductSubmissionRepository {
     });
   }
 
-  updateStatus(id: string, data: UpdateSubmissionStatusBody, reviewedByUserId: string) {
-    return prisma.productSubmission.update({
-      where: { id },
+  /**
+   * Approved is terminal: the write only matches non-approved rows, so a stale request
+   * cannot overwrite an approval that committed after it was read. Returns null when
+   * nothing was updated (missing or already approved).
+   */
+  async updateStatus(id: string, data: UpdateSubmissionStatusBody, reviewedByUserId: string) {
+    const { count } = await prisma.productSubmission.updateMany({
+      where: { id, status: { not: 'approved' } },
       data: {
         status: data.status,
         moderationNote: data.moderationNote,
@@ -78,6 +83,8 @@ export class ProductSubmissionRepository {
         reviewedByUserId
       }
     });
+
+    return count === 0 ? null : prisma.productSubmission.findUnique({ where: { id } });
   }
 
   findProductByBarcode(barcode: string) {

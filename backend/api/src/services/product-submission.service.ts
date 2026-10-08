@@ -37,6 +37,8 @@ type ProductImageCopierContract = Pick<
   'copySubmissionImage' | 'deleteImage'
 >;
 
+const approvedStatusLockedMessage = 'Approved submissions cannot change moderation status';
+
 export class ProductSubmissionService {
   constructor(
     private readonly submissionRepository: SubmissionRepositoryContract,
@@ -89,12 +91,22 @@ export class ProductSubmissionService {
     data: UpdateSubmissionStatusBody,
     reviewedByUserId: string
   ) {
-    await this.ensureExists(id);
+    const existingSubmission = await this.ensureExists(id);
+    if (existingSubmission.status === 'approved') {
+      throw new HttpError(409, approvedStatusLockedMessage);
+    }
+
     const submission = await this.submissionRepository.updateStatus(
       id,
       data,
       reviewedByUserId
     );
+
+    if (!submission) {
+      // The guarded write matched nothing: approved (or removed) after the read above.
+      await this.ensureExists(id);
+      throw new HttpError(409, approvedStatusLockedMessage);
+    }
 
     return toProductSubmissionDto(submission);
   }
