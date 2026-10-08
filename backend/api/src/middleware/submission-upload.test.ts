@@ -49,6 +49,7 @@ describe('submission image upload middleware', () => {
     tempUploadRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tazascan-upload-'));
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubEnv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/tazascan');
+    vi.stubEnv('JWT_SECRET', 'unit-test-jwt-secret-9f2c7a1e4b8d6035-not-real');
     vi.stubEnv('UPLOAD_ROOT', tempUploadRoot);
 
     const submissionUpload = await import('./submission-upload.js');

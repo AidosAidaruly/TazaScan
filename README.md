@@ -274,10 +274,12 @@ The backend `.env.example` documents the supported configuration. At minimum, lo
 
 ```dotenv
 DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/tazascan?schema=public"
-JWT_SECRET="replace-with-a-local-development-secret"
+JWT_SECRET="<output of: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))">"
 ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="replace-with-a-strong-local-password"
 ```
+
+`JWT_SECRET` is required in every environment except tests (which use a fixed test-only secret). It must be at least 32 characters, must not be a placeholder or example value, and the API refuses to start otherwise.
 
 Optional/local-storage settings such as `PORT`, `CORS_ORIGIN`, `PUBLIC_UPLOADS_BASE_URL`, `STORAGE_DRIVER`, and `UPLOAD_ROOT` are also documented in that file. Do not reuse development values in production.
 

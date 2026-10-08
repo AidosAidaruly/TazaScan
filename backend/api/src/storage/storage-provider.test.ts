@@ -9,6 +9,7 @@ describe('storage provider configuration', () => {
   it('allows local storage in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
     vi.stubEnv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/tazascan');
+    vi.stubEnv('JWT_SECRET', 'unit-test-jwt-secret-9f2c7a1e4b8d6035-not-real');
     vi.stubEnv('STORAGE_DRIVER', 'local');
 
     const { validateStorageConfiguration } = await import('./storage-provider.js');
@@ -49,7 +50,7 @@ function stubProductionEnv(overrides: Record<string, string>) {
   vi.stubEnv('PORT', '4000');
   vi.stubEnv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/tazascan');
   vi.stubEnv('CORS_ORIGIN', 'https://admin.example.com');
-  vi.stubEnv('JWT_SECRET', 'test-production-secret');
+  vi.stubEnv('JWT_SECRET', 'unit-test-jwt-secret-9f2c7a1e4b8d6035-not-real');
   vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
   vi.stubEnv('ADMIN_PASSWORD', 'change-this-admin-password');
   vi.stubEnv('PUBLIC_UPLOADS_BASE_URL', 'https://api.example.com/uploads');

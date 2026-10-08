@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { JwtSecretConfigError, resolveJwtSecret } from './jwt-secret';
 
 dotenv.config();
 
@@ -51,11 +52,20 @@ if (parsedEnv.data.NODE_ENV === 'production') {
   }
 }
 
+let jwtSecret: string;
+try {
+  jwtSecret = resolveJwtSecret(parsedEnv.data.NODE_ENV, parsedEnv.data.JWT_SECRET);
+} catch (error) {
+  if (error instanceof JwtSecretConfigError) {
+    console.error(`Invalid configuration: ${error.message}`);
+    process.exit(1);
+  }
+  throw error;
+}
+
 export const env = {
   ...parsedEnv.data,
-  jwtSecret:
-    parsedEnv.data.JWT_SECRET ??
-    'development-only-change-this-secret-before-production',
+  jwtSecret,
   corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),

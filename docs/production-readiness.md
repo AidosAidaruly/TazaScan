@@ -40,7 +40,7 @@ The backend can run on a typical managed Node host if environment variables are 
 | `PORT` | No | No | Backend HTTP server | `4000` | Host-provided port or explicit port |
 | `DATABASE_URL` | Yes | Yes | Prisma/PostgreSQL | Local PostgreSQL URL | Managed PostgreSQL URL |
 | `CORS_ORIGIN` | Production yes | No | Express CORS | Local admin origins | Exact Admin web origins, comma-separated |
-| `JWT_SECRET` | Production yes | Yes | Admin JWT signing | Dev fallback | Long random secret, no default |
+| `JWT_SECRET` | Yes (except tests) | Yes | Admin JWT signing (HS256) | Local random secret, 32+ chars | Long random secret (32+ chars), no default; placeholders rejected |
 | `JWT_ACCESS_TOKEN_TTL` | No | No | Admin JWT | `15m` | Short explicit TTL, for example `15m` |
 | `ADMIN_EMAIL` | Production yes | Sensitive | Seeded admin account | Local email | Real admin email, not printed in logs |
 | `ADMIN_PASSWORD` | Production yes | Yes | Seeded admin account | Local password | Strong one-time seed password, rotate if exposed |
@@ -50,6 +50,8 @@ The backend can run on a typical managed Node host if environment variables are 
 | `TAZASCAN_PRODUCTION` | Mobile release yes | No | Flutter production guard | false | `true` for release builds |
 
 Production secret fallback check: backend refuses production startup without `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DATABASE_URL`, `CORS_ORIGIN`, and `PUBLIC_UPLOADS_BASE_URL`. That is READY.
+
+JWT secret check: outside `NODE_ENV=test` the backend refuses to start (any environment) when `JWT_SECRET` is missing, shorter than 32 characters, a known placeholder/example value, or obviously non-random. There is no fallback secret; tests use a fixed test-only secret that is rejected elsewhere.
 
 ## PostgreSQL
 
@@ -136,7 +138,7 @@ For early beta, local Admin is acceptable. For public operations, deploy Admin b
 | Area | Status | Notes |
 | --- | --- | --- |
 | Password hashing | READY | bcrypt is used with 12 salt rounds. |
-| JWT signing | READY | Production requires `JWT_SECRET`. |
+| JWT signing | READY | `JWT_SECRET` required outside tests (32+ chars, no placeholders); signing and verification pinned to HS256. |
 | JWT expiration | READY | Default is `15m`; configurable. |
 | Admin route protection | READY | Product and submission admin routes require `authenticate` plus admin role. |
 | Login rate limit | READY | 10 attempts per 15 minutes. |

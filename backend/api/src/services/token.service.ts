@@ -4,9 +4,13 @@ import { env } from '../config/env';
 import type { AuthTokenPayload } from '../types/auth';
 import { HttpError } from '../utils/http-error';
 
+// The only accepted algorithm; verification rejects tokens signed with anything else.
+export const jwtAlgorithm = 'HS256';
+
 export class TokenService {
   signAccessToken(payload: AuthTokenPayload) {
     const options: SignOptions = {
+      algorithm: jwtAlgorithm,
       expiresIn: env.JWT_ACCESS_TOKEN_TTL as NonNullable<SignOptions['expiresIn']>
     };
 
@@ -15,7 +19,7 @@ export class TokenService {
 
   verifyAccessToken(token: string): AuthTokenPayload {
     try {
-      const decoded = jwt.verify(token, env.jwtSecret);
+      const decoded = jwt.verify(token, env.jwtSecret, { algorithms: [jwtAlgorithm] });
 
       if (!this.isAuthTokenPayload(decoded)) {
         throw new HttpError(401, 'Invalid token');
