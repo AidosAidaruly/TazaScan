@@ -11,6 +11,7 @@ const server = app.listen(env.PORT, () => {
     event: 'startup',
     service: 'tazascan-api',
     port: env.PORT,
+    trustProxyHops: env.trustProxyHops,
     storageDriver: fileStorage.driver
   }));
 });

@@ -10,6 +10,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1),
   CORS_ORIGIN: z.string().default(''),
+  // Number of reverse proxies in front of the API whose X-Forwarded-For
+  // entries are trusted. 0 = ignore X-Forwarded-For (direct exposure / local dev).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
   JWT_SECRET: z.string().optional(),
   JWT_ACCESS_TOKEN_TTL: z.string().default('15m'),
   ADMIN_EMAIL: z.string().email().optional(),
@@ -56,6 +59,7 @@ export const env = {
   corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
+  trustProxyHops: parsedEnv.data.TRUST_PROXY_HOPS,
   publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL,
   storageDriver: parsedEnv.data.STORAGE_DRIVER,
   uploadRoot: parsedEnv.data.UPLOAD_ROOT,

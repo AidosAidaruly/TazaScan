@@ -14,7 +14,16 @@ JWT_ACCESS_TOKEN_TTL=15m
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=strong-password
 PUBLIC_UPLOADS_BASE_URL=https://api.example.com/uploads
+TRUST_PROXY_HOPS=1
 ```
+
+### Reverse proxy and rate limits
+
+Login, OCR, and submission rate limits are keyed by client IP. Behind a reverse proxy or platform load balancer, set `TRUST_PROXY_HOPS` to the exact number of proxies between the client and the API (usually `1` on Render, Railway, Fly.io, or a single nginx). Express then reads the client IP from the right-most trusted `X-Forwarded-For` entries and ignores anything a client adds further left.
+
+- `0` (default): `X-Forwarded-For` is ignored. Correct for local development and direct exposure; behind a proxy, all users would share one rate-limit bucket.
+- Too high: clients could spoof their IP via `X-Forwarded-For`. Never use `true`.
+- Check the `trustProxyHops` value in the startup log after deploying.
 
 ## Compatible Hosting Options
 

@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { corsOptions } from './config/cors';
+import { configureTrustProxy } from './config/trust-proxy';
 import { errorHandler } from './middleware/error-handler';
 import { loggingMiddleware } from './middleware/logging';
 import { notFoundHandler } from './middleware/not-found';
@@ -11,6 +12,7 @@ import { getLocalFileStorage } from './storage/storage-provider';
 
 export function createApp() {
   const app = express();
+  configureTrustProxy(app);
 
   void ensureProductImageUploadDirectory();
 
