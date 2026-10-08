@@ -1,5 +1,12 @@
 import { z } from 'zod';
 import { isSupportedProductBarcode } from '../utils/barcode';
+import {
+  ingredientListSchema,
+  optionalText,
+  optionalUrl,
+  requiredText,
+  textLimits
+} from './text-limits';
 
 const nullableNumberSchema = z.number().finite().nullable().optional();
 const officialNutriScoreCategorySchema = z
@@ -11,6 +18,7 @@ const containsNonSugarSweetenersSchema = z.boolean().nullable().optional();
 const optionalPreviewCategorySchema = z
   .string()
   .trim()
+  .max(textLimits.category)
   .transform((value) => (value === '' ? undefined : value))
   .nullable()
   .optional();
@@ -28,25 +36,25 @@ export const barcodeParamsSchema = z.object({
 export const listProductsQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
-  q: z.string().trim().min(1).optional(),
-  name: z.string().trim().min(1).optional(),
-  brand: z.string().trim().min(1).optional(),
-  barcode: z.string().trim().min(1).optional()
+  q: requiredText(textLimits.searchTerm).optional(),
+  name: requiredText(textLimits.searchTerm).optional(),
+  brand: requiredText(textLimits.searchTerm).optional(),
+  barcode: requiredText(textLimits.searchBarcode).optional()
 });
 
 export const productBodySchema = z.object({
   barcode: z.string().refine(isSupportedProductBarcode, {
     message: 'Barcode must be EAN-8, EAN-13, or UPC-A digits.'
   }),
-  name: z.string().trim().min(1),
-  brand: z.string().trim().min(1).nullable().optional(),
-  category: z.string().trim().min(1),
-  ingredients: z.array(z.string().trim().min(1)).default([]),
-  ingredientsTextOriginal: z.string().trim().min(1).nullable().optional(),
-  ingredientsTextOriginalLanguage: z.string().trim().min(1).nullable().optional(),
-  ingredientsTextRu: z.string().trim().min(1).nullable().optional(),
-  ingredientsTextTranslatedRu: z.string().trim().min(1).nullable().optional(),
-  ingredientsTranslationSource: z.string().trim().min(1).nullable().optional(),
+  name: requiredText(textLimits.productName),
+  brand: optionalText(textLimits.brand),
+  category: requiredText(textLimits.category),
+  ingredients: ingredientListSchema(),
+  ingredientsTextOriginal: optionalText(textLimits.ingredientsText),
+  ingredientsTextOriginalLanguage: optionalText(textLimits.languageTag),
+  ingredientsTextRu: optionalText(textLimits.ingredientsText),
+  ingredientsTextTranslatedRu: optionalText(textLimits.ingredientsText),
+  ingredientsTranslationSource: optionalText(textLimits.sourceLabel),
   ingredientsTranslatedAt: z.string().datetime().nullable().optional(),
   nutritionFacts: z.object({
     servingType: z.enum(['per100g', 'per100ml']),
@@ -60,13 +68,13 @@ export const productBodySchema = z.object({
     salt: nullableNumberSchema
   }),
   manualScoreOverride: z.number().int().min(0).max(100).nullable().optional(),
-  manualOverrideReason: z.string().trim().min(1).nullable().optional(),
+  manualOverrideReason: optionalText(textLimits.overrideReason),
   officialNutriScoreCategory: officialNutriScoreCategorySchema,
   fruitVegetableLegumePercent: fruitVegetableLegumePercentSchema,
   containsNonSugarSweeteners: containsNonSugarSweetenersSchema,
-  imageUrl: z.string().url().nullable().optional(),
+  imageUrl: optionalUrl(),
   dataStatus: z.enum(['unverified', 'community', 'verified']).default('unverified'),
-  source: z.string().trim().min(1).nullable().optional(),
+  source: optionalText(textLimits.sourceLabel),
   lastVerifiedAt: z.string().datetime().nullable().optional()
 });
 
@@ -79,7 +87,7 @@ export const updateProductBodySchema = productBodySchema.partial().refine(
 
 export const officialNutriScorePreviewBodySchema = z.object({
   category: optionalPreviewCategorySchema,
-  ingredients: z.array(z.string().trim().min(1)).default([]),
+  ingredients: ingredientListSchema(),
   nutritionFacts: z
     .object({
       servingType: z.enum(['per100g', 'per100ml']).default('per100g'),
@@ -104,11 +112,11 @@ export const tazaScorePreviewBodySchema = officialNutriScorePreviewBodySchema.ex
 
 export const halalCertificationBodySchema = z.object({
   status: z.enum(['verified', 'unverified', 'expired']),
-  issuer: z.string().trim().min(1),
-  certificateNumber: z.string().trim().min(1).nullable().optional(),
+  issuer: requiredText(textLimits.certificationIssuer),
+  certificateNumber: optionalText(textLimits.certificateNumber),
   validUntil: z.string().datetime().nullable().optional(),
-  source: z.string().trim().min(1),
-  evidenceUrl: z.string().url().nullable().optional(),
+  source: requiredText(textLimits.sourceLabel),
+  evidenceUrl: optionalUrl(),
   verifiedAt: z.string().datetime().nullable().optional()
 });
 

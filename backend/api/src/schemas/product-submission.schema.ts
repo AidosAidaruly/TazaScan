@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { isSupportedProductBarcode } from '../utils/barcode';
+import { ingredientListSchema, optionalText, requiredText, textLimits } from './text-limits';
 
 const nullableNumberSchema = z.coerce.number().finite().nonnegative().nullable().optional();
-const optionalTextSchema = z.string().trim().min(1).nullable().optional();
 const statusSchema = z.enum(['pending', 'approved', 'rejected', 'needs_correction']);
 
 export const submissionIdParamsSchema = z.object({
@@ -24,10 +24,10 @@ export const productSubmissionBodySchema = z.object({
       })
       .nullable()
       .optional(),
-    name: optionalTextSchema,
-    brand: optionalTextSchema,
-    category: optionalTextSchema,
-    ingredients: z.array(z.string().trim().min(1)).default([]),
+    name: optionalText(textLimits.productName),
+    brand: optionalText(textLimits.brand),
+    category: optionalText(textLimits.category),
+    ingredients: ingredientListSchema(),
     servingType: z.enum(['per100g', 'per100ml']).nullable().optional(),
     energyKcal: nullableNumberSchema,
     protein: nullableNumberSchema,
@@ -37,18 +37,18 @@ export const productSubmissionBodySchema = z.object({
     saturatedFat: nullableNumberSchema,
     fiber: nullableNumberSchema,
     salt: nullableNumberSchema,
-    anonymousDeviceId: optionalTextSchema
+    anonymousDeviceId: optionalText(textLimits.deviceId)
   });
 
 export const updateSubmissionStatusBodySchema = z.object({
   status: z.enum(['rejected', 'needs_correction']),
-  moderationNote: z.string().trim().min(1)
+  moderationNote: requiredText(textLimits.moderationNote)
 });
 
 export const approveSubmissionBodySchema = productSubmissionBodySchema.extend({
-  name: z.string().trim().min(1),
-  category: z.string().trim().min(1),
-  moderationNote: z.string().trim().min(1).nullable().optional()
+  name: requiredText(textLimits.productName),
+  category: requiredText(textLimits.category),
+  moderationNote: optionalText(textLimits.moderationNote)
 });
 
 export type ListSubmissionsQuery = z.infer<typeof listSubmissionsQuerySchema>;
