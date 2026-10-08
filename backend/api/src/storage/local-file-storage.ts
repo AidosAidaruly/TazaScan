@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type {
+  DeleteFileOptions,
   FileStorage,
   FileStorageScope,
   SaveFileInput,
@@ -18,6 +19,10 @@ const mimeExtensions = new Map([
   ['image/png', 'png'],
   ['image/webp', 'webp']
 ]);
+
+const extensionMimeTypes = new Map(
+  [...mimeExtensions].map(([contentType, extension]) => [extension, contentType])
+);
 
 export class LocalFileStorage implements FileStorage {
   readonly driver = 'local';
@@ -50,14 +55,42 @@ export class LocalFileStorage implements FileStorage {
     };
   }
 
-  async deleteByUrl(url: string | null | undefined) {
-    const absolutePath = this.resolveLocalPathFromUrl(url);
+  async copyByUrl(sourceUrl: string, targetScope: FileStorageScope): Promise<StoredFile | null> {
+    const parsed = this.parseUrl(sourceUrl);
+    if (!parsed) {
+      return null;
+    }
 
-    if (!absolutePath) {
+    const contentType = extensionMimeTypes.get(path.extname(parsed.filename).slice(1).toLowerCase());
+    if (!contentType) {
+      return null;
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await fs.readFile(path.join(this.scopeDirectory(parsed.scope), parsed.filename));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null;
+      }
+      throw error;
+    }
+
+    return this.save({ scope: targetScope, buffer, contentType });
+  }
+
+  async deleteByUrl(url: string | null | undefined, options: DeleteFileOptions = {}) {
+    const parsed = this.parseUrl(url);
+
+    if (!parsed || (options.scope && parsed.scope !== options.scope)) {
       return;
     }
 
-    await this.deletePath(absolutePath);
+    await this.deletePath(path.join(this.scopeDirectory(parsed.scope), parsed.filename));
+  }
+
+  scopeOfUrl(url: string | null | undefined): FileStorageScope | null {
+    return this.parseUrl(url)?.scope ?? null;
   }
 
   getPublicUrl(key: string) {
@@ -71,26 +104,9 @@ export class LocalFileStorage implements FileStorage {
   }
 
   resolveLocalPathFromUrl(url: string | null | undefined) {
-    if (!url) {
-      return null;
-    }
+    const parsed = this.parseUrl(url);
 
-    for (const [scope, publicPath] of Object.entries(scopePublicPaths) as Array<
-      [FileStorageScope, string]
-    >) {
-      if (!url.startsWith(`${publicPath}/`)) {
-        continue;
-      }
-
-      const filename = url.slice(`${publicPath}/`.length);
-      if (filename !== path.basename(filename)) {
-        return null;
-      }
-
-      return path.join(this.scopeDirectory(scope), filename);
-    }
-
-    return null;
+    return parsed ? path.join(this.scopeDirectory(parsed.scope), parsed.filename) : null;
   }
 
   async ensureDirectories() {
@@ -107,6 +123,36 @@ export class LocalFileStorage implements FileStorage {
 
   private scopeDirectory(scope: FileStorageScope) {
     return path.resolve(this.uploadRoot, scope);
+  }
+
+  private parseUrl(
+    url: string | null | undefined
+  ): { scope: FileStorageScope; filename: string } | null {
+    if (!url) {
+      return null;
+    }
+
+    for (const [scope, publicPath] of Object.entries(scopePublicPaths) as Array<
+      [FileStorageScope, string]
+    >) {
+      if (!url.startsWith(`${publicPath}/`)) {
+        continue;
+      }
+
+      const filename = url.slice(`${publicPath}/`.length);
+      if (
+        !filename ||
+        filename === '.' ||
+        filename === '..' ||
+        filename !== path.basename(filename)
+      ) {
+        return null;
+      }
+
+      return { scope, filename };
+    }
+
+    return null;
   }
 
   private parseKey(key: string): { scope: FileStorageScope; filename: string } | null {

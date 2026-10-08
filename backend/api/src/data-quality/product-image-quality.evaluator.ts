@@ -37,19 +37,21 @@ export class ProductImageQualityEvaluator {
       };
     }
 
+    // Submission uploads are admin-only moderation evidence; consumers cannot load them.
+    // Approved submissions get their own copy under /uploads/products/ instead.
+    if (this.isSubmissionEvidenceImage(imageUrl)) {
+      return {
+        status: 'unsuitable',
+        usableAsPrimary: false,
+        reasons: ['admin_only_submission_image']
+      };
+    }
+
     if (this.isManualOrVerifiedImage(input)) {
       return {
         status: 'usable_primary',
         usableAsPrimary: true,
         reasons: ['manual_or_verified_image']
-      };
-    }
-
-    if (this.isApprovedUserSubmissionFrontImage(input)) {
-      return {
-        status: 'usable_primary',
-        usableAsPrimary: true,
-        reasons: ['approved_user_submission_front_image']
       };
     }
 
@@ -122,12 +124,8 @@ export class ProductImageQualityEvaluator {
     return input.dataStatus === 'verified' || input.imageUrl?.startsWith('/uploads/products/');
   }
 
-  private isApprovedUserSubmissionFrontImage(input: ProductImageQualityInput) {
-    return (
-      input.dataStatus === 'community' &&
-      input.source?.trim().toLowerCase() === 'user_submission' &&
-      input.imageUrl?.startsWith('/product-submissions/uploads/')
-    );
+  private isSubmissionEvidenceImage(imageUrl: string) {
+    return imageUrl.startsWith('/product-submissions/');
   }
 
   private isExternalCommunityImage(input: ProductImageQualityInput) {

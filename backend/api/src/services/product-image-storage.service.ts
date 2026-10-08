@@ -40,8 +40,26 @@ export class ProductImageStorageService {
     return this.toStoredProductImage(storedFile);
   }
 
+  /**
+   * Copies an approved submission's image into the public products scope and returns the
+   * new product image URL. The submission file is left untouched as moderation evidence.
+   * Returns null when the URL is not a submission image or the evidence file is missing.
+   */
+  async copySubmissionImage(submissionImageUrl: string | null | undefined): Promise<string | null> {
+    if (!submissionImageUrl || this.storage.scopeOfUrl(submissionImageUrl) !== 'submissions') {
+      return null;
+    }
+
+    const copied = await this.storage.copyByUrl(submissionImageUrl, 'products');
+    return copied?.url ?? null;
+  }
+
+  /**
+   * Deletes a product image. Only product-scoped files are ever deleted; submission
+   * evidence and external URLs are ignored.
+   */
   async deleteImage(imageUrl: string | null | undefined) {
-    await this.storage.deleteByUrl(imageUrl);
+    await this.storage.deleteByUrl(imageUrl, { scope: 'products' });
   }
 
   async deleteLocalImage(imageUrl: string | null | undefined) {
@@ -49,7 +67,7 @@ export class ProductImageStorageService {
   }
 
   isLocalProductImage(imageUrl: string | null | undefined) {
-    return getLocalFileStorage().resolveLocalPathFromUrl(imageUrl) !== null;
+    return getLocalFileStorage().scopeOfUrl(imageUrl) === 'products';
   }
 
   private toStoredProductImage(storedFile: StoredFile): StoredProductImage {

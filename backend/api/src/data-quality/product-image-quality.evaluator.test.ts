@@ -31,18 +31,45 @@ describe('ProductImageQualityEvaluator', () => {
     });
   });
 
-  it('uses approved user-submission front photos as primary community images', () => {
+  it('uses the product-scoped copy of an approved user-submission photo as primary', () => {
     const result = productImageQualityEvaluator.evaluate({
-      imageUrl: '/product-submissions/uploads/front.jpg',
+      imageUrl: '/uploads/products/copied-front.jpg',
       source: 'user_submission',
       dataStatus: 'community'
     });
 
     expect(result).toMatchObject({
       status: 'usable_primary',
-      usableAsPrimary: true,
-      reasons: ['approved_user_submission_front_image']
+      usableAsPrimary: true
     });
+  });
+
+  it.each(['community', 'verified'] as const)(
+    'never exposes admin-only submission evidence URLs publicly (%s)',
+    (dataStatus) => {
+      const input = {
+        imageUrl: '/product-submissions/uploads/front.jpg',
+        source: 'user_submission',
+        dataStatus
+      };
+
+      expect(productImageQualityEvaluator.evaluate(input)).toMatchObject({
+        status: 'unsuitable',
+        usableAsPrimary: false,
+        reasons: ['admin_only_submission_image']
+      });
+      expect(productImageQualityEvaluator.selectPrimaryImageUrl(input)).toBeNull();
+    }
+  );
+
+  it('keeps the existing manual-upload rule for product images', () => {
+    expect(
+      productImageQualityEvaluator.selectPrimaryImageUrl({
+        imageUrl: '/uploads/products/manual.jpg',
+        source: 'test',
+        dataStatus: 'unverified'
+      })
+    ).toBe('/uploads/products/manual.jpg');
   });
 
   it('rejects low-quality community image candidates as primary', () => {

@@ -115,13 +115,35 @@ class FakeProductCreator {
   }
 }
 
+class FakeProductImages {
+  copiedFrom: string[] = [];
+  deleted: string[] = [];
+  copyResult: string | null = '/uploads/products/copied-front.jpg';
+
+  copySubmissionImage(url: string | null | undefined) {
+    this.copiedFrom.push(String(url));
+    return Promise.resolve(this.copyResult);
+  }
+
+  deleteImage(url: string | null | undefined) {
+    this.deleted.push(String(url));
+    return Promise.resolve();
+  }
+}
+
 function createService(repository = new FakeSubmissionRepository()) {
   const productCreator = new FakeProductCreator();
+  const productImages = new FakeProductImages();
 
   return {
     repository,
     productCreator,
-    service: new ProductSubmissionService(repository as never, productCreator as never)
+    productImages,
+    service: new ProductSubmissionService(
+      repository as never,
+      productCreator as never,
+      productImages
+    )
   };
 }
 
@@ -228,7 +250,7 @@ describe('ProductSubmissionService', () => {
     repository.submissions = [
       createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
     ];
-    const { service, productCreator } = createService(repository);
+    const { service, productCreator, productImages } = createService(repository);
 
     const submission = await service.approve(
       '11111111-1111-4111-8111-111111111111',
@@ -244,14 +266,109 @@ describe('ProductSubmissionService', () => {
 
     expect(submission.status).toBe('approved');
     expect(submission.createdProductId).toBe('created-product-id');
+    expect(productImages.copiedFrom).toEqual(['/product-submissions/uploads/front.jpg']);
     expect(productCreator.createdBody).toMatchObject({
       barcode: '5449000000996',
-      imageUrl: '/product-submissions/uploads/front.jpg',
+      imageUrl: '/uploads/products/copied-front.jpg',
       dataStatus: 'community',
       source: 'user_submission',
       lastVerifiedAt: null
     });
     expect(repository.approvedProductId).toBe('created-product-id');
+    expect(productImages.deleted).toEqual([]);
+  });
+
+  it('never gives the product the submission-scoped evidence URL', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [
+      createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+    ];
+    const { service, productCreator, productImages } = createService(repository);
+    productImages.copyResult = null; // evidence file missing on disk
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await service.approve(
+      '11111111-1111-4111-8111-111111111111',
+      { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+      'admin-id'
+    );
+
+    expect(productCreator.createdBody).toMatchObject({ imageUrl: null });
+  });
+
+  it('approves a submission without a front image without copying anything', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [createSubmission({ frontImageUrl: null })];
+    const { service, productCreator, productImages } = createService(repository);
+
+    const submission = await service.approve(
+      '11111111-1111-4111-8111-111111111111',
+      { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+      'admin-id'
+    );
+
+    expect(submission.status).toBe('approved');
+    expect(productImages.copiedFrom).toEqual([]);
+    expect(productCreator.createdBody).toMatchObject({ imageUrl: null });
+  });
+
+  it('deletes the copied product image when the approval transaction fails', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [
+      createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+    ];
+    const { service, productCreator, productImages } = createService(repository);
+    const failure = new Error('insert failed');
+    vi.spyOn(productCreator, 'create').mockRejectedValue(failure);
+
+    await expect(
+      service.approve(
+        '11111111-1111-4111-8111-111111111111',
+        { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+        'admin-id'
+      )
+    ).rejects.toBe(failure);
+
+    expect(productImages.deleted).toEqual(['/uploads/products/copied-front.jpg']);
+  });
+
+  it('keeps the original approval error when copied-image cleanup also fails', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [
+      createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+    ];
+    const { service, productCreator, productImages } = createService(repository);
+    const failure = new Error('insert failed');
+    vi.spyOn(productCreator, 'create').mockRejectedValue(failure);
+    vi.spyOn(productImages, 'deleteImage').mockRejectedValue(new Error('disk error'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      service.approve(
+        '11111111-1111-4111-8111-111111111111',
+        { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+        'admin-id'
+      )
+    ).rejects.toBe(failure);
+  });
+
+  it('does not copy the image when approval is rejected before product creation', async () => {
+    const repository = new FakeSubmissionRepository();
+    repository.submissions = [
+      createSubmission({ frontImageUrl: '/product-submissions/uploads/front.jpg' })
+    ];
+    repository.productBarcodeExists = true;
+    const { service, productImages } = createService(repository);
+
+    await expect(
+      service.approve(
+        '11111111-1111-4111-8111-111111111111',
+        { barcode: '5449000000996', name: 'Cola', category: 'Soft Drinks', ingredients: [] },
+        'admin-id'
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(productImages.copiedFrom).toEqual([]);
   });
 
   it('fails approval safely for duplicate barcode', async () => {

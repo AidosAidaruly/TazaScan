@@ -69,6 +69,58 @@ describe('LocalFileStorage', () => {
     });
   });
 
+  it('rejects dot-segment filenames', () => {
+    expect(storage.resolveLocalPathFromUrl('/uploads/products/..')).toBeNull();
+    expect(storage.resolveLocalPathFromUrl('/product-submissions/uploads/.')).toBeNull();
+  });
+
+  it('copies a submission file into the products scope as an independent file', async () => {
+    const source = await storage.save({
+      scope: 'submissions',
+      buffer: Buffer.from('evidence bytes'),
+      contentType: 'image/jpeg'
+    });
+
+    const copy = await storage.copyByUrl(source.url, 'products');
+
+    expect(copy).not.toBeNull();
+    expect(copy!.key).toMatch(/^products\/[a-f0-9-]+\.jpg$/);
+    expect(copy!.url).toMatch(/^\/uploads\/products\/[a-f0-9-]+\.jpg$/);
+    expect(copy!.url).not.toBe(source.url);
+    await expect(fs.readFile(path.join(tempRoot, copy!.key), 'utf8')).resolves.toBe('evidence bytes');
+
+    await storage.deleteByUrl(copy!.url);
+    await expect(fs.readFile(path.join(tempRoot, source.key), 'utf8')).resolves.toBe('evidence bytes');
+  });
+
+  it('returns null when copying a missing or unknown URL', async () => {
+    await expect(
+      storage.copyByUrl('/product-submissions/uploads/missing.jpg', 'products')
+    ).resolves.toBeNull();
+    await expect(
+      storage.copyByUrl('https://images.example.com/front.jpg', 'products')
+    ).resolves.toBeNull();
+  });
+
+  it('ignores deletes outside the requested scope', async () => {
+    const evidence = await storage.save({
+      scope: 'submissions',
+      buffer: Buffer.from('evidence'),
+      contentType: 'image/jpeg'
+    });
+
+    await storage.deleteByUrl(evidence.url, { scope: 'products' });
+
+    await expect(fs.stat(path.join(tempRoot, evidence.key))).resolves.toBeTruthy();
+  });
+
+  it('reports the scope of stored-file URLs', () => {
+    expect(storage.scopeOfUrl('/uploads/products/a.jpg')).toBe('products');
+    expect(storage.scopeOfUrl('/product-submissions/uploads/a.jpg')).toBe('submissions');
+    expect(storage.scopeOfUrl('https://example.com/a.jpg')).toBeNull();
+    expect(storage.scopeOfUrl(null)).toBeNull();
+  });
+
   it('keeps existing local URL compatibility', () => {
     const localPath = storage.resolveLocalPathFromUrl(
       '/uploads/products/existing.jpg'

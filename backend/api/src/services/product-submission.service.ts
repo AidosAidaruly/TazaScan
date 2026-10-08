@@ -14,6 +14,7 @@ import type {
   UpdateSubmissionStatusBody
 } from '../schemas/product-submission.schema';
 import { productBodySchema, type ProductBody } from '../schemas/product.schema';
+import { ProductImageStorageService } from './product-image-storage.service';
 
 type SubmissionRepositoryContract = Pick<
   ProductSubmissionRepository,
@@ -31,10 +32,16 @@ type ProductCreatorContract = {
   create(data: ProductBody, transaction?: Prisma.TransactionClient): Promise<{ id: string }>;
 };
 
+type ProductImageCopierContract = Pick<
+  ProductImageStorageService,
+  'copySubmissionImage' | 'deleteImage'
+>;
+
 export class ProductSubmissionService {
   constructor(
     private readonly submissionRepository: SubmissionRepositoryContract,
-    private readonly productCreator: ProductCreatorContract
+    private readonly productCreator: ProductCreatorContract,
+    private readonly productImages: ProductImageCopierContract = new ProductImageStorageService()
   ) {}
 
   async list(filters: ListSubmissionsQuery): Promise<PaginatedResponse<ProductSubmissionDto>> {
@@ -99,7 +106,7 @@ export class ProductSubmissionService {
     }
 
     this.ensureNutritionConsistency(data);
-    const productBody = this.toProductBody(data, existingSubmission);
+    const productBody = this.toProductBody(data);
     const parsedProduct = productBodySchema.parse({
       ...productBody,
       imageUrl: undefined
@@ -112,25 +119,67 @@ export class ProductSubmissionService {
       throw new HttpError(409, 'Barcode already exists');
     }
 
-    const submission = await this.submissionRepository.transaction(async (transaction) => {
-      const product = await this.productCreator.create({
-        ...parsedProduct,
-        imageUrl: existingSubmission.frontImageUrl,
-        dataStatus: 'community',
-        source: 'user_submission',
-        lastVerifiedAt: null
-      }, transaction);
+    // The product gets its own public, product-scoped copy; the submission file stays
+    // admin-only evidence and is never referenced by the product.
+    const productImageUrl = await this.copyFrontImageForProduct(existingSubmission);
 
-      return this.submissionRepository.markApproved(
-        id,
-        product.id,
-        reviewedByUserId,
-        data.moderationNote,
-        transaction
-      );
-    });
+    try {
+      const submission = await this.submissionRepository.transaction(async (transaction) => {
+        const product = await this.productCreator.create({
+          ...parsedProduct,
+          imageUrl: productImageUrl,
+          dataStatus: 'community',
+          source: 'user_submission',
+          lastVerifiedAt: null
+        }, transaction);
 
-    return toProductSubmissionDto(submission);
+        return this.submissionRepository.markApproved(
+          id,
+          product.id,
+          reviewedByUserId,
+          data.moderationNote,
+          transaction
+        );
+      });
+
+      return toProductSubmissionDto(submission);
+    } catch (error) {
+      await this.discardCopiedImage(productImageUrl);
+      throw error;
+    }
+  }
+
+  private async copyFrontImageForProduct(submission: ProductSubmission) {
+    if (!submission.frontImageUrl) {
+      return null;
+    }
+
+    const productImageUrl = await this.productImages.copySubmissionImage(submission.frontImageUrl);
+    if (!productImageUrl) {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        event: 'submission_image_unavailable',
+        submissionId: submission.id
+      }));
+    }
+
+    return productImageUrl;
+  }
+
+  private async discardCopiedImage(productImageUrl: string | null) {
+    if (!productImageUrl) {
+      return;
+    }
+
+    try {
+      await this.productImages.deleteImage(productImageUrl);
+    } catch {
+      console.error(JSON.stringify({
+        level: 'error',
+        event: 'orphaned_product_image_cleanup_failed',
+        imageUrl: productImageUrl
+      }));
+    }
   }
 
   private async ensureExists(id: string): Promise<ProductSubmission> {
@@ -195,10 +244,7 @@ export class ProductSubmissionService {
     }
   }
 
-  private toProductBody(
-    data: ApproveSubmissionBody,
-    submission: ProductSubmission
-  ): ProductBody {
+  private toProductBody(data: ApproveSubmissionBody): ProductBody {
     return {
       barcode: data.barcode ?? '',
       name: data.name,
@@ -216,7 +262,7 @@ export class ProductSubmissionService {
         fiber: data.fiber,
         salt: data.salt
       },
-      imageUrl: submission.frontImageUrl,
+      imageUrl: null,
       dataStatus: 'community',
       source: 'user_submission',
       lastVerifiedAt: null
