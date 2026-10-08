@@ -17,21 +17,51 @@ Production should use HTTPS API URLs. Main manifest sets `usesCleartextTraffic=f
 
 ## Signing
 
-Do not commit real signing secrets.
+Release APKs and AABs are **always** signed with the release (upload) key. There is no
+fallback to the debug key: if release signing is not configured correctly, the release
+build fails before compiling, with a message naming the problem (never the secrets).
 
-Copy:
+1. Create an upload keystore outside git, for example:
 
-```text
-apps/mobile/android/key.properties.example
+   ```bash
+   keytool -genkeypair -v -keystore apps/mobile/android/upload-keystore.jks \
+     -storetype PKCS12 -alias tazascan-upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. Copy `apps/mobile/android/key.properties.example` to
+   `apps/mobile/android/key.properties` (next to `settings.gradle.kts`) and fill in:
+
+   | Property | Meaning |
+   | --- | --- |
+   | `storeFile` | Keystore path; relative paths resolve from `apps/mobile/android/app` |
+   | `storePassword` | Keystore password |
+   | `keyAlias` | Alias of the upload key inside the keystore |
+   | `keyPassword` | Password of that key |
+
+3. **Never commit `key.properties` or the keystore.** Both are git-ignored
+   (`key.properties`, `*.jks`, `*.keystore`). Back the keystore up securely; losing it
+   means losing the ability to update the app.
+
+A release build stops with `Release signing is not configured: …` when:
+
+- `apps/mobile/android/key.properties` does not exist;
+- any of the four properties is missing or empty;
+- `storeFile` does not point to an existing file;
+- the keystore cannot be opened (wrong `storePassword` or not a keystore);
+- `keyAlias` does not exist in the keystore;
+- the key cannot be read with `keyPassword`.
+
+Debug builds, `flutter run` and IDE sync do not need `key.properties` and keep using the
+standard debug key. CI release jobs must write `key.properties` and the keystore from
+their secret store before running `flutter build apk --release` or
+`flutter build appbundle --release`.
+
+To check which key each variant uses (no passwords are printed):
+
+```bash
+cd apps/mobile/android
+./gradlew :app:signingReport
 ```
-
-to:
-
-```text
-apps/mobile/android/key.properties
-```
-
-Then create an upload keystore and fill real local values.
 
 ## Build Commands
 

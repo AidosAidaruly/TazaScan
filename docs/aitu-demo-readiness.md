@@ -121,7 +121,9 @@ $env:GRADLE_OPTS = '-Dorg.gradle.project.kotlin.incremental=false -Dorg.gradle.p
 flutter build apk --release --dart-define=API_BASE_URL=http://127.0.0.1:4000 --dart-define=TAZASCAN_DEMO_HTTP=true
 ```
 
-The final demo APK is `apps/mobile/build/app/outputs/flutter-apk/app-release.apk`, configured for USB reverse forwarding. It uses the existing debug-key fallback because no `android/key.properties` is present. No signing credentials were changed.
+The final demo APK is `apps/mobile/build/app/outputs/flutter-apk/app-release.apk`, configured for USB reverse forwarding. That APK was built while release builds could still fall back to the debug key.
+
+Release builds no longer fall back to the debug key: `flutter build apk --release` now requires `apps/mobile/android/key.properties` and a release keystore (see [Android release signing](android-release.md#signing)) and fails clearly otherwise. Keep both files out of git. An APK signed with a different key cannot be installed over the earlier debug-signed demo APK (`adb install -r` reports a signing mismatch); use a separate demo device or uninstall the old app only if its local data is not needed.
 
 The packaged APK manifest and signing are checked after building; rebuilding can change its fingerprint.
 

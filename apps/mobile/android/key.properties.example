@@ -1,4 +1,11 @@
+# Release signing for TazaScan Android builds.
+# Copy to apps/mobile/android/key.properties and fill in real local values.
+# Never commit key.properties or the keystore (both are git-ignored).
+# Release builds fail if this file, any value, the keystore or the key is missing or
+# wrong; they are never signed with the debug key.
 storePassword=change-me
 keyPassword=change-me
 keyAlias=tazascan-upload
+# Relative paths are resolved from apps/mobile/android/app (this example points to
+# apps/mobile/android/upload-keystore.jks). Absolute paths also work.
 storeFile=../upload-keystore.jks
