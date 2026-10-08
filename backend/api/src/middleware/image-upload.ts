@@ -5,11 +5,13 @@ import {
   normalizeImageBuffer
 } from '../services/image-normalization.service';
 import { HttpError } from '../utils/http-error';
+import { maxUploadFileSize, multipartLimits, toMultipartHttpError } from './multipart-limits';
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024
+    ...multipartLimits,
+    fileSize: maxUploadFileSize
   },
   fileFilter: (_request, file, callback) => {
     if (!acceptsImageMimeType(file.mimetype)) {
@@ -23,18 +25,8 @@ const upload = multer({
 
 export const uploadProductImage: RequestHandler = (request, response, next) => {
   upload.single('image')(request, response, (error: unknown) => {
-    if (error instanceof multer.MulterError) {
-      if (error.code === 'LIMIT_FILE_SIZE') {
-        next(new HttpError(413, 'Image file is too large', error.message));
-        return;
-      }
-
-      next(new HttpError(400, 'Invalid image upload', error.message));
-      return;
-    }
-
     if (error) {
-      next(error);
+      next(toMultipartHttpError(error));
       return;
     }
 

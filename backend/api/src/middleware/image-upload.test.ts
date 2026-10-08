@@ -10,7 +10,9 @@ import type { AuthUser } from '../types/auth';
 import { createAuthenticate } from './authenticate';
 import { authorizeRole } from './authorize-role';
 import { errorHandler } from './error-handler';
+import multer from 'multer';
 import { uploadProductImage } from './image-upload';
+import { multipartLimits, toMultipartHttpError } from './multipart-limits';
 
 function createTestApp(user?: AuthUser) {
   const app = express();
@@ -240,6 +242,7 @@ describe('product image upload middleware', () => {
       });
 
     expect(response.status).toBe(413);
+    expect(response.body.error).toEqual({ message: 'Image file is too large' });
   });
 
   it('rejects multiple files', async () => {
@@ -266,6 +269,133 @@ describe('product image upload middleware', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.imageUrl).toBeNull();
+  });
+});
+
+describe('product image upload multipart limits', () => {
+  const uploadPath = '/products/11111111-1111-4111-8111-111111111111/image';
+
+  it('still accepts a valid upload with a few text fields', async () => {
+    const response = await request(createTestApp(adminUser))
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .field('note', 'front of pack')
+      .attach('image', await createImage('png'), {
+        filename: 'front.png',
+        contentType: 'image/png'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.mimetype).toBe('image/jpeg');
+  });
+
+  it('rejects too many text fields with 413', async () => {
+    let pending = request(createTestApp(adminUser))
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`);
+    for (let index = 0; index <= multipartLimits.fields; index += 1) {
+      pending = pending.field(`field${index}`, 'x');
+    }
+
+    const response = await pending.attach('image', await createImage('png'), {
+      filename: 'front.png',
+      contentType: 'image/png'
+    });
+
+    expect(response.status).toBe(413);
+    expect(response.body.error).toEqual({ message: 'Too many form fields' });
+  });
+
+  it('rejects an oversized text field with 413', async () => {
+    const response = await request(createTestApp(adminUser))
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .field('note', 'x'.repeat(multipartLimits.fieldSize + 1))
+      .attach('image', await createImage('png'), {
+        filename: 'front.png',
+        contentType: 'image/png'
+      });
+
+    expect(response.status).toBe(413);
+    expect(response.body.error).toEqual({ message: 'Form field is too large' });
+  });
+
+  it.each([
+    ['a huge array index', 'items[99999999]'],
+    ['deep nesting', 'a[b][c][d]']
+  ])('rejects crafted field names with %s as 400', async (_label, fieldName) => {
+    const response = await request(createTestApp(adminUser))
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .field(fieldName, 'x')
+      .attach('image', await createImage('png'), {
+        filename: 'front.png',
+        contentType: 'image/png'
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual({ message: 'Invalid image upload' });
+  });
+
+  it('answers a truncated multipart body with 400 and keeps serving requests', async () => {
+    const app = createTestApp(adminUser);
+    const malformed = await request(app)
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .set('Content-Type', 'multipart/form-data; boundary=tazaBoundary')
+      .send('--tazaBoundary\r\nContent-Disposition: form-data; name="image"; filename="a.png"\r\nContent-Type: image/png\r\n\r\nnot-finished');
+
+    expect(malformed.status).toBe(400);
+    expect(malformed.body.error).toEqual({ message: 'Malformed multipart request' });
+
+    const followUp = await request(app)
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .attach('image', await createImage('png'), {
+        filename: 'front.png',
+        contentType: 'image/png'
+      });
+    expect(followUp.status).toBe(200);
+  });
+
+  it('answers a multipart request without a boundary with 400', async () => {
+    const response = await request(createTestApp(adminUser))
+      .post(uploadPath)
+      .set('Authorization', `Bearer ${signToken()}`)
+      .set('Content-Type', 'multipart/form-data')
+      .send('garbage');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual({ message: 'Malformed multipart request' });
+  });
+
+  it('rejects too many multipart parts with 413 (parts backstop)', async () => {
+    // In the real config `fields` (30) trips before `parts` (40); lift the field limit to
+    // exercise the parts limit and its mapping on its own.
+    const partsOnly = multer({
+      storage: multer.memoryStorage(),
+      limits: { ...multipartLimits, fields: Infinity }
+    }).none();
+    const app = express();
+    app.post('/parts', (incoming, response, next) => {
+      partsOnly(incoming, response, (error: unknown) => {
+        if (error) {
+          next(toMultipartHttpError(error));
+          return;
+        }
+        response.status(200).json({ ok: true });
+      });
+    });
+    app.use(errorHandler);
+
+    let pending = request(app).post('/parts');
+    for (let index = 0; index <= multipartLimits.parts; index += 1) {
+      pending = pending.field(`part${index}`, 'x');
+    }
+    const response = await pending;
+
+    expect(response.status).toBe(413);
+    expect(response.body.error).toEqual({ message: 'Too many multipart parts' });
   });
 });
 

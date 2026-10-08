@@ -7,6 +7,7 @@ import {
 } from '../services/image-normalization.service';
 import { fileStorage } from '../storage/storage-provider';
 import { HttpError } from '../utils/http-error';
+import { maxUploadFileSize, multipartLimits, toMultipartHttpError } from './multipart-limits';
 
 type StoredSubmissionFile = Express.Multer.File & {
   storageKey?: string;
@@ -16,7 +17,8 @@ type StoredSubmissionFile = Express.Multer.File & {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    ...multipartLimits,
+    fileSize: maxUploadFileSize,
     files: 4
   },
   fileFilter: (_request, file, callback) => {
@@ -36,13 +38,8 @@ export const uploadSubmissionImages: RequestHandler = (request, response, next) 
     { name: 'nutritionImage', maxCount: 1 },
     { name: 'barcodeImage', maxCount: 1 }
   ])(request, response, (error: unknown) => {
-    if (error instanceof multer.MulterError) {
-      next(new HttpError(400, 'Invalid image upload', error.message));
-      return;
-    }
-
     if (error) {
-      next(error);
+      next(toMultipartHttpError(error));
       return;
     }
 
