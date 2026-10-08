@@ -173,22 +173,31 @@ export class ProductRepository {
     });
   }
 
-  async replaceHalalCertification(productId: string, data: HalalCertificationBody) {
-    await prisma.productHalalCertification.deleteMany({
-      where: { productId }
-    });
+  /**
+   * Atomic: the delete and the insert share one transaction, so a failed insert keeps
+   * the previous certification. The product row lock serializes concurrent
+   * replacements of the same product, so they cannot both insert a row.
+   */
+  replaceHalalCertification(productId: string, data: HalalCertificationBody) {
+    return prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT "id" FROM "products" WHERE "id" = ${productId} FOR UPDATE`;
 
-    return prisma.productHalalCertification.create({
-      data: {
-        productId,
-        status: data.status,
-        issuer: data.issuer,
-        certificateNumber: data.certificateNumber ?? null,
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
-        source: data.source,
-        evidenceUrl: data.evidenceUrl ?? null,
-        verifiedAt: data.verifiedAt ? new Date(data.verifiedAt) : null
-      }
+      await transaction.productHalalCertification.deleteMany({
+        where: { productId }
+      });
+
+      return transaction.productHalalCertification.create({
+        data: {
+          productId,
+          status: data.status,
+          issuer: data.issuer,
+          certificateNumber: data.certificateNumber ?? null,
+          validUntil: data.validUntil ? new Date(data.validUntil) : null,
+          source: data.source,
+          evidenceUrl: data.evidenceUrl ?? null,
+          verifiedAt: data.verifiedAt ? new Date(data.verifiedAt) : null
+        }
+      });
     });
   }
 

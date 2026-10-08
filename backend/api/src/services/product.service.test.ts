@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import type { Product } from '../generated/prisma/client';
+import { describe, expect, it, vi } from 'vitest';
+import { Prisma, type Product } from '../generated/prisma/client';
 import type {
   HalalCertificationBody,
   ListProductsQuery,
@@ -723,6 +723,27 @@ describe('ProductService', () => {
     expect(product.halalCheck.status).toBe('halal_confirmed');
     expect(product.halalCheck.certification.status).toBe('verified');
     expect(repository.lastScoreResult).toBeNull();
+  });
+
+  it('propagates halal replacement database errors unchanged for the M5 error handler', async () => {
+    const repository = new FakeProductRepository();
+    const existing = createProduct({ ingredients: ['Water', 'Sugar'] });
+    repository.products = [existing];
+    const failure = new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+      code: 'P2003',
+      clientVersion: '7.0.0'
+    });
+    vi.spyOn(repository, 'replaceHalalCertification').mockRejectedValue(failure);
+    const { service } = createService(repository);
+
+    await expect(
+      service.replaceHalalCertification('11111111-1111-4111-8111-111111111111', {
+        status: 'verified',
+        issuer: 'Trusted halal body',
+        source: 'Admin-reviewed certificate'
+      })
+    ).rejects.toBe(failure);
+    expect(repository.products).toEqual([existing]);
   });
 
   it('clears halal certification without changing product data or legacy scoring', async () => {
