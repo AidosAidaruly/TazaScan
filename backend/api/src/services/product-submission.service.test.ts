@@ -253,6 +253,71 @@ describe('ProductSubmissionService', () => {
     });
   });
 
+  describe('discarding uploads of failed submissions', () => {
+    const images = {
+      frontImageUrl: '/product-submissions/uploads/front.jpg',
+      ingredientsImageUrl: '/product-submissions/uploads/ingredients.jpg',
+      nutritionImageUrl: null,
+      barcodeImageUrl: null
+    };
+
+    it.each([
+      ['missing identifying data', { ingredients: [] }, {}, { statusCode: 400 }],
+      [
+        'sugars greater than carbohydrates',
+        { name: 'Cola', ingredients: [], sugars: 20, carbohydrates: 10 },
+        {},
+        { statusCode: 400 }
+      ],
+      [
+        'existing product barcode',
+        { barcode: '5449000000996', ingredients: [] },
+        { productBarcodeExists: true },
+        { statusCode: 409 }
+      ],
+      [
+        'duplicate pending submission',
+        { barcode: '5449000000996', ingredients: [] },
+        { submissions: [createSubmission()] },
+        { statusCode: 409 }
+      ]
+    ] as const)('discards uploads on %s', async (_case, data, state, expected) => {
+      const repository = Object.assign(new FakeSubmissionRepository(), structuredClone(state));
+      const { service } = createService(repository);
+      const discardUploads = vi.fn(async () => undefined);
+      const uploadImages = 'barcode' in data ? images : { ...images, frontImageUrl: null };
+
+      await expect(
+        service.create(structuredClone(data) as never, uploadImages, discardUploads)
+      ).rejects.toMatchObject(expected);
+
+      expect(discardUploads).toHaveBeenCalledOnce();
+    });
+
+    it('discards uploads when the repository create fails, keeping the original error', async () => {
+      const repository = new FakeSubmissionRepository();
+      const failure = new Error('database unavailable');
+      vi.spyOn(repository, 'create').mockRejectedValue(failure);
+      const { service } = createService(repository);
+      const discardUploads = vi.fn(async () => undefined);
+
+      await expect(
+        service.create({ barcode: '5449000000996', ingredients: [] }, images, discardUploads)
+      ).rejects.toBe(failure);
+
+      expect(discardUploads).toHaveBeenCalledOnce();
+    });
+
+    it('keeps uploads of a created submission', async () => {
+      const { service } = createService();
+      const discardUploads = vi.fn(async () => undefined);
+
+      await service.create({ barcode: '5449000000996', ingredients: [] }, images, discardUploads);
+
+      expect(discardUploads).not.toHaveBeenCalled();
+    });
+  });
+
   it('approves a submission and creates a product', async () => {
     const repository = new FakeSubmissionRepository();
     repository.submissions = [

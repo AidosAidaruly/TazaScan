@@ -69,20 +69,37 @@ export class ProductSubmissionService {
     return toProductSubmissionDto(submission);
   }
 
-  async create(data: ProductSubmissionBody, images: SubmissionImageUrls) {
-    this.ensureIdentifyingData(data, images);
-    await this.ensureUnknownBarcodeCanBeSubmitted(data, images);
-    this.ensureNutritionConsistency(data);
+  /**
+   * `discardUploads` removes the files uploaded by this request. It runs when the
+   * submission is not created; once `repository.create` resolves, the files are the
+   * submission's evidence and are kept.
+   */
+  async create(
+    data: ProductSubmissionBody,
+    images: SubmissionImageUrls,
+    discardUploads: () => Promise<void> = async () => undefined
+  ) {
+    let submission: ProductSubmission;
 
-    const duplicate = await this.submissionRepository.findPendingDuplicate(
-      data.barcode,
-      data.anonymousDeviceId
-    );
-    if (duplicate) {
-      throw new HttpError(409, 'A similar pending submission already exists');
+    try {
+      this.ensureIdentifyingData(data, images);
+      await this.ensureUnknownBarcodeCanBeSubmitted(data, images);
+      this.ensureNutritionConsistency(data);
+
+      const duplicate = await this.submissionRepository.findPendingDuplicate(
+        data.barcode,
+        data.anonymousDeviceId
+      );
+      if (duplicate) {
+        throw new HttpError(409, 'A similar pending submission already exists');
+      }
+
+      submission = await this.submissionRepository.create(data, images);
+    } catch (error) {
+      await discardUploads();
+      throw error;
     }
 
-    const submission = await this.submissionRepository.create(data, images);
     return toProductSubmissionDto(submission);
   }
 

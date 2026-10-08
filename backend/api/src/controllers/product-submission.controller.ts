@@ -12,7 +12,7 @@ import { ProductSubmissionService } from '../services/product-submission.service
 import { ProductService } from '../services/product.service';
 import { HttpError } from '../utils/http-error';
 import { requireParam } from '../utils/request';
-import { uploadedFileUrl } from '../middleware/submission-upload';
+import { discardSubmissionUploads, uploadedFileUrl } from '../middleware/submission-upload';
 
 const productSubmissionService = new ProductSubmissionService(
   new ProductSubmissionRepository(),
@@ -37,8 +37,18 @@ export const getProductSubmissionById: RequestHandler = async (request, response
 };
 
 export const createProductSubmission: RequestHandler = async (request, response) => {
-  const body = productSubmissionBodySchema.parse(normalizeMultipartBody(request.body));
-  const submission = await productSubmissionService.create(body, readImageUrls(request));
+  const discardUploads = () => discardSubmissionUploads(request);
+  const parsedBody = productSubmissionBodySchema.safeParse(normalizeMultipartBody(request.body));
+  if (!parsedBody.success) {
+    await discardUploads();
+    throw parsedBody.error;
+  }
+
+  const submission = await productSubmissionService.create(
+    parsedBody.data,
+    readImageUrls(request),
+    discardUploads
+  );
 
   response.status(201).json({ data: submission });
 };
