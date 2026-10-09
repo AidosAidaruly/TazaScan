@@ -1,10 +1,44 @@
-import type { ErrorRequestHandler } from 'express';
+import type { ErrorRequestHandler, Request } from 'express';
 import { ZodError } from 'zod';
-import { env } from '../config/env';
 import { HttpError } from '../utils/http-error';
-import { isPrismaError, prismaErrorCode, toPrismaHttpError } from '../utils/prisma-errors';
+import { prismaErrorCode, toPrismaHttpError } from '../utils/prisma-errors';
 
-export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+/**
+ * Server-side diagnostics for an unexpected error. Never includes the request body, headers
+ * or query string. Body-parser errors carry the raw body (and their message can quote it), so
+ * only their type and status are logged.
+ */
+function unexpectedErrorLog(error: unknown, request: Request) {
+  const base = {
+    level: 'error',
+    event: 'unhandled_error',
+    method: request.method,
+    path: request.path
+  };
+
+  if (!(error instanceof Error)) {
+    return { ...base, name: typeof error };
+  }
+
+  const { type, status, code } = error as Error & {
+    type?: unknown;
+    status?: unknown;
+    code?: unknown;
+  };
+  if (typeof type === 'string' && type.startsWith('entity.')) {
+    return { ...base, name: error.name, type, status };
+  }
+
+  return {
+    ...base,
+    name: error.name,
+    code: typeof code === 'string' || typeof code === 'number' ? code : undefined,
+    message: error.message,
+    stack: error.stack
+  };
+}
+
+export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
   if (error instanceof ZodError) {
     response.status(400).json({
       error: {
@@ -39,14 +73,11 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
     return;
   }
 
-  console.error(error);
+  console.error(JSON.stringify(unexpectedErrorLog(error, request)));
 
+  // Same generic body in every environment: error text can contain SQL, file paths or
+  // other internals. Details stay in the server log above.
   response.status(500).json({
-    error: {
-      message: 'Internal server error',
-      // Prisma messages can contain SQL, table and constraint names: never returned.
-      details:
-        env.NODE_ENV === 'production' || isPrismaError(error) ? undefined : String(error)
-    }
+    error: { message: 'Internal server error' }
   });
 };

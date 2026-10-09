@@ -144,7 +144,16 @@ describe('error handler: existing behavior', () => {
     const response = await request(appThrowing(new Error('boom'))).get('/fail');
 
     expect(response.status).toBe(500);
-    expect(response.body.error.message).toBe('Internal server error');
+    expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+  });
+
+  it('keeps Zod validation details unchanged', async () => {
+    const parsed = z.object({ name: z.string() }).safeParse({});
+    const response = await request(appThrowing(parsed.error)).get('/fail');
+
+    expect(response.body).toEqual({
+      error: { message: 'Validation failed', details: parsed.error!.flatten() }
+    });
   });
 
   it('does not affect successful requests', async () => {
@@ -170,5 +179,167 @@ describe('prisma error helpers', () => {
     });
 
     expect(toPrismaHttpError(foreign)).toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('error handler: unexpected errors', () => {
+  const sensitive = 'sensitive internal detail: connect ECONNREFUSED 10.0.0.5:5432 at C:\\srv\\db.ts';
+  const sensitiveFragments = ['sensitive internal detail', 'ECONNREFUSED', '10.0.0.5', 'db.ts'];
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // A fresh handler module loaded under the given NODE_ENV.
+  async function loadForEnv(nodeEnv: string) {
+    vi.stubEnv('NODE_ENV', nodeEnv);
+    vi.resetModules();
+    const { errorHandler: handler } = await import('./error-handler.js');
+    const { Prisma: EnvPrisma } = await import('../generated/prisma/client.js');
+    const { HttpError: EnvHttpError } = await import('../utils/http-error.js');
+    return { handler, EnvPrisma, EnvHttpError };
+  }
+
+  function appWith(handler: typeof errorHandler, error: unknown) {
+    const app = express();
+    app.get('/fail', () => {
+      throw error;
+    });
+    app.use(handler);
+    return app;
+  }
+
+  it.each(['test', 'development', 'production'])(
+    'returns a generic 500 with no details in %s',
+    async (nodeEnv) => {
+      const { handler } = await loadForEnv(nodeEnv);
+      const thrown = Object.assign(new Error(sensitive), { code: 'ECONNREFUSED' });
+
+      const response = await request(appWith(handler, thrown)).get('/fail');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+      for (const fragment of [...sensitiveFragments, 'stack', 'details', 'Error:']) {
+        expect(response.text).not.toContain(fragment);
+      }
+    }
+  );
+
+  it.each([
+    ['a string', sensitive],
+    ['a plain object', { message: sensitive, query: 'SELECT secret FROM users' }],
+    ['a TypeError', new TypeError(sensitive)]
+  ])('stays generic in development when %s is thrown', async (_kind, thrown) => {
+    const { handler } = await loadForEnv('development');
+
+    const response = await request(appWith(handler, thrown)).get('/fail');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+    expect(response.text).not.toContain('sensitive internal detail');
+    expect(response.text).not.toContain('SELECT');
+  });
+
+  it('keeps unknown Prisma errors generic in development', async () => {
+    const { handler, EnvPrisma } = await loadForEnv('development');
+    const error = new EnvPrisma.PrismaClientUnknownRequestError(leakyMessage, {
+      clientVersion: '7.0.0'
+    });
+
+    const response = await request(appWith(handler, error)).get('/fail');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+    for (const fragment of leakyFragments) {
+      expect(response.text).not.toContain(fragment);
+    }
+  });
+
+  it('keeps known Prisma mappings and HttpError unchanged in development', async () => {
+    const { handler, EnvPrisma, EnvHttpError } = await loadForEnv('development');
+    const knownInDev = new EnvPrisma.PrismaClientKnownRequestError(leakyMessage, {
+      code: 'P2002',
+      clientVersion: '7.0.0',
+      meta: leakyMeta
+    });
+
+    const conflict = await request(appWith(handler, knownInDev)).get('/fail');
+    const explicit = await request(
+      appWith(handler, new EnvHttpError(403, 'Forbidden', { reason: 'role' }))
+    ).get('/fail');
+
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toEqual({ error: { message: 'Resource already exists' } });
+    expect(explicit.status).toBe(403);
+    expect(explicit.body).toEqual({ error: { message: 'Forbidden', details: { reason: 'role' } } });
+  });
+
+  it('logs useful diagnostics server-side as one structured line', async () => {
+    const thrown = Object.assign(new Error(sensitive), { code: 'ECONNREFUSED' });
+
+    await request(appThrowing(thrown)).get('/fail?token=query-secret');
+
+    expect(console.error).toHaveBeenCalledTimes(1);
+    const line = vi.mocked(console.error).mock.calls[0]![0] as string;
+    const logged = JSON.parse(line);
+    expect(logged).toMatchObject({
+      level: 'error',
+      event: 'unhandled_error',
+      method: 'GET',
+      path: '/fail',
+      name: 'Error',
+      code: 'ECONNREFUSED',
+      message: sensitive
+    });
+    expect(logged.stack).toContain('sensitive internal detail');
+    expect(line).not.toContain('query-secret');
+  });
+
+  it('never logs request bodies, headers or tokens', async () => {
+    const app = express();
+    app.use(express.json());
+    app.post('/fail', () => {
+      throw new Error('handler failed');
+    });
+    app.use(errorHandler);
+
+    await request(app)
+      .post('/fail')
+      .set('Authorization', 'Bearer header.jwt.value')
+      .send({ email: 'admin@example.com', password: 'body-password-value' });
+
+    const line = vi.mocked(console.error).mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: 'unhandled_error', message: 'handler failed' });
+    for (const secret of ['body-password-value', 'admin@example.com', 'header.jwt.value']) {
+      expect(line).not.toContain(secret);
+    }
+  });
+
+  it('logs only the type of body-parser errors, whose message can quote the raw body', async () => {
+    const app = express();
+    app.use(express.json());
+    app.post('/fail', (_request, response) => {
+      response.status(200).end();
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .post('/fail')
+      .set('Content-Type', 'application/json')
+      .send('{"password":"leaked-password-value"');
+
+    // Status unchanged by this fix: body-parser errors are not HttpErrors and stay 500.
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+    expect(response.text).not.toContain('leaked-password-value');
+    const line = vi.mocked(console.error).mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'unhandled_error',
+      name: 'SyntaxError',
+      type: 'entity.parse.failed',
+      status: 400
+    });
+    expect(line).not.toContain('leaked-password-value');
+    expect(line).not.toContain('password');
   });
 });
