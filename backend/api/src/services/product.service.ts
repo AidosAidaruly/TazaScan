@@ -15,8 +15,13 @@ import type { OfficialNutriScoreInput } from '../scoring/types/official-nutri-sc
 import type { TazaScoreInput } from '../scoring/types/taza-score-result';
 import type { ScoreInput } from '../scoring/types/score-result';
 import type { PaginatedResponse } from '../types/pagination';
-import type { ProductDto, ProductScorePreviewDto, ProductWithCanonicalFamily } from '../types/product';
-import { toProductDto } from '../types/product';
+import type {
+  AdminProductDto,
+  ProductDto,
+  ProductScorePreviewDto,
+  ProductWithCanonicalFamily
+} from '../types/product';
+import { toAdminProductDto, toProductDto } from '../types/product';
 import { HttpError } from '../utils/http-error';
 import { ProductImageStorageService } from './product-image-storage.service';
 
@@ -84,7 +89,7 @@ export class ProductService {
     const scoreResult = this.scoreEngine.calculate(this.toScoreInput(data));
     const product = await this.productRepository.create(data, scoreResult, transaction);
 
-    return this.toProductDto(product);
+    return this.toAdminProductDto(product);
   }
 
   previewOfficialNutriScore(data: OfficialNutriScorePreviewBody) {
@@ -140,7 +145,7 @@ export class ProductService {
     const scoreResult = this.scoreEngine.calculate(scoreInput);
     const product = await this.productRepository.update(id, data, scoreResult);
 
-    return this.toProductDto(product);
+    return this.toAdminProductDto(product);
   }
 
   async delete(id: string) {
@@ -156,7 +161,7 @@ export class ProductService {
       const product = await this.productRepository.updateImageUrl(id, storedImage.imageUrl);
       await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
 
-      return this.toProductDto(product);
+      return this.toAdminProductDto(product);
     } catch (error) {
       await this.imageStorage.deleteLocalImage(storedImage.imageUrl);
       throw error;
@@ -168,7 +173,7 @@ export class ProductService {
     const product = await this.productRepository.updateImageUrl(id, null);
     await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
 
-    return this.toProductDto(product);
+    return this.toAdminProductDto(product);
   }
 
   async replaceHalalCertification(id: string, data: HalalCertificationBody) {
@@ -179,7 +184,7 @@ export class ProductService {
     await this.ensureExists(id);
     await this.productRepository.replaceHalalCertification(id, data);
 
-    return this.getById(id);
+    return this.getAdminById(id);
   }
 
   async clearHalalCertification(id: string) {
@@ -190,16 +195,33 @@ export class ProductService {
     await this.ensureExists(id);
     await this.productRepository.clearHalalCertification(id);
 
-    return this.getById(id);
+    return this.getAdminById(id);
   }
 
+  // Public consumer reads (list, by id, by barcode) use the public DTO; responses of
+  // admin-only mutations use the admin DTO with internal metadata.
   private toProductDto(product: ProductWithCanonicalFamily): ProductDto {
+    return toProductDto(product, this.calculateTazaScore(product));
+  }
+
+  private toAdminProductDto(product: ProductWithCanonicalFamily): AdminProductDto {
+    return toAdminProductDto(product, this.calculateTazaScore(product));
+  }
+
+  private calculateTazaScore(product: ProductWithCanonicalFamily) {
     const scoreProduct = product.canonicalProductFamily?.canonicalProduct ?? product;
 
-    return toProductDto(
-      product,
-      this.tazaScoreEngine.calculate(this.productToTazaScoreInput(scoreProduct))
-    );
+    return this.tazaScoreEngine.calculate(this.productToTazaScoreInput(scoreProduct));
+  }
+
+  private async getAdminById(id: string) {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new HttpError(404, 'Product not found');
+    }
+
+    return this.toAdminProductDto(product);
   }
 
   private async ensureExists(id: string) {

@@ -1,6 +1,6 @@
 import type { ProductSubmission } from '../generated/prisma/client';
-import type { ProductDto } from './product';
-import { toProductDto } from './product';
+import type { AdminProductDto } from './product';
+import { toAdminProductDto } from './product';
 
 export type ProductSubmissionDto = {
   id: string;
@@ -33,11 +33,11 @@ export type ProductSubmissionDto = {
   reviewedByUserId: string | null;
   createdProductId: string | null;
   anonymousDeviceId: string | null;
-  createdProduct?: ProductDto | null;
+  createdProduct?: AdminProductDto | null;
 };
 
 export function toProductSubmissionDto(
-  submission: ProductSubmission & { createdProduct?: Parameters<typeof toProductDto>[0] | null }
+  submission: ProductSubmission & { createdProduct?: Parameters<typeof toAdminProductDto>[0] | null }
 ): ProductSubmissionDto {
   return {
     id: submission.id,
@@ -70,6 +70,7 @@ export function toProductSubmissionDto(
     reviewedByUserId: submission.reviewedByUserId,
     createdProductId: submission.createdProductId,
     anonymousDeviceId: submission.anonymousDeviceId,
-    createdProduct: submission.createdProduct ? toProductDto(submission.createdProduct) : null
+    // Submission responses are admin-only (moderation), so they carry the admin DTO.
+    createdProduct: submission.createdProduct ? toAdminProductDto(submission.createdProduct) : null
   };
 }

@@ -968,3 +968,102 @@ describe('ProductService', () => {
     expect(result.canonicalFamilyId).toBeNull();
   });
 });
+
+describe('ProductService public vs admin product responses', () => {
+  const productId = '11111111-1111-4111-8111-111111111111';
+  const internalReason = 'Internal: score capped after supplier dispute #4411';
+  // Every product key the Flutter app's ProductModel.fromJson reads.
+  const flutterKeys = [
+    'id', 'barcode', 'name', 'brand', 'category', 'ingredients', 'ingredientsIsTranslated',
+    'nutritionFacts', 'healthScore', 'nutritionScore', 'tazaScore', 'halalCheck',
+    'scoreSource', 'imageUrl', 'dataStatus', 'source', 'createdAt', 'updatedAt'
+  ];
+
+  function setup() {
+    const repository = new FakeProductRepository();
+    repository.products = [
+      createProduct({
+        id: productId,
+        manualScoreOverride: 40,
+        manualOverrideReason: internalReason,
+        source: 'Open Food Facts'
+      })
+    ];
+    return createService(repository);
+  }
+
+  function expectPublic(dto: object) {
+    expect(dto).not.toHaveProperty('manualOverrideReason');
+    expect(JSON.stringify(dto)).not.toContain(internalReason);
+    expect(dto).toHaveProperty('source', 'Open Food Facts');
+    for (const key of flutterKeys) {
+      expect(dto, key).toHaveProperty(key);
+    }
+  }
+
+  it('omits manualOverrideReason from the public product detail', async () => {
+    const { service } = setup();
+
+    expectPublic(await service.getById(productId));
+  });
+
+  it('omits manualOverrideReason from the public barcode lookup', async () => {
+    const { service, repository } = setup();
+
+    expectPublic(await service.getByBarcode(repository.products[0]!.barcode));
+  });
+
+  it('omits manualOverrideReason from public list/search results', async () => {
+    const { service } = setup();
+
+    const result = await service.list({ page: 1, pageSize: 20 } as ListProductsQuery);
+
+    expect(result.items).toHaveLength(1);
+    expectPublic(result.items[0]!);
+  });
+
+  it('keeps manualOverrideReason in admin mutation responses', async () => {
+    const { service } = setup();
+    const halal = {
+      status: 'verified' as const,
+      issuer: 'Trusted halal body',
+      source: 'Admin-reviewed certificate'
+    };
+
+    const responses = [
+      await service.update(productId, { name: 'Renamed' }),
+      await service.uploadImage(productId, {
+        buffer: Buffer.from('x'),
+        mimetype: 'image/jpeg',
+        size: 1
+      } as Express.Multer.File),
+      await service.removeImage(productId),
+      await service.replaceHalalCertification(productId, halal),
+      await service.clearHalalCertification(productId)
+    ];
+
+    for (const response of responses) {
+      expect(response).toHaveProperty('manualOverrideReason', internalReason);
+      expect(response).toHaveProperty('source', 'Open Food Facts');
+    }
+  });
+
+  it('returns the admin shape from create', async () => {
+    const { service } = createService();
+
+    const product = await service.create(productBodySchema.parse(createProductBody()));
+
+    expect(product).toHaveProperty('manualOverrideReason');
+  });
+
+  it('differs from the admin shape only by the admin-only field', async () => {
+    const { service } = setup();
+
+    const publicDto = await service.getById(productId);
+    const adminDto = await service.update(productId, { name: publicDto.name });
+
+    const { manualOverrideReason, ...adminWithoutInternal } = adminDto;
+    expect(manualOverrideReason).toBe(internalReason);
+    expect(Object.keys(adminWithoutInternal).sort()).toEqual(Object.keys(publicDto).sort());
+  });
+});

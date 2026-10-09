@@ -19,7 +19,11 @@ export type NutritionFactsDto = {
   salt: number | null;
 };
 
-export type ProductDto = {
+/**
+ * Full product shape for admin-only responses (product mutations, submission moderation).
+ * Public consumer endpoints use `ProductDto`, which omits internal-only metadata.
+ */
+export type AdminProductDto = {
   id: string;
   barcode: string;
   name: string;
@@ -55,6 +59,15 @@ export type ProductDto = {
   updatedAt: string;
 };
 
+/** Admin-only fields that public consumer responses never include. */
+const adminOnlyProductFields = ['manualOverrideReason'] as const;
+
+/**
+ * Public consumer product shape. `source` stays: the mobile app shows it as the
+ * data-provenance label.
+ */
+export type ProductDto = Omit<AdminProductDto, (typeof adminOnlyProductFields)[number]>;
+
 export type OfficialNutriScorePreviewDto = OfficialNutriScoreResult;
 
 export type ProductScorePreviewDto = {
@@ -82,10 +95,23 @@ export type ProductWithCanonicalFamily = Product & {
 
 const halalCheckEngine = new HalalCheckEngine();
 
+/** Public consumer DTO: the admin DTO without admin-only metadata. */
 export function toProductDto(
   product: ProductWithCanonicalFamily,
   tazaScore: TazaScoreResult | null = null
 ): ProductDto {
+  const dto: Partial<AdminProductDto> = toAdminProductDto(product, tazaScore);
+  for (const field of adminOnlyProductFields) {
+    delete dto[field];
+  }
+
+  return dto as ProductDto;
+}
+
+export function toAdminProductDto(
+  product: ProductWithCanonicalFamily,
+  tazaScore: TazaScoreResult | null = null
+): AdminProductDto {
   const nutritionScore = readScoreResult(product);
   const canonicalFamily = product.canonicalProductFamily ?? null;
 

@@ -113,7 +113,8 @@ export type ProductDto = {
   canonicalFamilyId: string | null
   canonicalProductId: string | null
   manualScoreOverride: number | null
-  manualOverrideReason: string | null
+  // Only present in admin mutation responses; public GET endpoints omit it.
+  manualOverrideReason?: string | null
   manualOverrideAt: string | null
   officialNutriScoreCategory: OfficialNutriScoreCategory | null
   fruitVegetableLegumePercent: number | null

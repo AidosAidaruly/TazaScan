@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../generated/prisma/client';
 import type { TazaScoreResult } from '../scoring/types/taza-score-result';
-import { toProductDto } from './product';
+import { PhotoSearchService } from '../services/photo-search.service';
+import { toAdminProductDto, toProductDto } from './product';
+import { toProductSubmissionDto } from './product-submission';
 
 const now = new Date('2026-08-16T00:00:00.000Z');
 
@@ -293,5 +295,71 @@ describe('toProductDto image suitability', () => {
     expect(dto.scoreSource).toBe('canonical_recipe');
     expect(dto.canonicalFamilyId).toBe('family-1');
     expect(dto.canonicalProductId).toBe(canonicalProduct.id);
+  });
+});
+
+describe('public vs admin product DTO', () => {
+  const reason = 'Internal moderation note: score override approved by QA';
+  const product = () =>
+    createProduct({ manualScoreOverride: 55, manualOverrideReason: reason, source: 'manual' });
+
+  it('public DTO omits manualOverrideReason but keeps source and score fields', () => {
+    const dto = toProductDto(product());
+
+    expect(dto).not.toHaveProperty('manualOverrideReason');
+    expect(JSON.stringify(dto)).not.toContain(reason);
+    expect(dto).toMatchObject({ source: 'manual', manualScoreOverride: 55 });
+  });
+
+  it('admin DTO keeps manualOverrideReason', () => {
+    expect(toAdminProductDto(product())).toMatchObject({ manualOverrideReason: reason });
+  });
+
+  it('public photo-search matches omit manualOverrideReason', async () => {
+    const service = new PhotoSearchService(
+      { extractText: async () => 'Coca-Cola Original Taste' },
+      { searchByNameOrBrand: async () => [product()] }
+    );
+
+    const result = await service.search(Buffer.from('image'));
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]).not.toHaveProperty('manualOverrideReason');
+    expect(JSON.stringify(result)).not.toContain(reason);
+    expect(result.matches[0]).toHaveProperty('source', 'manual');
+  });
+
+  it('admin-only submission responses embed the admin product DTO', () => {
+    const dto = toProductSubmissionDto({
+      id: '11111111-1111-4111-8111-111111111111',
+      barcode: '5449000000996',
+      name: 'Cola',
+      brand: null,
+      category: 'Soft Drinks',
+      ingredients: [],
+      servingType: 'per100ml',
+      energyKcal: null,
+      protein: null,
+      carbohydrates: null,
+      sugars: null,
+      fat: null,
+      saturatedFat: null,
+      fiber: null,
+      salt: null,
+      frontImageUrl: null,
+      ingredientsImageUrl: null,
+      nutritionImageUrl: null,
+      barcodeImageUrl: null,
+      status: 'approved',
+      moderationNote: null,
+      submittedAt: now,
+      reviewedAt: now,
+      reviewedByUserId: 'admin-id',
+      createdProductId: 'product-id',
+      anonymousDeviceId: null,
+      createdProduct: product()
+    });
+
+    expect(dto.createdProduct).toMatchObject({ manualOverrideReason: reason });
   });
 });
