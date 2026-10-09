@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  isVitestProcess,
   JwtSecretConfigError,
   minJwtSecretLength,
   resolveJwtSecret,
@@ -67,10 +68,66 @@ describe('resolveJwtSecret', () => {
     expect(error.message).not.toContain(shortSecret);
   });
 
-  it('uses the deterministic test-only secret in the test environment', () => {
+  it('uses the deterministic test-only secret inside Vitest', () => {
+    expect(resolveJwtSecret('test', undefined, true)).toBe(testOnlyJwtSecret);
+    expect(resolveJwtSecret('test', 'short-local-dev-value', true)).toBe(testOnlyJwtSecret);
+    expect(resolveJwtSecret('test', validSecret, true)).toBe(testOnlyJwtSecret);
+  });
+
+  it('detects this Vitest run by default (no extra variables needed)', () => {
+    expect(isVitestProcess()).toBe(true);
     expect(resolveJwtSecret('test', undefined)).toBe(testOnlyJwtSecret);
-    expect(resolveJwtSecret('test', 'short-local-dev-value')).toBe(testOnlyJwtSecret);
-    expect(resolveJwtSecret('test', validSecret)).toBe(testOnlyJwtSecret);
+  });
+
+  it.each([undefined, '', validSecret])(
+    'rejects NODE_ENV=test outside Vitest (JWT_SECRET %j) without printing secrets',
+    (value) => {
+      const error = (() => {
+        try {
+          resolveJwtSecret('test', value, false);
+        } catch (caught) {
+          return caught as Error;
+        }
+        throw new Error('expected rejection');
+      })();
+
+      expect(error).toBeInstanceOf(JwtSecretConfigError);
+      expect(error.message).toMatch(/NODE_ENV=test is only allowed inside the Vitest test runner/);
+      expect(error.message).not.toContain(testOnlyJwtSecret);
+      expect(error.message).not.toContain(validSecret);
+    }
+  );
+
+  it('keeps development/production rules unchanged regardless of the Vitest signal', () => {
+    for (const underVitest of [true, false]) {
+      expect(resolveJwtSecret('development', validSecret, underVitest)).toBe(validSecret);
+      expect(resolveJwtSecret('production', validSecret, underVitest)).toBe(validSecret);
+      expect(() => resolveJwtSecret('production', testOnlyJwtSecret, underVitest)).toThrow(
+        /known placeholder/
+      );
+      expect(() => resolveJwtSecret('development', undefined, underVitest)).toThrow(
+        /JWT_SECRET is required/
+      );
+    }
+  });
+});
+
+describe('isVitestProcess', () => {
+  const workerEnv = { VITEST: 'true', VITEST_WORKER_ID: '3', VITEST_POOL_ID: '1' };
+
+  it('requires the variables Vitest sets in its workers', () => {
+    expect(isVitestProcess(workerEnv)).toBe(true);
+  });
+
+  it.each([
+    ['nothing', {}],
+    ['only NODE_ENV=test', { NODE_ENV: 'test' }],
+    ['only VITEST=true', { VITEST: 'true' }],
+    ['VITEST without a pool id', { VITEST: 'true', VITEST_WORKER_ID: '1' }],
+    ['VITEST=false', { ...workerEnv, VITEST: 'false' }],
+    ['empty worker id', { ...workerEnv, VITEST_WORKER_ID: '' }]
+  ])('is false for %s', (_label, env) => {
+    expect(isVitestProcess(env)).toBe(false);
   });
 });
 
@@ -133,8 +190,62 @@ describe('startup configuration (env.ts)', () => {
     expect(result.status).toBe(0);
   });
 
-  it('initializes in the test environment without any JWT_SECRET', () => {
-    const result = loadEnv({ NODE_ENV: 'test', JWT_SECRET: '' });
+  it('starts in development with a valid secret', () => {
+    const result = loadEnv({ NODE_ENV: 'development', JWT_SECRET: validSecret });
+
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+  });
+
+  it('fails fast in development with the public test-only secret without printing it', () => {
+    const result = loadEnv({ NODE_ENV: 'development', JWT_SECRET: testOnlyJwtSecret });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('known placeholder');
+    expect(result.stderr + result.stdout).not.toContain(testOnlyJwtSecret);
+  });
+
+  it.each(['', validSecret])(
+    'refuses a standalone process with NODE_ENV=test (JWT_SECRET %j)',
+    (secret) => {
+      const result = loadEnv({ NODE_ENV: 'test', JWT_SECRET: secret });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        'Invalid configuration: NODE_ENV=test is only allowed inside the Vitest test runner'
+      );
+      expect(result.stderr + result.stdout).not.toContain(testOnlyJwtSecret);
+    }
+  );
+
+  it('refuses to start the real server with NODE_ENV=test', () => {
+    const result = spawnSync(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
+      cwd: apiRoot,
+      encoding: 'utf8',
+      timeout: 30_000,
+      env: {
+        PATH: process.env.PATH ?? '',
+        SystemRoot: process.env.SystemRoot ?? '',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/tazascan',
+        NODE_ENV: 'test',
+        JWT_SECRET: '',
+        PORT: '45999' // never bound: configuration fails before listen()
+      }
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NODE_ENV=test is only allowed inside the Vitest test runner');
+    expect(result.stdout).not.toContain('"event":"startup"');
+  });
+
+  it('initializes NODE_ENV=test without JWT_SECRET when Vitest worker variables are present', () => {
+    const result = loadEnv({
+      NODE_ENV: 'test',
+      JWT_SECRET: '',
+      VITEST: 'true',
+      VITEST_WORKER_ID: '1',
+      VITEST_POOL_ID: '1'
+    });
 
     expect(result.status).toBe(0);
   });

@@ -29,11 +29,31 @@ export class JwtSecretConfigError extends Error {
 }
 
 /**
+ * True only inside a Vitest worker. Vitest itself sets VITEST=true plus per-worker
+ * VITEST_WORKER_ID / VITEST_POOL_ID; a deployment that merely sets NODE_ENV=test has none
+ * of them, so it cannot unlock the public test-only secret by accident.
+ */
+export function isVitestProcess(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VITEST === 'true' && Boolean(env.VITEST_WORKER_ID) && Boolean(env.VITEST_POOL_ID);
+}
+
+/**
  * Returns the JWT signing secret for the given environment or throws a
  * JwtSecretConfigError. Error messages never include the secret value.
  */
-export function resolveJwtSecret(nodeEnv: string, value: string | undefined): string {
+export function resolveJwtSecret(
+  nodeEnv: string,
+  value: string | undefined,
+  underVitest: boolean = isVitestProcess()
+): string {
   if (nodeEnv === 'test') {
+    if (!underVitest) {
+      throw new JwtSecretConfigError(
+        'NODE_ENV=test is only allowed inside the Vitest test runner. ' +
+          'Start the server with NODE_ENV=development or NODE_ENV=production and a real JWT_SECRET.'
+      );
+    }
+
     return testOnlyJwtSecret;
   }
 
