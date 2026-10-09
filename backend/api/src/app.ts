@@ -23,7 +23,14 @@ export function createApp() {
   app.use(loggingMiddleware);
   app.use(
     '/uploads/products',
-    express.static(getLocalFileStorage().getDirectory('products'))
+    express.static(getLocalFileStorage().getDirectory('products'), {
+      // Public product images are embedded by other origins (admin panel, web clients).
+      // Relax CORP only on served image files; every other response keeps Helmet's
+      // same-origin default, including admin-only submission evidence.
+      setHeaders: (response) => {
+        response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+    })
   );
   app.use(apiRouter);
   app.use(notFoundHandler);
