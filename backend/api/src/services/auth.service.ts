@@ -19,16 +19,16 @@ export class AuthService {
 
   async login(credentials: LoginBody) {
     const user = await this.userRepository.findByEmail(credentials.email);
+    // Exactly one bcrypt comparison on every path, so an unknown email takes the same work
+    // as a known one.
     const isPasswordValid = user
       ? await this.passwordService.verify(credentials.password, user.passwordHash)
-      : false;
+      : await this.passwordService.verifyDummy(credentials.password);
 
-    if (!user || !isPasswordValid) {
+    // Unknown email, wrong password and inactive account share one generic failure, so
+    // the response never reveals whether an account exists or its state.
+    if (!user || !isPasswordValid || !user.isActive) {
       throw new HttpError(401, 'Invalid email or password');
-    }
-
-    if (!user.isActive) {
-      throw new HttpError(403, 'User account is inactive');
     }
 
     const authUser = toAuthUser(user);
