@@ -35,9 +35,20 @@ type ProductRepositoryContract = {
   replaceHalalCertification?(productId: string, data: HalalCertificationBody): Promise<unknown>;
   clearHalalCertification?(productId: string): Promise<unknown>;
   delete(id: string): Promise<Product>;
+  isImageUrlInUse(imageUrl: string): Promise<boolean>;
 };
 
-type NumericNutritionField = Exclude<keyof ProductBody['nutritionFacts'], 'servingType'>;
+// Logs only an error code: no file paths, URLs or messages.
+function logImageCleanupFailure(error: unknown) {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  console.warn(JSON.stringify({
+    level: 'warn',
+    event: 'product_image_cleanup_failed',
+    code: typeof code === 'string' ? code : 'unknown'
+  }));
+}
+
+type NumericNutritionField =Exclude<keyof ProductBody['nutritionFacts'], 'servingType'>;
 
 export class ProductService {
   private readonly officialNutriScoreEngine = new OfficialNutriScoreEngine();
@@ -144,34 +155,40 @@ export class ProductService {
     });
     const scoreResult = this.scoreEngine.calculate(scoreInput);
     const product = await this.productRepository.update(id, data, scoreResult);
+    await this.cleanupReplacedImage(existingProduct.imageUrl, product.imageUrl);
 
     return this.toAdminProductDto(product);
   }
 
   async delete(id: string) {
-    await this.ensureExists(id);
+    const existingProduct = await this.ensureExists(id);
     await this.productRepository.delete(id);
+    await this.cleanupReplacedImage(existingProduct.imageUrl, null);
   }
 
   async uploadImage(id: string, file: Express.Multer.File | undefined) {
     const existingProduct = await this.ensureExists(id);
     const storedImage = await this.imageStorage.store(file);
 
+    // Until the database points to the new file, it belongs to this request: discard it on
+    // failure. Afterwards it belongs to the product and is never deleted here.
+    let product: Product;
     try {
-      const product = await this.productRepository.updateImageUrl(id, storedImage.imageUrl);
-      await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
-
-      return this.toAdminProductDto(product);
+      product = await this.productRepository.updateImageUrl(id, storedImage.imageUrl);
     } catch (error) {
-      await this.imageStorage.deleteLocalImage(storedImage.imageUrl);
+      await this.bestEffortDeleteImage(storedImage.imageUrl);
       throw error;
     }
+
+    await this.cleanupReplacedImage(existingProduct.imageUrl, product.imageUrl);
+
+    return this.toAdminProductDto(product);
   }
 
   async removeImage(id: string) {
     const existingProduct = await this.ensureExists(id);
     const product = await this.productRepository.updateImageUrl(id, null);
-    await this.imageStorage.deleteLocalImage(existingProduct.imageUrl);
+    await this.cleanupReplacedImage(existingProduct.imageUrl, null);
 
     return this.toAdminProductDto(product);
   }
@@ -222,6 +239,44 @@ export class ProductService {
     }
 
     return this.toAdminProductDto(product);
+  }
+
+  /**
+   * Deletes a product's previous image after the database stopped pointing to it. Only
+   * app-owned product-scope files are deleted (never external URLs or submission evidence),
+   * and only when no other product still references the same file.
+   */
+  private async cleanupReplacedImage(
+    previousImageUrl: string | null | undefined,
+    currentImageUrl: string | null | undefined
+  ) {
+    if (
+      !previousImageUrl ||
+      previousImageUrl === currentImageUrl ||
+      !this.imageStorage.isOwnedProductImage(previousImageUrl)
+    ) {
+      return;
+    }
+
+    try {
+      if (await this.productRepository.isImageUrlInUse(previousImageUrl)) {
+        return;
+      }
+    } catch (error) {
+      logImageCleanupFailure(error);
+      return;
+    }
+
+    await this.bestEffortDeleteImage(previousImageUrl);
+  }
+
+  /** Cleanup never fails the request: product state is already committed (or rolled back). */
+  private async bestEffortDeleteImage(imageUrl: string) {
+    try {
+      await this.imageStorage.deleteLocalImage(imageUrl);
+    } catch (error) {
+      logImageCleanupFailure(error);
+    }
   }
 
   private async ensureExists(id: string) {

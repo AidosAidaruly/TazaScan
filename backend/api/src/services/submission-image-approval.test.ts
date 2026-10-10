@@ -233,7 +233,9 @@ function createServices(
       const product = { ...products.get(id)!, imageUrl };
       products.set(id, product);
       return product;
-    }
+    },
+    isImageUrlInUse: async (imageUrl: string) =>
+      [...products.values()].some((product) => product.imageUrl === imageUrl)
   };
 
   const productService = new ProductService(

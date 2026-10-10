@@ -66,6 +66,11 @@ export class ProductImageStorageService {
     await this.deleteImage(imageUrl);
   }
 
+  /** True only for files this app stored in the products scope of its own storage. */
+  isOwnedProductImage(imageUrl: string | null | undefined) {
+    return this.storage.scopeOfUrl(imageUrl) === 'products';
+  }
+
   isLocalProductImage(imageUrl: string | null | undefined) {
     return getLocalFileStorage().scopeOfUrl(imageUrl) === 'products';
   }

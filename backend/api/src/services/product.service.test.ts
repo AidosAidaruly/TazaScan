@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma, type Product } from '../generated/prisma/client';
+import { LocalFileStorage } from '../storage/local-file-storage';
+import { ProductImageStorageService } from './product-image-storage.service';
 import type {
   HalalCertificationBody,
   ListProductsQuery,
@@ -187,6 +192,7 @@ class FakeProductRepository {
     const product = createProduct({
       ...existing,
       id,
+      ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
       name: data.name ?? 'Updated product',
       officialNutriScoreCategory:
         data.officialNutriScoreCategory ?? existing?.officialNutriScoreCategory ?? null,
@@ -251,6 +257,10 @@ class FakeProductRepository {
     this.products = this.products.filter((product) => product.id !== id);
     return Promise.resolve(createProduct({ id }));
   }
+
+  isImageUrlInUse(imageUrl: string) {
+    return Promise.resolve(this.products.some((product) => product.imageUrl === imageUrl));
+  }
 }
 
 function createService(repository = new FakeProductRepository()) {
@@ -283,6 +293,10 @@ class FakeProductImageStorage {
   deleteLocalImage(imageUrl: string | null | undefined) {
     this.deletedImages.push(imageUrl);
     return Promise.resolve();
+  }
+
+  isOwnedProductImage(imageUrl: string | null | undefined) {
+    return Boolean(imageUrl?.startsWith('/uploads/products/'));
   }
 }
 
@@ -1065,5 +1079,240 @@ describe('ProductService public vs admin product responses', () => {
     const { manualOverrideReason, ...adminWithoutInternal } = adminDto;
     expect(manualOverrideReason).toBe(internalReason);
     expect(Object.keys(adminWithoutInternal).sort()).toEqual(Object.keys(publicDto).sort());
+  });
+});
+
+describe('ProductService product image lifecycle (real local storage)', () => {
+  const productId = '11111111-1111-4111-8111-111111111111';
+  const otherProductId = '22222222-2222-4222-8222-222222222222';
+  const remoteUrl = 'https://images.openfoodfacts.org/images/products/544/front.jpg';
+  let uploadRoot: string;
+  let storage: LocalFileStorage;
+  let repository: FakeProductRepository;
+  let service: ProductService;
+
+  beforeEach(async () => {
+    uploadRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'tazascan-product-images-'));
+    storage = new LocalFileStorage(uploadRoot);
+    await storage.ensureDirectories();
+    repository = new FakeProductRepository();
+    service = new ProductService(
+      repository,
+      new FakeScoreEngine(),
+      new ProductImageStorageService(storage)
+    );
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(uploadRoot, { recursive: true, force: true });
+  });
+
+  async function storeFile(scope: 'products' | 'submissions') {
+    const stored = await storage.save({
+      scope,
+      buffer: Buffer.from(`${scope}-image`),
+      contentType: 'image/webp'
+    });
+    return stored.url;
+  }
+
+  async function exists(url: string | null | undefined) {
+    const filePath = storage.resolveLocalPathFromUrl(url);
+    if (!filePath) {
+      return false;
+    }
+    return fs.access(filePath).then(
+      () => true,
+      () => false
+    );
+  }
+
+  async function productFiles() {
+    return fs.readdir(storage.getDirectory('products'));
+  }
+
+  function upload() {
+    return {
+      buffer: Buffer.from('new-image'),
+      size: 9,
+      mimetype: 'image/webp'
+    } as Express.Multer.File;
+  }
+
+  function failDeletesOf(url: string, code = 'EBUSY') {
+    const original = storage.deleteByUrl.bind(storage);
+    return vi.spyOn(storage, 'deleteByUrl').mockImplementation(async (target, options) => {
+      if (target === url) {
+        throw Object.assign(new Error(`cannot delete ${uploadRoot}`), { code });
+      }
+      return original(target, options);
+    });
+  }
+
+  it('uploads an image for a product without one', async () => {
+    repository.products = [createProduct({ id: productId, imageUrl: null })];
+
+    const product = await service.uploadImage(productId, upload());
+
+    expect(product.imageUrl).toMatch(/^\/uploads\/products\/[0-9a-f-]+\.webp$/);
+    expect(await exists(product.imageUrl)).toBe(true);
+    expect(await productFiles()).toHaveLength(1);
+  });
+
+  it('replacing an image deletes the old local product file', async () => {
+    const oldUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: oldUrl })];
+
+    const product = await service.uploadImage(productId, upload());
+
+    expect(product.imageUrl).not.toBe(oldUrl);
+    expect(repository.products[0]?.imageUrl).toBe(product.imageUrl);
+    expect(await exists(product.imageUrl)).toBe(true);
+    expect(await exists(oldUrl)).toBe(false);
+    expect(await productFiles()).toHaveLength(1);
+  });
+
+  it('keeps the new image and the product state when deleting the old file fails', async () => {
+    const oldUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: oldUrl })];
+    failDeletesOf(oldUrl);
+
+    const product = await service.uploadImage(productId, upload());
+
+    expect(repository.products[0]?.imageUrl).toBe(product.imageUrl);
+    expect(await exists(product.imageUrl)).toBe(true);
+    expect(await exists(oldUrl)).toBe(true);
+    expect(console.warn).toHaveBeenCalledWith(
+      JSON.stringify({ level: 'warn', event: 'product_image_cleanup_failed', code: 'EBUSY' })
+    );
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(uploadRoot);
+  });
+
+  it('removes the newly uploaded file when the database update fails', async () => {
+    const oldUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: oldUrl })];
+    repository.failImageUpdate = true;
+
+    await expect(service.uploadImage(productId, upload())).rejects.toThrow('DB failure');
+
+    expect(repository.products[0]?.imageUrl).toBe(oldUrl);
+    expect(await exists(oldUrl)).toBe(true);
+    expect(await productFiles()).toEqual([path.basename(oldUrl)]);
+  });
+
+  it('keeps the original database error when discarding the new upload also fails', async () => {
+    repository.products = [createProduct({ id: productId, imageUrl: null })];
+    repository.failImageUpdate = true;
+    vi.spyOn(storage, 'deleteByUrl').mockRejectedValue(
+      Object.assign(new Error('disk'), { code: 'EPERM' })
+    );
+
+    await expect(service.uploadImage(productId, upload())).rejects.toThrow('DB failure');
+    expect(console.warn).toHaveBeenCalledWith(
+      JSON.stringify({ level: 'warn', event: 'product_image_cleanup_failed', code: 'EPERM' })
+    );
+  });
+
+  it('removing an image deletes the local file; a cleanup failure still succeeds', async () => {
+    const firstUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: firstUrl })];
+
+    expect((await service.removeImage(productId)).imageUrl).toBeNull();
+    expect(await exists(firstUrl)).toBe(false);
+
+    const secondUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: secondUrl })];
+    failDeletesOf(secondUrl);
+
+    expect((await service.removeImage(productId)).imageUrl).toBeNull();
+    expect(repository.products[0]?.imageUrl).toBeNull();
+  });
+
+  it('deleting a product removes its local product image', async () => {
+    const imageUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl })];
+
+    await service.delete(productId);
+
+    expect(repository.deletedIds).toEqual([productId]);
+    expect(await exists(imageUrl)).toBe(false);
+  });
+
+  it('deleting a product still succeeds when its image file cannot be deleted', async () => {
+    const imageUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl })];
+    failDeletesOf(imageUrl);
+
+    await expect(service.delete(productId)).resolves.toBeUndefined();
+    expect(repository.deletedIds).toEqual([productId]);
+  });
+
+  it('deleting a product with a remote image never touches local storage', async () => {
+    repository.products = [createProduct({ id: productId, imageUrl: remoteUrl })];
+    const deleteByUrl = vi.spyOn(storage, 'deleteByUrl');
+
+    await service.delete(productId);
+
+    expect(deleteByUrl).not.toHaveBeenCalled();
+  });
+
+  it('changing imageUrl from a local file to a remote URL cleans up the old file', async () => {
+    const oldUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl: oldUrl })];
+
+    const product = await service.update(productId, { imageUrl: remoteUrl });
+
+    expect(product.imageUrl).toBe(remoteUrl);
+    expect(await exists(oldUrl)).toBe(false);
+  });
+
+  it('updates that keep or omit imageUrl never delete the image', async () => {
+    const imageUrl = await storeFile('products');
+    repository.products = [createProduct({ id: productId, imageUrl })];
+    const deleteByUrl = vi.spyOn(storage, 'deleteByUrl');
+
+    await service.update(productId, { name: 'Renamed' });
+    await service.update(productId, { imageUrl });
+
+    expect(deleteByUrl).not.toHaveBeenCalled();
+    expect(await exists(imageUrl)).toBe(true);
+  });
+
+  it('never deletes submission evidence referenced by a product', async () => {
+    const evidenceUrl = await storeFile('submissions');
+    repository.products = [createProduct({ id: productId, imageUrl: evidenceUrl })];
+
+    await service.update(productId, { imageUrl: remoteUrl });
+    repository.products = [createProduct({ id: productId, imageUrl: evidenceUrl })];
+    await service.removeImage(productId);
+    repository.products = [createProduct({ id: productId, imageUrl: evidenceUrl })];
+    await service.delete(productId);
+
+    expect(await exists(evidenceUrl)).toBe(true);
+  });
+
+  it('keeps a file that another product still references', async () => {
+    const sharedUrl = await storeFile('products');
+    repository.products = [
+      createProduct({ id: productId, imageUrl: sharedUrl }),
+      createProduct({ id: otherProductId, barcode: '4870000000001', imageUrl: sharedUrl })
+    ];
+
+    await service.delete(productId);
+
+    expect(await exists(sharedUrl)).toBe(true);
+  });
+
+  it('a missing old image file does not cause a failure', async () => {
+    const missingUrl = '/uploads/products/00000000-0000-4000-8000-000000000000.webp';
+    repository.products = [createProduct({ id: productId, imageUrl: missingUrl })];
+
+    const product = await service.uploadImage(productId, upload());
+
+    expect(await exists(product.imageUrl)).toBe(true);
+    expect(console.warn).not.toHaveBeenCalled();
+    await expect(service.delete(productId)).resolves.toBeUndefined();
   });
 });

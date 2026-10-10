@@ -173,6 +173,16 @@ export class ProductRepository {
     });
   }
 
+  /** Whether any product still references this image URL (shared files must survive). */
+  async isImageUrlInUse(imageUrl: string) {
+    const product = await prisma.product.findFirst({
+      where: { imageUrl },
+      select: { id: true }
+    });
+
+    return product !== null;
+  }
+
   /**
    * Atomic: the delete and the insert share one transaction, so a failed insert keeps
    * the previous certification. The product row lock serializes concurrent
