@@ -21,8 +21,7 @@ type SubmissionRepositoryContract = Pick<
   ProductSubmissionRepository,
   | 'list'
   | 'findById'
-  | 'findPendingDuplicate'
-  | 'create'
+  | 'createUnlessPendingDuplicate'
   | 'updateStatus'
   | 'findProductByBarcode'
   | 'markApproved'
@@ -87,15 +86,13 @@ export class ProductSubmissionService {
       await this.ensureUnknownBarcodeCanBeSubmitted(data, images);
       this.ensureNutritionConsistency(data);
 
-      const duplicate = await this.submissionRepository.findPendingDuplicate(
-        data.barcode,
-        data.anonymousDeviceId
-      );
-      if (duplicate) {
+      // Duplicate detection is server-side and atomic; anonymousDeviceId is metadata only.
+      const created = await this.submissionRepository.createUnlessPendingDuplicate(data, images);
+      if (!created) {
         throw new HttpError(409, 'A similar pending submission already exists');
       }
 
-      submission = await this.submissionRepository.create(data, images);
+      submission = created;
     } catch (error) {
       await discardUploads();
       throw error;

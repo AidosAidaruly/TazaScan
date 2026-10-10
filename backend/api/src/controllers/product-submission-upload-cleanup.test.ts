@@ -41,8 +41,7 @@ beforeEach(async () => {
 
   created = [];
   vi.spyOn(repository, 'findProductByBarcode').mockResolvedValue(null);
-  vi.spyOn(repository, 'findPendingDuplicate').mockResolvedValue(null);
-  vi.spyOn(repository, 'create').mockImplementation((async (
+  vi.spyOn(repository, 'createUnlessPendingDuplicate').mockImplementation((async (
     data: Parameters<ProductSubmissionRepository['create']>[0],
     images: Parameters<ProductSubmissionRepository['create']>[1]
   ) => {
@@ -134,7 +133,7 @@ describe('POST /product-submissions upload ownership', () => {
 
   it('leaves no new files for a duplicate pending submission', async () => {
     const foreign = await seedForeignFiles();
-    vi.mocked(repository.findPendingDuplicate).mockResolvedValue(createSubmission());
+    vi.mocked(repository.createUnlessPendingDuplicate).mockResolvedValue(null);
 
     const response = await submit({ barcode: '4870001234567' }, imageFields);
 
@@ -145,7 +144,9 @@ describe('POST /product-submissions upload ownership', () => {
 
   it('leaves no new files when the repository create fails', async () => {
     const foreign = await seedForeignFiles();
-    vi.mocked(repository.create).mockRejectedValue(new Error('connection terminated'));
+    vi.mocked(repository.createUnlessPendingDuplicate).mockRejectedValue(
+      new Error('connection terminated')
+    );
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const response = await submit({ barcode: '4870001234567' }, imageFields);
@@ -172,13 +173,13 @@ describe('POST /product-submissions upload ownership', () => {
       });
 
     expect(response.status).toBe(415);
-    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.createUnlessPendingDuplicate).not.toHaveBeenCalled();
     await expectOnlyForeignFiles(foreign);
   });
 
   it('keeps the original error when cleanup itself fails', async () => {
     const foreign = await seedForeignFiles();
-    vi.mocked(repository.findPendingDuplicate).mockResolvedValue(createSubmission());
+    vi.mocked(repository.createUnlessPendingDuplicate).mockResolvedValue(null);
     vi.spyOn(fileStorage, 'deleteByUrl').mockRejectedValue(
       Object.assign(new Error(`EPERM: operation not permitted '${tempUploadRoot}'`), {
         code: 'EPERM'
@@ -200,8 +201,11 @@ describe('POST /product-submissions upload ownership', () => {
   });
 
   it('never cleans another concurrent request\'s files', async () => {
-    vi.mocked(repository.findPendingDuplicate).mockImplementation((async (barcode?: string | null) =>
-      barcode === '4870001234567' ? createSubmission() : null) as never);
+    const createDefault = vi.mocked(repository.createUnlessPendingDuplicate).getMockImplementation()!;
+    vi.mocked(repository.createUnlessPendingDuplicate).mockImplementation((async (
+      data: Parameters<ProductSubmissionRepository['create']>[0],
+      images: Parameters<ProductSubmissionRepository['create']>[1]
+    ) => (data.barcode === '4870001234567' ? null : createDefault(data, images))) as never);
 
     const [failed, succeeded] = await Promise.all([
       submit({ barcode: '4870001234567' }, imageFields),

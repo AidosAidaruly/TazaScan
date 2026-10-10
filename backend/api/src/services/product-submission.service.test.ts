@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Prisma, type ProductSubmission } from '../generated/prisma/client';
 import { ProductSubmissionService } from './product-submission.service';
+import { pendingDuplicateKey } from '../repositories/product-submission.repository';
 
 const now = new Date('2026-08-01T00:00:00.000Z');
 type ProductSubmissionWithProduct = ProductSubmission & { createdProduct: null };
@@ -68,12 +69,33 @@ class FakeSubmissionRepository {
     );
   }
 
-  findPendingDuplicate() {
-    return Promise.resolve(this.submissions.find((item) => item.status === 'pending') ?? null);
-  }
+  // Mirrors the repository's content-based rule (never the device id).
+  createUnlessPendingDuplicate(data: {
+    barcode?: string | null | undefined;
+    name?: string | null | undefined;
+    brand?: string | null | undefined;
+  }) {
+    const key = pendingDuplicateKey(data);
+    const duplicate =
+      key &&
+      this.submissions.some(
+        (item) =>
+          item.status === 'pending' &&
+          (data.barcode
+            ? item.barcode === data.barcode
+            : !item.barcode &&
+              item.name?.toLowerCase() === data.name?.toLowerCase() &&
+              (item.brand?.toLowerCase() ?? null) === (data.brand?.toLowerCase() ?? null))
+      );
+    if (duplicate) {
+      return Promise.resolve(null);
+    }
 
-  create(data: { barcode?: string | null | undefined; name?: string | null | undefined }) {
-    const submission = createSubmission({ barcode: data.barcode ?? null, name: data.name ?? null });
+    const submission = createSubmission({
+      barcode: data.barcode ?? null,
+      name: data.name ?? null,
+      brand: data.brand ?? null
+    });
     this.submissions.push(submission);
     return Promise.resolve(submission);
   }
@@ -297,7 +319,7 @@ describe('ProductSubmissionService', () => {
     it('discards uploads when the repository create fails, keeping the original error', async () => {
       const repository = new FakeSubmissionRepository();
       const failure = new Error('database unavailable');
-      vi.spyOn(repository, 'create').mockRejectedValue(failure);
+      vi.spyOn(repository, 'createUnlessPendingDuplicate').mockRejectedValue(failure);
       const { service } = createService(repository);
       const discardUploads = vi.fn(async () => undefined);
 

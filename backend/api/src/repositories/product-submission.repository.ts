@@ -13,6 +13,40 @@ export type SubmissionImageUrls = {
   barcodeImageUrl: string | null;
 };
 
+/**
+ * Server-defined duplicate rule for pending submissions:
+ * - with a barcode: any pending submission with the same barcode;
+ * - without a barcode: a pending barcode-less submission with the same name and brand
+ *   (case-insensitive; a missing brand matches only a missing brand).
+ * Submissions with neither barcode nor name have no content to compare (null).
+ */
+export function pendingDuplicateKey(
+  data: Pick<ProductSubmissionBody, 'barcode' | 'name' | 'brand'>
+): { lockKey: string; where: Prisma.ProductSubmissionWhereInput } | null {
+  if (data.barcode) {
+    return {
+      lockKey: `product-submission:barcode:${data.barcode}`,
+      where: { barcode: data.barcode }
+    };
+  }
+
+  if (data.name) {
+    const brand = data.brand ?? null;
+    return {
+      // JSON keeps the pair unambiguous and escapes control characters (PostgreSQL text
+      // cannot contain NUL).
+      lockKey: `product-submission:name:${JSON.stringify([data.name.toLowerCase(), brand?.toLowerCase() ?? null])}`,
+      where: {
+        barcode: null,
+        name: { equals: data.name, mode: 'insensitive' },
+        brand: brand === null ? null : { equals: brand, mode: 'insensitive' }
+      }
+    };
+  }
+
+  return null;
+}
+
 export class ProductSubmissionRepository {
   transaction<T>(operation: (transaction: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(operation);
@@ -43,19 +77,37 @@ export class ProductSubmissionRepository {
     });
   }
 
-  findPendingDuplicate(barcode?: string | null, anonymousDeviceId?: string | null) {
-    if (!barcode && !anonymousDeviceId) {
-      return Promise.resolve(null);
+  /**
+   * Creates the submission unless a pending duplicate exists, atomically: a transaction-scoped
+   * advisory lock on the duplicate key serializes concurrent identical submissions, so the
+   * check and the insert cannot interleave. Returns null for a duplicate.
+   *
+   * The duplicate rule uses only submitted content, never the client-controlled
+   * anonymousDeviceId (see pendingDuplicateKey).
+   */
+  createUnlessPendingDuplicate(data: ProductSubmissionBody, images: SubmissionImageUrls) {
+    const duplicate = pendingDuplicateKey(data);
+    if (!duplicate) {
+      return this.create(data, images);
     }
 
-    return prisma.productSubmission.findFirst({
-      where: {
-        status: 'pending',
-        OR: [
-          ...(barcode ? [{ barcode }] : []),
-          ...(!barcode && anonymousDeviceId ? [{ anonymousDeviceId }] : [])
-        ]
+    return prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${duplicate.lockKey}))`;
+
+      const existing = await transaction.productSubmission.findFirst({
+        where: { status: 'pending', ...duplicate.where },
+        select: { id: true }
+      });
+      if (existing) {
+        return null;
       }
+
+      return transaction.productSubmission.create({
+        data: {
+          ...this.toSubmissionData(data),
+          ...images
+        }
+      });
     });
   }
 
