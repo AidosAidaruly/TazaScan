@@ -98,8 +98,8 @@ See `docs/image-storage.md` for the current abstraction and future object storag
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Development CORS | READY | Empty `CORS_ORIGIN` allows convenient local development. |
-| Production CORS | READY | Production startup requires non-empty `CORS_ORIGIN`. |
+| Development CORS | READY | Exact-origin allowlist. Empty `CORS_ORIGIN` allows only the local Admin origins (`localhost`/`127.0.0.1` on 5173 and 4173), never every origin. |
+| Production CORS | READY | Production startup requires at least one exact origin in `CORS_ORIGIN`; `*`, paths and malformed entries are rejected. Other browser origins get a 403 without CORS headers. |
 | Flutter native networking | READY | Native apps usually send no browser `Origin`; current CORS allows no-origin requests. |
 | Admin web networking | NEEDS_CONFIGURATION | Add the exact Admin origin to `CORS_ORIGIN`. |
 | HTTPS | NEEDS_CONFIGURATION | TLS should be terminated by hosting platform or reverse proxy, not custom Express TLS. |

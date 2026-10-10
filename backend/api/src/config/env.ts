@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { CorsConfigError, parseCorsOrigins } from './cors-origins';
 import { JwtSecretConfigError, resolveJwtSecret } from './jwt-secret';
 
 dotenv.config();
@@ -53,10 +54,12 @@ if (parsedEnv.data.NODE_ENV === 'production') {
 }
 
 let jwtSecret: string;
+let corsOrigins: string[];
 try {
   jwtSecret = resolveJwtSecret(parsedEnv.data.NODE_ENV, parsedEnv.data.JWT_SECRET);
+  corsOrigins = parseCorsOrigins(parsedEnv.data.NODE_ENV, parsedEnv.data.CORS_ORIGIN);
 } catch (error) {
-  if (error instanceof JwtSecretConfigError) {
+  if (error instanceof JwtSecretConfigError || error instanceof CorsConfigError) {
     console.error(`Invalid configuration: ${error.message}`);
     process.exit(1);
   }
@@ -66,9 +69,7 @@ try {
 export const env = {
   ...parsedEnv.data,
   jwtSecret,
-  corsOrigins: parsedEnv.data.CORS_ORIGIN.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  corsOrigins,
   trustProxyHops: parsedEnv.data.TRUST_PROXY_HOPS,
   publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL,
   storageDriver: parsedEnv.data.STORAGE_DRIVER,
