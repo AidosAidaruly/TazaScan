@@ -6,13 +6,14 @@ import { ApiError } from '../../../core/errors/api-error'
 import { env } from '../../../config/env'
 import { PageLoader } from '../../../shared/components/PageLoader'
 import { SubmissionsApi } from '../api/submissions-api'
+import { SubmissionEvidenceImage } from '../components/SubmissionEvidenceImage'
 import type { ApproveSubmissionPayload, ProductSubmissionDto } from '../types'
 
 const submissionsApi = new SubmissionsApi(new ApiClient())
 
 export function SubmissionDetailsPage() {
   const { id } = useParams<{ id: string }>()
-  const { token } = useAuth()
+  const { token, logout } = useAuth()
   const [submission, setSubmission] = useState<ProductSubmissionDto | null>(null)
   const [payload, setPayload] = useState<ApproveSubmissionPayload | null>(null)
   const [note, setNote] = useState('')
@@ -90,7 +91,7 @@ export function SubmissionDetailsPage() {
       </div>
 
       {error ? <div className="alert error">{error}</div> : null}
-      <ImageGrid submission={submission} token={token} />
+      <ImageGrid submission={submission} token={token} onUnauthorized={logout} />
 
       <form className="product-form" onSubmit={handleApprove}>
         <section className="form-section">
@@ -137,45 +138,30 @@ export function SubmissionDetailsPage() {
   )
 }
 
-function ImageGrid({ submission, token }: { submission: ProductSubmissionDto; token: string | null }) {
+function ImageGrid({
+  submission,
+  token,
+  onUnauthorized,
+}: {
+  submission: ProductSubmissionDto
+  token: string | null
+  onUnauthorized: () => void
+}) {
   const images = Object.entries(submission.images).filter(([, value]) => value)
   if (images.length === 0) return <div className="empty-state">No package photos.</div>
   return (
     <div className="details-grid">
       {images.map(([label, url]) => (
-        <AuthenticatedImage key={label} url={`${env.apiBaseUrl}${url}`} label={label} token={token} />
+        <SubmissionEvidenceImage
+          key={label}
+          url={`${env.apiBaseUrl}${url}`}
+          label={label}
+          token={token}
+          onUnauthorized={onUnauthorized}
+        />
       ))}
     </div>
   )
-}
-
-function AuthenticatedImage({ url, label, token }: { url: string; label: string; token: string | null }) {
-  const [objectUrl, setObjectUrl] = useState('')
-
-  useEffect(() => {
-    let isMounted = true
-    let createdUrl = ''
-
-    async function loadImage() {
-      if (!token) return
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const blob = await response.blob()
-      createdUrl = URL.createObjectURL(blob)
-      if (isMounted) setObjectUrl(createdUrl)
-    }
-
-    void loadImage()
-    return () => {
-      isMounted = false
-      if (createdUrl) URL.revokeObjectURL(createdUrl)
-    }
-  }, [token, url])
-
-  if (!objectUrl) return <div className="image-placeholder">Loading image...</div>
-
-  return <img className="image-placeholder" src={objectUrl} alt={label} />
 }
 
 function Input({ label, value, onChange, type = 'text' }: { label: string; value: string; type?: string; onChange: (value: string) => void }) {
