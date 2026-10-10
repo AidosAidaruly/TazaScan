@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { AdminSeedConfigError, resolveAdminSeedCredentials } from '../src/config/admin-seed-credentials';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { NutriScoreEngine } from '../src/scoring/engines/nutri-score.engine';
 import type { ScoreInput } from '../src/scoring/types/score-result';
@@ -257,14 +258,15 @@ function toLegacyScoreInput(product: SeedProduct): ScoreInput {
 }
 
 async function seedAdminUser() {
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  // Throws (without the value) for a missing, blank, short or placeholder ADMIN_PASSWORD.
+  const credentials = resolveAdminSeedCredentials();
 
-  if (!adminEmail || !adminPassword) {
-    console.info('Skipping admin seed because ADMIN_EMAIL or ADMIN_PASSWORD is missing.');
+  if (!credentials) {
+    console.info('Skipping admin seed because ADMIN_EMAIL is missing.');
     return;
   }
 
+  const { email: adminEmail, password: adminPassword } = credentials;
   const passwordHash = await passwordService.hash(adminPassword);
 
   await prisma.user.upsert({
@@ -288,7 +290,11 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (error: unknown) => {
-    console.error(error);
+    if (error instanceof AdminSeedConfigError) {
+      console.error(`Invalid seed configuration: ${error.message}`);
+    } else {
+      console.error(error);
+    }
     await prisma.$disconnect();
     process.exit(1);
   });
