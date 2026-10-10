@@ -2,7 +2,11 @@ import express, { type RequestHandler } from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { loginRateLimit } from '../middleware/login-rate-limit';
-import { ocrRateLimit } from '../middleware/ocr-rate-limit';
+import {
+  ingredientsOcrRateLimit,
+  nutritionOcrRateLimit,
+  photoSearchRateLimit
+} from '../middleware/ocr-rate-limit';
 import { submissionRateLimit } from '../middleware/submission-rate-limit';
 import { configureTrustProxy } from './trust-proxy';
 
@@ -68,7 +72,13 @@ describe('configureTrustProxy', () => {
     });
 
     it('lets direct requests through the real rate limiters', async () => {
-      for (const limiter of [loginRateLimit, ocrRateLimit, submissionRateLimit]) {
+      for (const limiter of [
+        loginRateLimit,
+        photoSearchRateLimit,
+        nutritionOcrRateLimit,
+        ingredientsOcrRateLimit,
+        submissionRateLimit
+      ]) {
         const response = await request(createRateLimitedApp(0, limiter)).post('/limited');
         expect(response.status).toBe(200);
       }
@@ -94,7 +104,9 @@ describe('configureTrustProxy', () => {
 
     it.each([
       ['login', loginRateLimit, '198.51.100.1', '198.51.100.2'],
-      ['ocr', ocrRateLimit, '198.51.100.3', '198.51.100.4'],
+      ['photo search', photoSearchRateLimit, '198.51.100.3', '198.51.100.4'],
+      ['nutrition OCR', nutritionOcrRateLimit, '198.51.100.7', '198.51.100.8'],
+      ['ingredients OCR', ingredientsOcrRateLimit, '198.51.100.9', '198.51.100.10'],
       ['submission', submissionRateLimit, '198.51.100.5', '198.51.100.6']
     ])(
       'gives different clients behind the same proxy separate %s buckets',

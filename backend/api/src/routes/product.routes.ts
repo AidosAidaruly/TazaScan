@@ -19,7 +19,7 @@ import { asyncHandler } from '../middleware/async-handler';
 import { authenticate } from '../middleware/authenticate';
 import { authorizeRole } from '../middleware/authorize-role';
 import { uploadProductImage } from '../middleware/image-upload';
-import { ocrRateLimit } from '../middleware/ocr-rate-limit';
+import { photoSearchRateLimit } from '../middleware/ocr-rate-limit';
 import { validate } from '../middleware/validate';
 import {
   barcodeParamsSchema,
@@ -48,7 +48,7 @@ productRouter.get(
 
 productRouter.post(
   '/photo-search',
-  ocrRateLimit,
+  photoSearchRateLimit,
   uploadProductImage,
   asyncHandler(searchProductsByPhoto)
 );
