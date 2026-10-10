@@ -26,6 +26,10 @@ dist/
 build/
 coverage/
 
+# Runtime uploads (product images, submission evidence). The API creates
+# uploads/products and uploads/submissions at startup, so nothing here is tracked.
+backend/api/uploads/
+
 # Prisma
 backend/api/prisma/dev.db
 backend/api/prisma/dev.db-journal

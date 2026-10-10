@@ -128,4 +128,20 @@ describe('LocalFileStorage', () => {
 
     expect(localPath).toBe(path.join(tempRoot, 'products', 'existing.jpg'));
   });
+
+  // Upload directories are not tracked in git; a fresh clone relies on startup creating them.
+  it('creates the products and submissions directories when the upload root is missing', async () => {
+    const freshRoot = path.join(tempRoot, 'fresh-clone', 'uploads');
+    const fresh = new LocalFileStorage(freshRoot);
+
+    await fresh.ensureDirectories();
+    await fresh.ensureDirectories();
+
+    for (const scope of ['products', 'submissions'] as const) {
+      expect((await fs.stat(fresh.getDirectory(scope))).isDirectory()).toBe(true);
+    }
+    await expect(
+      fresh.save({ scope: 'products', buffer: Buffer.from('image'), contentType: 'image/webp' })
+    ).resolves.toMatchObject({ url: expect.stringMatching(/^\/uploads\/products\//) });
+  });
 });
