@@ -111,7 +111,7 @@ No production mobile or admin build should use `http://`, `localhost`, LAN IPs, 
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| API base URL | NEEDS_CODE_CHANGE | If `API_BASE_URL` is omitted, Flutter falls back to local dev URLs. This is fine for debug but risky for release. |
+| API base URL | READY | Debug/profile builds may use local URLs (falling back to `10.0.2.2`/`localhost`). Production builds (`TAZASCAN_PRODUCTION=true`, or any release build without the `TAZASCAN_DEMO_HTTP=true` local-demo opt-in) require an explicit HTTPS `API_BASE_URL` whose host is not localhost, loopback, `::1`, an emulator alias (`10.0.2.2`, `10.0.3.2`) or link-local; otherwise the app stops on the splash screen with a clear message. Private LAN addresses stay allowed for internal deployments. |
 | Android INTERNET | READY | Present. |
 | Android camera | READY | Present with `required=false`. |
 | Cleartext traffic | READY | Main/release manifest disables cleartext traffic; debug overrides it for development. |
@@ -120,7 +120,7 @@ No production mobile or admin build should use `http://`, `localhost`, LAN IPs, 
 | iOS permissions | NEEDS_CONFIGURATION | Camera/photo permission strings exist but are English; review for final Russian/Kazakh store wording. |
 | Debug logs | READY | Network debug logs are guarded by Flutter debug mode. |
 
-Recommended small future guard: fail release startup/build when `TAZASCAN_PRODUCTION=true` and `API_BASE_URL` is missing, non-HTTPS, localhost, emulator, or LAN.
+The guard runs at app startup (`ApiConfig.baseUrlProblem`); launch every release build once before distributing it. A build-time check is not implemented.
 
 ## Admin Strategy
 

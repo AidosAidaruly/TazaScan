@@ -18,7 +18,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     Future<void>.delayed(const Duration(milliseconds: 900), () {
       if (!mounted) return;
-      if (ApiConfig.isProductionMisconfigured) {
+      if (ApiConfig.isMisconfigured) {
         setState(() {});
         return;
       }
@@ -54,10 +54,10 @@ class _SplashScreenState extends State<SplashScreen> {
                   color: colorScheme.onPrimaryContainer.withValues(alpha: 0.82),
                 ),
               ),
-              if (ApiConfig.isProductionMisconfigured) ...[
+              if (ApiConfig.baseUrlProblem case final problem?) ...[
                 const SizedBox(height: 24),
                 Text(
-                  'Не указан адрес production API.',
+                  apiUrlProblemMessage(problem),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: colorScheme.error),
                 ),
@@ -68,4 +68,16 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
+}
+
+/// Startup message for an unusable API address. Never shows the URL itself.
+String apiUrlProblemMessage(ApiUrlProblem problem) {
+  return switch (problem) {
+    ApiUrlProblem.missing => 'Не указан адрес production API.',
+    ApiUrlProblem.malformed => 'Адрес API указан неверно.',
+    ApiUrlProblem.notHttps =>
+      'Адрес production API должен использовать HTTPS.',
+    ApiUrlProblem.developmentHost =>
+      'Production-сборка указывает на локальный адрес API или адрес эмулятора.',
+  };
 }
