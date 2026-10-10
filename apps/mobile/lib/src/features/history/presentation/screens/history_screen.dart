@@ -5,21 +5,29 @@ import 'package:project/src/core/widgets/responsive_page.dart';
 import 'package:project/src/features/history/data/datasources/history_local_data_source.dart';
 import 'package:project/src/features/history/data/repositories/local_history_repository.dart';
 import 'package:project/src/features/history/domain/entities/history_entry.dart';
+import 'package:project/src/features/history/domain/repositories/history_repository.dart';
 import 'package:project/src/features/product/domain/entities/product_details_args.dart';
 import 'package:project/src/features/product/presentation/widgets/consumer_product_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.repository});
+
+  /// Defaults to the local SharedPreferences history.
+  final HistoryRepository? repository;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  LocalHistoryRepository? _repository;
+  HistoryRepository? _repository;
   List<HistoryEntry> _entries = const [];
   bool _isLoading = true;
+
+  /// Only the most recently started load may update the screen, so a slower, older load
+  /// (e.g. one started before a delete) can never overwrite newer state.
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -28,22 +36,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    final preferences = await SharedPreferences.getInstance();
-    final repository = LocalHistoryRepository(
-      HistoryLocalDataSource(preferences),
-    );
-    final entries = await repository.list();
+    final generation = ++_loadGeneration;
 
-    if (!mounted) return;
-    setState(() {
-      _repository = repository;
-      _entries = entries;
-      _isLoading = false;
-    });
+    try {
+      final repository = _repository ??
+          widget.repository ??
+          LocalHistoryRepository(
+            HistoryLocalDataSource(await SharedPreferences.getInstance()),
+          );
+      final entries = await repository.list();
+
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _repository = repository;
+        _entries = entries;
+        _isLoading = false;
+      });
+    } catch (_) {
+      // Storage unavailable: stop loading and keep what is shown; never show raw errors.
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _delete(HistoryEntry entry) async {
-    await _repository?.delete(entry.product.id, entry.viewedAt);
+    try {
+      await _repository?.delete(entry.product.id, entry.viewedAt);
+    } catch (_) {
+      // Storage failure: the reload below shows what is actually stored.
+    }
     await _load();
   }
 
@@ -67,19 +88,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (confirmed == true) {
-      await _repository?.clear();
+      try {
+        await _repository?.clear();
+      } catch (_) {
+        // Storage failure: the reload below shows what is actually stored.
+      }
       await _load();
     }
   }
 
-  void _open(HistoryEntry entry) {
-    Navigator.of(context).pushNamed(
+  Future<void> _open(HistoryEntry entry) async {
+    await Navigator.of(context).pushNamed(
       AppRoutes.productDetails,
       arguments: ProductDetailsArgs(
         product: entry.product.toCachedProduct(),
         refreshFromNetwork: true,
       ),
     );
+    // Product details records the view and may refresh the product: show the stored state.
+    await _load();
   }
 
   void _openScanner() {

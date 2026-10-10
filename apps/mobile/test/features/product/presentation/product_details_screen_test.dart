@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/features/history/data/datasources/history_local_data_source.dart';
+import 'package:project/src/features/history/data/repositories/local_history_repository.dart';
 import 'package:project/src/features/product/domain/entities/cached_product_summary.dart';
 import 'package:project/src/features/product/domain/entities/nutrition_score.dart';
 import 'package:project/src/features/product/domain/entities/product.dart';
@@ -179,6 +181,57 @@ void main() {
       expectStableProductView(tester, repository);
       expect(find.text(offlineNotice), findsNothing);
       expect(find.textContaining('raw parser failure'), findsNothing);
+    });
+  });
+
+  group('history after a refresh', () {
+    Future<List<String>> storedHistoryNames() async {
+      final preferences = await SharedPreferences.getInstance();
+      final entries = await LocalHistoryRepository(
+        HistoryLocalDataSource(preferences),
+      ).list();
+      return entries.map((entry) => entry.product.name).toList();
+    }
+
+    testWidgets('a successful refresh stores the fresh product once, without duplicates', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final cachedProduct = CachedProductSummary.fromProduct(
+        createTestProduct(name: 'Cached name'),
+      ).toCachedProduct();
+
+      await _pumpDetails(
+        tester,
+        cachedProduct,
+        refreshFromNetwork: true,
+        freshProduct: createTestProduct(name: 'Fresh product name'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(await storedHistoryNames(), ['Fresh product name']);
+    });
+
+    testWidgets('a 404 refresh keeps the cached history entry and adds nothing', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final cachedProduct = CachedProductSummary.fromProduct(
+        createTestProduct(name: 'Cached name'),
+      ).toCachedProduct();
+      final repository = FakeProductRepository(cachedProduct)
+        ..findError = const NotFoundException('Продукт не найден.');
+
+      await _pumpDetails(
+        tester,
+        cachedProduct,
+        refreshFromNetwork: true,
+        repository: repository,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(await storedHistoryNames(), ['Cached name']);
     });
   });
 

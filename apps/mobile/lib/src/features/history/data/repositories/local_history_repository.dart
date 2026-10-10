@@ -20,9 +20,18 @@ class LocalHistoryRepository implements HistoryRepository {
 
   @override
   Future<void> saveViewedProduct(Product product) async {
-    final entries = _dataSource.readEntries().toList();
     final summary = CachedProductSummaryModel.fromProduct(product);
     final now = (_clock ?? DateTime.now).call();
+    // Older views of the same product show the latest known product data, so a network
+    // refresh never leaves the history inconsistent. Their view times stay as they were.
+    final entries = _dataSource
+        .readEntries()
+        .map(
+          (entry) => entry.product.id == product.id
+              ? HistoryEntryModel(product: summary, viewedAt: entry.viewedAt)
+              : entry,
+        )
+        .toList();
 
     if (entries.isNotEmpty && entries.first.product.id == product.id) {
       entries[0] = HistoryEntryModel(product: summary, viewedAt: now);
