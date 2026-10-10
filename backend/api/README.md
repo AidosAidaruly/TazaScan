@@ -36,7 +36,7 @@ Seed the database:
 npm run prisma:seed
 ```
 
-The seed script creates or updates the admin account from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+The seed script creates the admin account from `ADMIN_EMAIL` and `ADMIN_PASSWORD` only if no account with that email exists. Re-running it never changes an existing account: its password, role and active status stay as they are, so changing `ADMIN_PASSWORD` later does not reset the password.
 
 ## Authentication
 

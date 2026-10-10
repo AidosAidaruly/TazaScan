@@ -60,7 +60,7 @@ JWT secret check: outside `NODE_ENV=test` the backend refuses to start (any envi
 | Prisma provider | READY | PostgreSQL is configured through `DATABASE_URL`. |
 | Migrations | READY | Product, auth, submissions, scoring, ingredients, and canonical family migrations are present. |
 | Production migration command | READY | Use `npm run prisma:migrate:deploy`; this was added for production deploys. |
-| Seed behavior | NEEDS_CONFIGURATION | Seed creates or updates an admin from env. Run intentionally, not automatically on every deploy unless desired. |
+| Seed behavior | NEEDS_CONFIGURATION | Seed creates the admin from env only if that email has no account; an existing account (password, role, active status) is never modified. Run intentionally, not automatically on every deploy unless desired. |
 | Barcode lookup | READY | Barcode is unique and indexed. |
 | Product search | NEEDS_CONFIGURATION | Current `contains` search is acceptable for MVP volume. PostgreSQL trigram/full-text indexes may be needed as data grows. |
 | Backups | BLOCKER | A production database must have provider-managed or documented automated backups before real users. |

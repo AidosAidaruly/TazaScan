@@ -128,8 +128,8 @@ describe('prisma seed with ADMIN_PASSWORD (separate process)', { timeout: 60_000
 
     expect(result.status).toBe(1);
     expect(result.stderr).not.toContain('Invalid seed configuration');
-    // Validation passed: the run got as far as the admin upsert.
-    expect(result.stderr).toContain('prisma.user.upsert()');
+    // Validation passed: the run got as far as the admin lookup.
+    expect(result.stderr).toContain('user.findUnique()');
     expect(result.stdout + result.stderr).not.toContain(validPassword);
   });
 

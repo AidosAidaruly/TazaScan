@@ -4,6 +4,7 @@ import { AdminSeedConfigError, resolveAdminSeedCredentials } from '../src/config
 import { PrismaClient } from '../src/generated/prisma/client';
 import { NutriScoreEngine } from '../src/scoring/engines/nutri-score.engine';
 import type { ScoreInput } from '../src/scoring/types/score-result';
+import { describeSeedAdminResult, ensureSeedAdmin } from '../src/seed/admin-user';
 import { PasswordService } from '../src/services/password.service';
 
 const adapter = new PrismaPg({
@@ -266,23 +267,11 @@ async function seedAdminUser() {
     return;
   }
 
-  const { email: adminEmail, password: adminPassword } = credentials;
-  const passwordHash = await passwordService.hash(adminPassword);
-
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash,
-      role: 'admin',
-      isActive: true
-    },
-    create: {
-      email: adminEmail,
-      passwordHash,
-      role: 'admin',
-      isActive: true
-    }
-  });
+  // Create-if-missing: an existing account (and its password) is never modified.
+  const result = await ensureSeedAdmin(prisma, credentials, (password) =>
+    passwordService.hash(password)
+  );
+  console.info(describeSeedAdminResult(result));
 }
 
 main()
