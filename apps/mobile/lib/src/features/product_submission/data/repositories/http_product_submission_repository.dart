@@ -6,10 +6,14 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/config/api_config.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/network/api_response.dart';
 import 'package:project/src/features/product_submission/data/models/submission_ocr_candidate_model.dart';
 import 'package:project/src/features/product_submission/domain/entities/product_submission_draft.dart';
 import 'package:project/src/features/product_submission/domain/entities/submission_ocr_candidate.dart';
 import 'package:project/src/features/product_submission/domain/repositories/product_submission_repository.dart';
+
+// Error pages with invalid UTF-8 must still reach the status check.
+const _lenientUtf8 = Utf8Codec(allowMalformed: true);
 
 class HttpProductSubmissionRepository implements ProductSubmissionRepository {
   const HttpProductSubmissionRepository([this._httpClient]);
@@ -24,7 +28,7 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       timeout: const Duration(seconds: 30),
     );
 
-    return NutritionOcrCandidateModel.fromJson(json);
+    return _parseOcr(() => NutritionOcrCandidateModel.fromJson(json));
   }
 
   @override
@@ -35,7 +39,7 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       timeout: const Duration(seconds: 30),
     );
 
-    return IngredientsOcrCandidateModel.fromJson(json);
+    return _parseOcr(() => IngredientsOcrCandidateModel.fromJson(json));
   }
 
   @override
@@ -57,13 +61,20 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       final response = await client
           .send(request)
           .timeout(const Duration(seconds: 45));
-      final body = await response.stream.bytesToString();
-      _handleResponse(response.statusCode, body);
+      final body = await response.stream.bytesToString(_lenientUtf8);
+      decodeApiResponse(
+        response.statusCode,
+        body,
+        requestFailedMessage:
+            'Отправка не удалась. Проверь форму и попробуй снова.',
+      );
     } on TimeoutException {
       throw const RequestTimeoutException(
         'Отправка заняла слишком много времени. Попробуй снова.',
       );
     } on SocketException {
+      throw const NetworkException('Нет подключения к интернету.');
+    } on http.ClientException {
       throw const NetworkException('Нет подключения к интернету.');
     } on AppException {
       rethrow;
@@ -92,14 +103,22 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
       request.files.add(await http.MultipartFile.fromPath('image', image.path));
 
       final response = await client.send(request).timeout(timeout);
-      final body = await response.stream.bytesToString();
+      final body = await response.stream.bytesToString(_lenientUtf8);
 
-      return _handleJsonResponse(response.statusCode, body);
+      return decodeApiResponse(
+        response.statusCode,
+        body,
+        endpoint: ApiEndpoint.ocr,
+        requestFailedMessage:
+            'Не удалось распознать данные. Можно заполнить поля вручную или сделать другое фото.',
+      );
     } on TimeoutException {
       throw const RequestTimeoutException(
         'Распознавание заняло слишком много времени. Можно заполнить поля вручную или попробовать другое фото.',
       );
     } on SocketException {
+      throw const NetworkException('Нет подключения к интернету.');
+    } on http.ClientException {
       throw const NetworkException('Нет подключения к интернету.');
     } on AppException {
       rethrow;
@@ -156,42 +175,14 @@ class HttpProductSubmissionRepository implements ProductSubmissionRepository {
     request.files.add(await http.MultipartFile.fromPath(field, path));
   }
 
-  void _handleResponse(int statusCode, String body) {
-    _handleJsonResponse(statusCode, body);
-  }
-
-  Map<String, dynamic> _handleJsonResponse(int statusCode, String body) {
-    final json = body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(body) as Map<String, dynamic>;
-
-    if (statusCode >= 500) {
-      throw const ServerException('Сервер недоступен. Попробуй позже.');
-    }
-
-    if (statusCode == 413) {
-      throw const ServerException('Фото слишком большое.');
-    }
-
-    if (statusCode == 415) {
-      throw const ServerException(
-        'Не удалось открыть изображение. Попробуй выбрать другое фото.',
+  // A 2xx body with an unexpected shape is an invalid response, never a raw TypeError.
+  T _parseOcr<T>(T Function() parse) {
+    try {
+      return parse();
+    } on Object {
+      throw const InvalidResponseException(
+        'Не удалось прочитать результат распознавания.',
       );
     }
-
-    if (statusCode < 200 || statusCode >= 300) {
-      throw ServerException(_readErrorMessage(json));
-    }
-
-    return json;
-  }
-
-  String _readErrorMessage(Map<String, dynamic> json) {
-    final error = json['error'];
-    if (error is Map<String, dynamic> && error['message'] is String) {
-      return error['message'] as String;
-    }
-
-    return 'Отправка не удалась. Проверь форму и попробуй снова.';
   }
 }

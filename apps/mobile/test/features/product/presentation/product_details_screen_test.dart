@@ -39,10 +39,17 @@ class FakeProductRepository implements ProductRepository {
   final Product product;
   int previewRequestCount = 0;
   Object? previewError;
+  Object? findError;
+  int findRequestCount = 0;
   TazaScorePreviewData previewData = testTazaScorePreview;
 
   @override
   Future<Product> findByBarcode(String barcode) async {
+    findRequestCount += 1;
+    final error = findError;
+    if (error != null) {
+      throw error;
+    }
     return product;
   }
 
@@ -89,6 +96,90 @@ void main() {
       find.text('Офлайн-данные. Мы обновим детали, когда появится интернет.'),
       findsOneWidget,
     );
+  });
+
+  group('refresh failure handling', () {
+    const offlineNotice =
+        'Офлайн-данные. Мы обновим детали, когда появится интернет.';
+
+    Future<FakeProductRepository> refreshFailingWith(
+      WidgetTester tester,
+      Object error,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final cachedProduct = CachedProductSummary.fromProduct(
+        createTestProduct(),
+      ).toCachedProduct();
+      final repository = FakeProductRepository(cachedProduct)..findError = error;
+
+      await _pumpDetails(
+        tester,
+        cachedProduct,
+        refreshFromNetwork: true,
+        repository: repository,
+      );
+      await tester.pumpAndSettle();
+      return repository;
+    }
+
+    void expectStableProductView(WidgetTester tester, FakeProductRepository repository) {
+      expect(tester.takeException(), isNull);
+      expect(find.text('Coca-Cola Original Taste'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(repository.findRequestCount, 1);
+    }
+
+    for (final (label, error) in [
+      ('NetworkException', const NetworkException('Не удалось подключиться к серверу.')),
+      ('RequestTimeoutException', const RequestTimeoutException('timeout')),
+    ]) {
+      testWidgets('$label marks the cached product as offline', (tester) async {
+        final repository = await refreshFailingWith(tester, error);
+
+        expectStableProductView(tester, repository);
+        expect(find.text(offlineNotice), findsOneWidget);
+      });
+    }
+
+    for (final (label, error) in [
+      ('404 NotFoundException', const NotFoundException('Продукт не найден.')),
+      (
+        '503 ServerException',
+        const ServerException(
+          'Service Unavailable from upstream',
+          kind: ApiErrorKind.serverUnavailable,
+          statusCode: 503,
+        ),
+      ),
+      (
+        '500 ServerException',
+        const ServerException(
+          'Internal server error',
+          kind: ApiErrorKind.serverUnavailable,
+          statusCode: 500,
+        ),
+      ),
+      ('InvalidResponseException', const InvalidResponseException('bad body')),
+    ]) {
+      testWidgets('$label keeps the product visible without the offline notice', (
+        tester,
+      ) async {
+        final repository = await refreshFailingWith(tester, error);
+
+        expectStableProductView(tester, repository);
+        expect(find.text(offlineNotice), findsNothing);
+        expect(find.textContaining('Service Unavailable'), findsNothing);
+        expect(find.textContaining('Internal server error'), findsNothing);
+      });
+    }
+
+    testWidgets('an unexpected exception does not escape the screen', (tester) async {
+      final repository = await refreshFailingWith(tester, StateError('raw parser failure'));
+
+      expectStableProductView(tester, repository);
+      expect(find.text(offlineNotice), findsNothing);
+      expect(find.textContaining('raw parser failure'), findsNothing);
+    });
   });
 
   testWidgets('refreshes cached product from API when online', (tester) async {

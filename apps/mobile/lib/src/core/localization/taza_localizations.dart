@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/src/core/errors/app_exception.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _localePreferenceKey = 'tazascan.locale';
@@ -164,6 +165,54 @@ class TazaStrings {
   String get serverUnavailable =>
       pick(ru: 'Сервер недоступен', kk: 'Сервер қолжетімсіз');
   String get tryAgain => pick(ru: 'Попробуйте снова.', kk: 'Қайта көріңіз.');
+
+  /// User-facing text for an unsuccessful HTTP response. Never uses backend message text.
+  String apiErrorMessage(ApiErrorKind kind) => switch (kind) {
+        ApiErrorKind.validation => pick(
+            ru: 'Проверьте введённые данные и попробуйте снова.',
+            kk: 'Енгізілген деректерді тексеріп, қайта көріңіз.',
+          ),
+        ApiErrorKind.unauthorized => pick(
+            ru: 'Требуется авторизация.',
+            kk: 'Авторизация қажет.',
+          ),
+        ApiErrorKind.forbidden => pick(
+            ru: 'Недостаточно прав для этого действия.',
+            kk: 'Бұл әрекетке құқық жеткіліксіз.',
+          ),
+        ApiErrorKind.conflict => pick(
+            ru: 'Такой продукт уже есть или уже отправлен на проверку.',
+            kk: 'Бұл өнім бұрыннан бар немесе тексеруге жіберілген.',
+          ),
+        ApiErrorKind.payloadTooLarge => pick(
+            ru: 'Фото слишком большое. Выберите фото поменьше.',
+            kk: 'Фото тым үлкен. Кішірек фото таңдаңыз.',
+          ),
+        ApiErrorKind.unsupportedMedia => pick(
+            ru: 'Не удалось открыть изображение. Выберите другое фото.',
+            kk: 'Суретті ашу мүмкін болмады. Басқа фото таңдаңыз.',
+          ),
+        ApiErrorKind.rateLimited => pick(
+            ru: 'Слишком много запросов. Подождите немного и попробуйте снова.',
+            kk: 'Сұраныстар тым көп. Біраз күтіп, қайта көріңіз.',
+          ),
+        ApiErrorKind.ocrBusy => pick(
+            ru: 'Сервис распознавания сейчас занят. Попробуйте ещё раз через минуту.',
+            kk: 'Тану сервисі қазір бос емес. Бір минуттан кейін қайта көріңіз.',
+          ),
+        ApiErrorKind.ocrTimeout => pick(
+            ru: 'Распознавание заняло слишком много времени. Попробуйте ещё раз.',
+            kk: 'Тану тым ұзаққа созылды. Қайта көріңіз.',
+          ),
+        ApiErrorKind.serverUnavailable => pick(
+            ru: 'Сервер недоступен. Попробуйте позже.',
+            kk: 'Сервер қолжетімсіз. Кейінірек көріңіз.',
+          ),
+        ApiErrorKind.requestFailed => pick(
+            ru: 'Запрос не удался. Попробуйте снова.',
+            kk: 'Сұраныс орындалмады. Қайта көріңіз.',
+          ),
+      };
 
   String get choosePhoto =>
       pick(ru: 'Выбрать фото', kk: 'Фото таңдау');

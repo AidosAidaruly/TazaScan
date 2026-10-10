@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:project/src/core/config/api_config.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/network/api_response.dart';
 
 class ApiClient {
   ApiClient({
@@ -35,26 +36,26 @@ class ApiClient {
           )
           .timeout(timeout);
 
-      _debugLog('GET $path status=${response.statusCode}');
-      _debugLog('GET $path bodyShape=${_bodyShape(response.body)}');
+      // Lenient decoding: an error page with invalid UTF-8 must still reach the status
+      // check. Valid UTF-8 (all API JSON) decodes identically.
+      final body = utf8.decode(response.bodyBytes, allowMalformed: true);
 
-      return _handleResponse(response.statusCode, response.body);
+      _debugLog('GET $path status=${response.statusCode}');
+      _debugLog('GET $path bodyShape=${_bodyShape(body)}');
+
+      return _handleResponse(response.statusCode, body);
     } on TimeoutException catch (error) {
       _debugLog('GET $path exception=${error.runtimeType}');
       throw const RequestTimeoutException(
         'Запрос выполнялся слишком долго. Попробуй снова.',
       );
     } on SocketException catch (error) {
+      // No HTTP response at all: a connection problem, not a server error.
       _debugLog('GET $path exception=${error.runtimeType}');
-      throw const ServerException('Не удалось подключиться к серверу.');
+      throw const NetworkException('Не удалось подключиться к серверу.');
     } on http.ClientException catch (error) {
       _debugLog('GET $path exception=${error.runtimeType}');
-      throw const ServerException('Не удалось подключиться к серверу.');
-    } on FormatException catch (error) {
-      _debugLog('GET $path exception=${error.runtimeType}');
-      throw const InvalidResponseException(
-        'Не удалось прочитать ответ сервера.',
-      );
+      throw const NetworkException('Не удалось подключиться к серверу.');
     } on AppException catch (error) {
       _debugLog('GET $path exception=${error.runtimeType}');
       rethrow;
@@ -65,37 +66,11 @@ class ApiClient {
   }
 
   Map<String, dynamic> _handleResponse(int statusCode, String responseBody) {
-    final decoded = responseBody.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(responseBody);
-
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Expected root JSON object.');
-    }
-
-    if (statusCode == HttpStatus.notFound) {
-      throw const NotFoundException('Продукт не найден.');
-    }
-
-    if (statusCode >= 500) {
-      throw const ServerException('Сервер недоступен. Попробуй позже.');
-    }
-
-    if (statusCode < 200 || statusCode >= 300) {
-      throw ServerException(_readErrorMessage(decoded));
-    }
-
-    return decoded;
-  }
-
-  String _readErrorMessage(Map<String, dynamic> json) {
-    final error = json['error'];
-
-    if (error is Map<String, dynamic> && error['message'] is String) {
-      return error['message'] as String;
-    }
-
-    return 'Запрос не удался. Попробуй снова.';
+    return decodeApiResponse(
+      statusCode,
+      responseBody,
+      notFoundMessage: 'Продукт не найден.',
+    );
   }
 
   String _bodyShape(String responseBody) {

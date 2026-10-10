@@ -96,6 +96,9 @@ class _PhotoSearchScreenState extends State<PhotoSearchScreen> {
     if (error is NetworkException) {
       return context.t.checkConnectionAndRetry;
     }
+    if (error is ServerException) {
+      return context.t.apiErrorMessage(error.kind);
+    }
 
     return context.t.cannotUploadPhoto;
   }

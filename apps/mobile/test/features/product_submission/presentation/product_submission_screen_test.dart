@@ -9,7 +9,7 @@ import 'package:project/src/features/product_submission/presentation/screens/pro
 
 class FakeSubmissionRepository implements ProductSubmissionRepository {
   ProductSubmissionDraft? lastDraft;
-  AppException? error;
+  Object? error;
 
   @override
   Future<void> submit(ProductSubmissionDraft draft) async {
@@ -120,6 +120,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Проверьте подключение и попробуйте снова.'), findsOneWidget);
+    expect(find.text('Проверить и отправить'), findsOneWidget);
+  });
+
+  Future<void> submitWith(WidgetTester tester, Object error) async {
+    final repository = FakeSubmissionRepository()..error = error;
+    await tester.pumpWidget(
+      MaterialApp(home: ProductSubmissionScreen(repository: repository)),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Coca-Cola');
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Проверить и отправить'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Отправить'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('shows a localized duplicate message for 409, not connection advice', (tester) async {
+    await submitWith(
+      tester,
+      const ServerException('x', kind: ApiErrorKind.conflict, statusCode: 409),
+    );
+
+    expect(find.text('Такой продукт уже есть или уже отправлен на проверку.'), findsOneWidget);
+    expect(find.text('Проверьте подключение и попробуйте снова.'), findsNothing);
+  });
+
+  testWidgets('shows a localized validation message for 400', (tester) async {
+    await submitWith(
+      tester,
+      const ServerException('Validation failed', kind: ApiErrorKind.validation, statusCode: 400),
+    );
+
+    expect(find.text('Проверьте введённые данные и попробуйте снова.'), findsOneWidget);
+    expect(find.textContaining('Validation failed'), findsNothing);
+  });
+
+  testWidgets('a non-AppException does not escape or leave the form stuck', (tester) async {
+    await submitWith(tester, StateError('raw parser failure'));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Не удалось отправить продукт. Попробуйте снова.'), findsOneWidget);
+    expect(find.textContaining('raw parser failure'), findsNothing);
     expect(find.text('Проверить и отправить'), findsOneWidget);
   });
 }

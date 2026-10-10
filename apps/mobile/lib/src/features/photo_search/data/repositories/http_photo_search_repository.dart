@@ -6,9 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:project/src/core/config/api_config.dart';
 import 'package:project/src/core/errors/app_exception.dart';
+import 'package:project/src/core/network/api_response.dart';
 import 'package:project/src/features/photo_search/data/models/photo_search_result_model.dart';
 import 'package:project/src/features/photo_search/domain/entities/photo_search_result.dart';
 import 'package:project/src/features/photo_search/domain/repositories/photo_search_repository.dart';
+
+// Error pages with invalid UTF-8 must still reach the status check.
+const _lenientUtf8 = Utf8Codec(allowMalformed: true);
 
 class HttpPhotoSearchRepository implements PhotoSearchRepository {
   const HttpPhotoSearchRepository([this._httpClient]);
@@ -31,7 +35,7 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
       final streamedResponse = await client
           .send(request)
           .timeout(const Duration(seconds: 35));
-      final body = await streamedResponse.stream.bytesToString();
+      final body = await streamedResponse.stream.bytesToString(_lenientUtf8);
 
       return _handleResponse(streamedResponse.statusCode, body);
     } on TimeoutException {
@@ -39,6 +43,8 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
         'Поиск по фото занял слишком много времени. Попробуй другое фото.',
       );
     } on SocketException {
+      throw const NetworkException('Нет подключения к интернету.');
+    } on http.ClientException {
       throw const NetworkException('Нет подключения к интернету.');
     } on AppException {
       rethrow;
@@ -52,38 +58,21 @@ class HttpPhotoSearchRepository implements PhotoSearchRepository {
   }
 
   PhotoSearchResult _handleResponse(int statusCode, String body) {
-    final json = body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(body) as Map<String, dynamic>;
+    final json = decodeApiResponse(
+      statusCode,
+      body,
+      endpoint: ApiEndpoint.ocr,
+      unsupportedMediaMessage:
+          'Не удалось открыть изображение. Попробуйте выбрать другое фото.',
+      requestFailedMessage: 'Поиск по фото не удался. Попробуй другое фото.',
+    );
 
-    if (statusCode >= 500) {
-      throw const ServerException('Сервер недоступен. Попробуй позже.');
-    }
-
-    if (statusCode == 413) {
-      throw const ServerException('Фото слишком большое.');
-    }
-
-    if (statusCode == 415) {
-      throw const ServerException(
-        'Не удалось открыть изображение. Попробуйте выбрать другое фото.',
+    try {
+      return PhotoSearchResultModel.fromJson(json);
+    } on Object {
+      throw const InvalidResponseException(
+        'Не удалось прочитать ответ сервера.',
       );
     }
-
-    if (statusCode < 200 || statusCode >= 300) {
-      throw ServerException(_readErrorMessage(json));
-    }
-
-    return PhotoSearchResultModel.fromJson(json);
-  }
-
-  String _readErrorMessage(Map<String, dynamic> json) {
-    final error = json['error'];
-
-    if (error is Map<String, dynamic> && error['message'] is String) {
-      return error['message'] as String;
-    }
-
-    return 'Поиск по фото не удался. Попробуй другое фото.';
   }
 }

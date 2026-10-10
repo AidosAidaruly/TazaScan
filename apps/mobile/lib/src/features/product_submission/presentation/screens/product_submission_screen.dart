@@ -137,15 +137,9 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
               );
         _ocrErrorMessage = null;
       });
-    } on AppException {
+    } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _ocrErrorMessage =
-            '${context.t.cannotOpenImage}. ${context.t.pick(
-          ru: 'Можно заполнить поля вручную или сделать другое фото.',
-          kk: 'Өрістерді қолмен толтыруға немесе басқа фото түсіруге болады.',
-        )}';
-      });
+      setState(() => _ocrErrorMessage = _ocrErrorText(error));
     } finally {
       if (mounted) {
         setState(() => _processingOcr = null);
@@ -186,15 +180,9 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
               );
         _ocrErrorMessage = null;
       });
-    } on AppException {
+    } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _ocrErrorMessage =
-            '${context.t.cannotOpenImage}. ${context.t.pick(
-          ru: 'Можно заполнить поля вручную или сделать другое фото.',
-          kk: 'Өрістерді қолмен толтыруға немесе басқа фото түсіруге болады.',
-        )}';
-      });
+      setState(() => _ocrErrorMessage = _ocrErrorText(error));
     } finally {
       if (mounted) {
         setState(() => _processingOcr = null);
@@ -283,13 +271,60 @@ class _ProductSubmissionScreenState extends State<ProductSubmissionScreen> {
         _isSubmitting = false;
         _isSuccess = true;
       });
-    } on AppException {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
       });
-      _showError(context.t.checkConnectionAndRetry);
+      _showError(_submitErrorText(error));
     }
+  }
+
+  /// OCR failure text; specific for busy/timeout/limits, never backend text.
+  String _ocrErrorText(Object error) {
+    final t = context.t;
+    final manualHint = t.pick(
+      ru: 'Можно заполнить поля вручную или сделать другое фото.',
+      kk: 'Өрістерді қолмен толтыруға немесе басқа фото түсіруге болады.',
+    );
+
+    if (error is ServerException &&
+        const {
+          ApiErrorKind.ocrBusy,
+          ApiErrorKind.ocrTimeout,
+          ApiErrorKind.rateLimited,
+          ApiErrorKind.payloadTooLarge,
+        }.contains(error.kind)) {
+      return '${t.apiErrorMessage(error.kind)} $manualHint';
+    }
+    if (error is RequestTimeoutException) {
+      return '${t.apiErrorMessage(ApiErrorKind.ocrTimeout)} $manualHint';
+    }
+    if (error is NetworkException) {
+      return '${t.checkConnectionAndRetry} $manualHint';
+    }
+
+    return '${t.cannotOpenImage}. $manualHint';
+  }
+
+  /// Submission failure text: connection problems and HTTP failures stay distinguishable.
+  String _submitErrorText(Object error) {
+    final t = context.t;
+
+    if (error is ServerException) {
+      return t.apiErrorMessage(error.kind);
+    }
+    if (error is RequestTimeoutException) {
+      return '${t.serverSlow}. ${t.tryAgain}';
+    }
+    if (error is NetworkException) {
+      return t.checkConnectionAndRetry;
+    }
+
+    return t.pick(
+      ru: 'Не удалось отправить продукт. Попробуйте снова.',
+      kk: 'Өнімді жіберу мүмкін болмады. Қайта көріңіз.',
+    );
   }
 
   void _showError(String message) {

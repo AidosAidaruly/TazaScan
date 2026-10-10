@@ -136,6 +136,12 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
     if (error is NetworkException) {
       return context.t.checkConnectionAndRetry;
     }
+    if (error is ServerException) {
+      return context.t.apiErrorMessage(error.kind);
+    }
+    if (error is InvalidResponseException) {
+      return context.t.tryAgain;
+    }
 
     return context.t.checkConnectionAndRetry;
   }

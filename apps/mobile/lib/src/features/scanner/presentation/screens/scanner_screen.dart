@@ -159,7 +159,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
           kk: 'Сервер уақытында жауап бермеді.',
         ),
       );
-    } on ServerException {
+    } on ServerException catch (error) {
+      if (error.kind != ApiErrorKind.serverUnavailable) {
+        return _ProductLookupFailed(
+          title: t.searchFailed,
+          message: t.apiErrorMessage(error.kind),
+        );
+      }
       return _ProductLookupFailed(
         title: t.serverUnavailable,
         message: t.pick(
@@ -172,6 +178,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
         title: t.searchFailed,
         message: t.checkConnectionAndRetry,
       );
+    } catch (_) {
+      return _ProductLookupFailed(title: t.searchFailed, message: t.tryAgain);
     }
   }
 

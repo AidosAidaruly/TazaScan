@@ -102,12 +102,25 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       if (widget.enableTazaScorePreview && _tazaScorePreviewData == null) {
         await _loadTazaScorePreview();
       }
-    } on AppException {
-      if (!mounted) return;
-      setState(() {
-        _isOfflineData = true;
-      });
+    } on NetworkException {
+      _setOfflineData(true);
+    } on RequestTimeoutException {
+      // No response arrived in time: treated like a lost connection.
+      _setOfflineData(true);
+    } catch (_) {
+      // 404, HTTP/server errors and unexpected errors: the server answered (or the cause is
+      // unknown), so this is not an offline state. Keep the shown data without the offline
+      // notice; nothing escapes the screen and no error text is shown.
+      _setOfflineData(false);
     }
+  }
+
+  /// Offline only describes genuine connection failures, never HTTP errors.
+  void _setOfflineData(bool isOffline) {
+    if (!mounted) return;
+    setState(() {
+      _isOfflineData = isOffline;
+    });
   }
 
   Future<void> _toggleFavorite() async {
