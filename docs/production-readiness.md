@@ -16,7 +16,7 @@ Current repository state is close to a closed beta, but not ready for a public l
 - Public beta readiness: about 55%.
 - Store release readiness: about 45%.
 
-Main closed-beta blockers are production HTTPS configuration, hosted PostgreSQL with migrations, persistent upload storage, and a verified production mobile API URL.
+Main closed-beta blockers are production HTTPS configuration, hosted PostgreSQL with migrations and backups, persistent upload storage (a persistent disk at `UPLOAD_ROOT`), correct proxy settings (`TRUST_PROXY_HOPS`, body size), and a production mobile build with the HTTPS API URL.
 
 ## Runtime And Backend
 
@@ -27,8 +27,10 @@ Main closed-beta blockers are production HTTPS configuration, hosted PostgreSQL 
 | Production port | READY | `PORT` is parsed from environment and defaults to `4000` for local development. |
 | Graceful shutdown | READY | `SIGINT` and `SIGTERM` close the HTTP server and disconnect Prisma. |
 | Health checks | NEEDS_CONFIGURATION | `/health` and `/health/ready` exist. `/health/ready` is a basic process readiness check and does not currently verify database connectivity. |
-| Request body limits | READY | JSON body limit is `1mb`; image upload limit is `5MB`. |
-| Local path assumptions | BLOCKER | Product and submission uploads are stored under local `uploads/...`. This is not safe on ephemeral managed filesystems. |
+| Request body limits | READY | JSON body limit is `1mb`; each image is limited to 5 MB. The largest valid request (a submission with 4 images and form fields) is about 20.5 MB, so a reverse proxy needs `client_max_body_size 25m` (see `docs/deployment-backend.md`). |
+| Local path assumptions | NEEDS_CONFIGURATION | Uploads are stored on the local filesystem under `UPLOAD_ROOT`. Production startup refuses local storage unless `ALLOW_LOCAL_PRODUCTION_STORAGE=true`; set it only with `UPLOAD_ROOT` on a persistent disk. Ephemeral filesystems lose all images and evidence on redeploy. |
+| Working directory | NEEDS_CONFIGURATION | Start from `backend/api` (`npm start` does). `.env`, a relative `UPLOAD_ROOT`, and the tracked Tesseract data (`eng.traineddata`, `rus.traineddata`) are resolved against the working directory; elsewhere tesseract.js downloads language data from the network on first OCR use. |
+| Rate-limit storage | READY (single instance) | Rate limits use in-memory stores: correct for one backend instance, reset on restart. Several instances need a shared store such as Redis. |
 
 The backend can run on a typical managed Node host if environment variables are set, migrations are deployed, and image storage persistence is handled.
 
@@ -38,15 +40,20 @@ The backend can run on a typical managed Node host if environment variables are 
 | --- | --- | --- | --- | --- | --- |
 | `NODE_ENV` | No | No | Backend runtime | `development` | `production` |
 | `PORT` | No | No | Backend HTTP server | `4000` | Host-provided port or explicit port |
+| `TRUST_PROXY_HOPS` | Behind a proxy | No | Client IP for rate limits | `0` | `0` direct, `1` one reverse proxy/platform load balancer, `2` CDN + reverse proxy. Wrong values break or allow spoofing of rate limits |
 | `DATABASE_URL` | Yes | Yes | Prisma/PostgreSQL | Local PostgreSQL URL | Managed PostgreSQL URL |
 | `CORS_ORIGIN` | Production yes | No | Express CORS | Local admin origins | Exact Admin web origins, comma-separated |
 | `JWT_SECRET` | Yes (except tests) | Yes | Admin JWT signing (HS256) | Local random secret, 32+ chars | Long random secret (32+ chars), no default; placeholders rejected |
 | `JWT_ACCESS_TOKEN_TTL` | No | No | Admin JWT | `15m` | Short explicit TTL, for example `15m` |
 | `ADMIN_EMAIL` | Production yes | Sensitive | Seeded admin account | Local email | Real admin email, not printed in logs |
-| `ADMIN_PASSWORD` | Production yes | Yes | Seeded admin account | Local password | Strong one-time seed password, rotate if exposed |
+| `ADMIN_PASSWORD` | Production yes | Yes | Seeded admin account | Local password | Unique password, 12+ characters; the seed rejects missing, blank and documented placeholder values. Rotate if exposed |
+| `STORAGE_DRIVER` | No | No | Upload storage | `local` | `local` (the only implemented driver; `s3` is reserved and refused) |
+| `UPLOAD_ROOT` | No | No | Upload storage | `uploads` (relative to the working directory) | Absolute path on a persistent disk |
+| `ALLOW_LOCAL_PRODUCTION_STORAGE` | Production yes (with `local`) | No | Production storage guard | `false` | `true` only when `UPLOAD_ROOT` is on a persistent disk; production startup fails otherwise |
 | `VITE_API_BASE_URL` | Admin yes | No | Admin frontend | `http://localhost:4000` | Production HTTPS API URL |
 | `API_BASE_URL` | Mobile release yes | No | Flutter app | Localhost or emulator URL | Production HTTPS API URL |
 | `TAZASCAN_PRODUCTION` | Mobile release yes | No | Flutter production guard | false | `true` for release builds |
+| `TAZASCAN_DEMO_HTTP` | No | No | Flutter local-demo opt-in | false | Never in production; only for intentional local-network demo release builds |
 
 Production secret fallback check: backend refuses production startup without `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DATABASE_URL`, and `CORS_ORIGIN`. Image URLs are relative (`/uploads/products/...`, `/product-submissions/uploads/...`) and clients resolve them against their API base URL, so no public uploads URL is configured. That is READY.
 
@@ -102,7 +109,8 @@ See `docs/image-storage.md` for the current abstraction and future object storag
 | Flutter native networking | READY | Native apps usually send no browser `Origin`; current CORS allows no-origin requests. |
 | Admin web networking | NEEDS_CONFIGURATION | Add the exact Admin origin to `CORS_ORIGIN`. |
 | HTTPS | NEEDS_CONFIGURATION | TLS should be terminated by hosting platform or reverse proxy, not custom Express TLS. |
-| Trusted proxy | NEEDS_CODE_CHANGE | If deployed behind a proxy/load balancer, configure Express `trust proxy` intentionally so IP-based rate limits work correctly. |
+| Trusted proxy | NEEDS_CONFIGURATION | Implemented via `TRUST_PROXY_HOPS` (an exact hop count, never `true`). Set `0` direct, `1` behind one reverse proxy, `2` for CDN + reverse proxy; verify `trustProxyHops` in the startup log. |
+| Proxy body size | NEEDS_CONFIGURATION | Set the proxy's request body limit to at least `25m` (nginx default `1m` rejects valid uploads). |
 
 No production mobile or admin build should use `http://`, `localhost`, LAN IPs, or emulator URLs.
 
@@ -113,9 +121,9 @@ No production mobile or admin build should use `http://`, `localhost`, LAN IPs, 
 | API base URL | READY | Debug/profile builds may use local URLs (falling back to `10.0.2.2`/`localhost`). Production builds (`TAZASCAN_PRODUCTION=true`, or any release build without the `TAZASCAN_DEMO_HTTP=true` local-demo opt-in) require an explicit HTTPS `API_BASE_URL` whose host is not localhost, loopback, `::1`, an emulator alias (`10.0.2.2`, `10.0.3.2`) or link-local; otherwise the app stops on the splash screen with a clear message. Private LAN addresses stay allowed for internal deployments. |
 | Android INTERNET | READY | Present. |
 | Android camera | READY | Present with `required=false`. |
-| Cleartext traffic | READY | Main/release manifest disables cleartext traffic; debug overrides it for development. |
+| Cleartext traffic | READY | Main/release manifest disables cleartext traffic unless the release build explicitly passes `TAZASCAN_DEMO_HTTP=true` (local demo only); debug overrides it for development. |
 | App package id | NEEDS_CONFIGURATION | Current `applicationId` is `kz.project.project`; decide final ID before store release. |
-| Release signing | BLOCKER | Release build falls back to debug signing if `key.properties` is missing. This must not be used for store release. |
+| Release signing | NEEDS_CONFIGURATION | Release builds always use the release key; there is no debug-key fallback. A release build fails clearly unless the private `android/key.properties` and keystore exist on the build machine (see `docs/android-release.md`). |
 | iOS permissions | NEEDS_CONFIGURATION | Camera/photo permission strings exist but are English; review for final Russian/Kazakh store wording. |
 | Debug logs | READY | Network debug logs are guarded by Flutter debug mode. |
 
@@ -149,10 +157,10 @@ For early beta, local Admin is acceptable. For public operations, deploy Admin b
 | Area | Status | Notes |
 | --- | --- | --- |
 | File size limits | READY | 5 MB per image. |
-| MIME allowlist | READY | JPEG, PNG, WebP, HEIC/HEIF, AVIF, and safe binary fallback are decoded by `sharp`. |
+| MIME allowlist | READY | Only JPEG, PNG and WebP are accepted, detected from the file bytes (the client MIME type is a coarse pre-filter; `application/octet-stream` is allowed for Flutter uploads). Other formats, including HEIC/HEIF and AVIF, are rejected with 415. |
 | Content validation | READY | Images must decode successfully before use. |
 | Normalization | READY | Images are rotated, resized, and converted to JPEG. |
-| Upload rate limits | READY | OCR and submissions have rate limits. |
+| Upload rate limits | READY | Per client IP and 15 minutes: submissions 8, photo search 20, nutrition OCR 10, ingredients OCR 10 (separate counters). |
 | Temporary files | READY | Upload normalization uses memory and controlled output paths. |
 
 This is safe enough for beta, assuming persistent storage is solved.
@@ -162,8 +170,9 @@ This is safe enough for beta, assuming persistent storage is solved.
 | Area | Status | Notes |
 | --- | --- | --- |
 | OCR engine | READY | Tesseract.js is used locally in the API process. |
-| Timeout | READY | OCR has a 20 second timeout. |
-| Rate limit | READY | 20 OCR/photo requests per 15 minutes per detected client. |
+| Timeout | READY | One shared OCR worker per process with a queue of 4: a job waits at most 10 seconds for the worker (then 503 "busy") and recognition is limited to 20 seconds (then 504). |
+| Rate limit | READY | Per client IP and 15 minutes: photo search 20, nutrition OCR 10, ingredients OCR 10, each with its own counter and message. |
+| Language data | NEEDS_CONFIGURATION | `eng.traineddata` and `rus.traineddata` are tracked in `backend/api`; start the backend from that directory so OCR does not download them on first use. |
 | CPU/RAM | NEEDS_CONFIGURATION | Host must have enough RAM/CPU for OCR. Start small, monitor latency and memory. |
 | Queue/worker | OPTIONAL | Not required for closed beta. Add a worker queue if OCR traffic grows. |
 
@@ -173,9 +182,9 @@ Synchronous OCR is acceptable for a small beta with rate limits and monitoring.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Startup logs | READY | Startup emits structured JSON with service and port. |
+| Startup logs | READY | Startup emits structured JSON with service, port, `trustProxyHops` and `storageDriver`. |
 | Request logs | READY | Method, URL, status, and duration are logged. |
-| Error logs | READY | Unexpected errors are logged server-side; production hides stack details from clients. |
+| Error logs | READY | Unexpected errors are logged server-side as structured `unhandled_error` lines (no request bodies, headers or query strings); every environment returns a generic 500 without details. |
 | Secret leakage | READY | Current request logs do not include headers, passwords, or tokens. |
 | Monitoring | NEEDS_CONFIGURATION | Add host-level logs, uptime checks, and error/crash alerting before public beta. |
 
@@ -246,9 +255,9 @@ Certification applies only to the current product record. It is not inherited by
 | Backend production env guard | READY | Required production envs are enforced at startup. |
 | Backend stack traces to clients | READY | Unexpected error details are hidden in production. |
 | Test endpoints | READY | No public test route found. |
-| Seeded admin password | NEEDS_CONFIGURATION | Comes from env. Do not reuse development credentials. |
-| Flutter dev URL fallback | NEEDS_CODE_CHANGE | Add a production guard before store release. |
-| Android debug signing fallback | BLOCKER | Must not be used for store release. |
+| Seeded admin password | NEEDS_CONFIGURATION | Comes from env; the seed rejects placeholders and never resets an existing admin. Do not reuse development credentials. |
+| Flutter dev URL fallback | READY | Production/release builds refuse local, loopback, emulator and non-HTTPS API URLs at startup (unless `TAZASCAN_DEMO_HTTP=true`); launch each release build once before distributing it. |
+| Android debug signing fallback | READY | Removed: release builds require the real release key and fail clearly without it. |
 | Admin localhost fallback | READY | Development fallback only; deployed Admin must set `VITE_API_BASE_URL`. |
 
 ## Recommended MVP Architecture
@@ -290,9 +299,9 @@ Required database capabilities:
 
 Required storage capabilities:
 
-- Durable object/blob storage.
-- Public or signed HTTPS URLs usable by Flutter.
-- Delete support for submission/photo removal.
+- Today: a persistent disk mounted at `UPLOAD_ROOT` (local storage driver), backed up with the database.
+- Later (not implemented yet): durable object/blob storage, needed for hosts without persistent disks or for several backend instances.
+- Delete support for submission/photo removal (implemented for local storage).
 
 ## Cost Tier Expectation
 
@@ -312,7 +321,10 @@ Required storage capabilities:
 - [ ] Set backend production env variables.
 - [ ] Run `npm run prisma:migrate:deploy`.
 - [ ] Seed or create the admin account from production env.
-- [ ] Confirm `/health` works on the public HTTPS API.
+- [ ] Set `TRUST_PROXY_HOPS` for the host (`1` behind one proxy) and the proxy body limit (`client_max_body_size 25m`).
+- [ ] Mount a persistent disk at `UPLOAD_ROOT` and set `ALLOW_LOCAL_PRODUCTION_STORAGE=true`.
+- [ ] Start the backend from `backend/api`.
+- [ ] Run the production smoke test in `docs/deployment-backend.md` (`/health`, `/health/ready`, startup `trustProxyHops`, upload through the proxy, first OCR request, images survive a restart).
 - [ ] Configure `CORS_ORIGIN` for the Admin origin used in beta.
 - [ ] Solve durable image storage, or explicitly deploy on a host with persistent disk and backups.
 - [ ] Configure mobile build with `--dart-define=API_BASE_URL=https://...`.
@@ -322,8 +334,8 @@ Required storage capabilities:
 
 ## Before Public Beta
 
-- [ ] Move uploads to object/blob storage through a storage adapter.
-- [ ] Add or configure Express trusted proxy behavior for the selected host.
+- [ ] Move uploads to object/blob storage through a storage adapter (needed for ephemeral hosts or several instances).
+- [ ] Before running several backend instances, move rate limits to a shared store such as Redis.
 - [ ] Add uptime/error monitoring and alerting.
 - [ ] Replace OFF importer User-Agent contact with a real project contact.
 - [ ] Add visible/documented Open Food Facts attribution.
@@ -336,10 +348,8 @@ Required storage capabilities:
 ## Before Store Release
 
 - [ ] Decide final Android `applicationId`.
-- [ ] Configure Android release signing with a real upload keystore.
-- [ ] Remove debug-signing fallback for release builds or enforce CI/store build checks.
-- [ ] Add Flutter production URL guard for `TAZASCAN_PRODUCTION=true`.
-- [ ] Build release APK/AAB with production HTTPS API.
+- [ ] Create the private upload keystore and `android/key.properties` on the build machine or CI secret store (never in git).
+- [ ] Build release APK/AAB with `TAZASCAN_PRODUCTION=true` and the production HTTPS `API_BASE_URL`, then launch it once to confirm the API URL guard passes.
 - [ ] Verify iOS bundle identifier, signing, and camera/photo permission wording.
 - [ ] Complete Russian/Kazakh legal copy review.
 - [ ] Verify all user-facing scoring and medical disclaimers in app stores.

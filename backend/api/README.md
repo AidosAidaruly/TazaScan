@@ -11,10 +11,13 @@ DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/tazascan?schema=public"
 JWT_SECRET="use-a-long-random-secret"
 JWT_ACCESS_TOKEN_TTL="15m"
 ADMIN_EMAIL="admin@example.com"
-ADMIN_PASSWORD="use-a-strong-password"
+# Placeholder rejected by the seed: replace with a unique 12+ character secret before deployment.
+ADMIN_PASSWORD="change-this-admin-password"
 ```
 
-In production, startup fails if `JWT_SECRET`, `ADMIN_EMAIL`, or `ADMIN_PASSWORD` are missing.
+The seed refuses missing, blank, short or documented placeholder `ADMIN_PASSWORD` values (including `change-this-admin-password`), so replace the placeholder above with a unique 12+ character secret.
+
+In production, startup fails if `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DATABASE_URL` or `CORS_ORIGIN` is missing, and when local upload storage is used without `ALLOW_LOCAL_PRODUCTION_STORAGE=true`. See `docs/deployment-backend.md` for the full production configuration (proxy hops, body size, persistent uploads, working directory).
 
 ## Database
 
@@ -45,7 +48,7 @@ Login:
 ```bash
 curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"admin@example.com\",\"password\":\"use-a-strong-password\"}"
+  -d "{\"email\":\"admin@example.com\",\"password\":\"$ADMIN_PASSWORD\"}"
 ```
 
 Current user:

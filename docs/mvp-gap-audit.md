@@ -1,6 +1,6 @@
 # TazaScan MVP Gap Audit
 
-Current-state note (2026-09-18): this is a historical audit, not the latest demo checklist. All 10 local migrations are now applied. Admin submission authentication, atomic approval and search relevance have been addressed; Flutter tooling requires the Windows path workaround documented in [AITU demo verification](aitu-demo-readiness.md). The original findings below are retained for context.
+Current-state note (2026-09-18): this is a historical audit, not the latest demo checklist. All 10 local migrations are now applied. Admin submission authentication, atomic approval and search relevance have been addressed; Flutter tooling requires the Windows path workaround documented in [AITU demo verification](aitu-demo-readiness.md). The original findings below are retained for context. Since then the security hardening also removed the Android debug-signing fallback, added the Flutter production API URL guard, configurable trusted-proxy hops and stricter upload format detection (JPEG/PNG/WebP only); see [production readiness](production-readiness.md) and [backend deployment](deployment-backend.md) for the current state.
 
 Date: 2026-08-28
 

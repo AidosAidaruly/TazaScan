@@ -13,7 +13,7 @@ Do not change it until the team decides the final package identifier.
 - Internet
 - Camera
 
-Production should use HTTPS API URLs. Main manifest sets `usesCleartextTraffic=false`.
+Production should use HTTPS API URLs. The main/release manifest sets `usesCleartextTraffic=false` unless a release build explicitly passes `TAZASCAN_DEMO_HTTP=true` (local demo only); debug and profile builds allow cleartext for development.
 
 ## Signing
 
@@ -62,6 +62,25 @@ To check which key each variant uses (no passwords are printed):
 cd apps/mobile/android
 ./gradlew :app:signingReport
 ```
+
+## API URL Guard
+
+The API address is compiled in with `--dart-define=API_BASE_URL=...`. Production rules apply when
+`TAZASCAN_PRODUCTION=true` is passed, and to **every release build** that does not explicitly pass
+`TAZASCAN_DEMO_HTTP=true`:
+
+- `API_BASE_URL` must be given explicitly (no fallback to `10.0.2.2`/`localhost`);
+- it must be an `https://` URL with a host and no user info, query or fragment;
+- the host must not be `localhost`/`*.localhost`, loopback (`127.0.0.0/8`, `::1`), `0.0.0.0`/`::`,
+  link-local, or an emulator alias (`10.0.2.2`, `10.0.3.2`). Private LAN addresses are allowed.
+
+A build that breaks these rules still compiles, but the app stops on the splash screen with a clear
+message. **Launch every release build once before distributing it.**
+
+`TAZASCAN_DEMO_HTTP=true` is only for intentional local-network demo builds (USB reverse forwarding
+or a laptop LAN address, see `docs/aitu-demo-readiness.md`); it also enables cleartext HTTP in the
+release manifest. Never use it for store or production builds. Debug and profile builds may use local
+URLs.
 
 ## Build Commands
 
