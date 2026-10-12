@@ -228,8 +228,7 @@ describe('CORS startup configuration (env.ts)', { timeout: 60_000 }, () => {
     NODE_ENV: 'production',
     JWT_SECRET: 'unit-test-jwt-secret-9f2c7a1e4b8d6035-not-real',
     ADMIN_EMAIL: 'admin@example.com',
-    ADMIN_PASSWORD: 'example-admin-password',
-    PUBLIC_UPLOADS_BASE_URL: 'https://api.example.com/uploads'
+    ADMIN_PASSWORD: 'example-admin-password'
   };
 
   // Runs env.ts in a fresh Node process, as the server does at startup.

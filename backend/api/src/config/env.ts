@@ -19,7 +19,6 @@ const envSchema = z.object({
   JWT_ACCESS_TOKEN_TTL: z.string().default('15m'),
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(12).optional(),
-  PUBLIC_UPLOADS_BASE_URL: z.string().url().optional(),
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   UPLOAD_ROOT: z.string().min(1).default('uploads'),
   ALLOW_LOCAL_PRODUCTION_STORAGE: z
@@ -41,8 +40,7 @@ if (parsedEnv.data.NODE_ENV === 'production') {
     'ADMIN_EMAIL',
     'ADMIN_PASSWORD',
     'DATABASE_URL',
-    'CORS_ORIGIN',
-    'PUBLIC_UPLOADS_BASE_URL'
+    'CORS_ORIGIN'
   ].filter(
     (key) => !parsedEnv.data[key as keyof typeof parsedEnv.data]
   );
@@ -71,7 +69,6 @@ export const env = {
   jwtSecret,
   corsOrigins,
   trustProxyHops: parsedEnv.data.TRUST_PROXY_HOPS,
-  publicUploadsBaseUrl: parsedEnv.data.PUBLIC_UPLOADS_BASE_URL,
   storageDriver: parsedEnv.data.STORAGE_DRIVER,
   uploadRoot: parsedEnv.data.UPLOAD_ROOT,
   allowLocalProductionStorage: parsedEnv.data.ALLOW_LOCAL_PRODUCTION_STORAGE

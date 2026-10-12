@@ -53,7 +53,6 @@ function stubProductionEnv(overrides: Record<string, string>) {
   vi.stubEnv('JWT_SECRET', 'unit-test-jwt-secret-9f2c7a1e4b8d6035-not-real');
   vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
   vi.stubEnv('ADMIN_PASSWORD', 'change-this-admin-password');
-  vi.stubEnv('PUBLIC_UPLOADS_BASE_URL', 'https://api.example.com/uploads');
   vi.stubEnv('STORAGE_DRIVER', 'local');
   vi.stubEnv('UPLOAD_ROOT', 'uploads');
 

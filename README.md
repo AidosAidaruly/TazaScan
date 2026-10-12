@@ -281,7 +281,7 @@ ADMIN_PASSWORD="replace-with-a-strong-local-password"
 
 `JWT_SECRET` is required in every environment except tests (which use a fixed test-only secret). It must be at least 32 characters, must not be a placeholder or example value, and the API refuses to start otherwise.
 
-Optional/local-storage settings such as `PORT`, `CORS_ORIGIN`, `PUBLIC_UPLOADS_BASE_URL`, `STORAGE_DRIVER`, and `UPLOAD_ROOT` are also documented in that file. Do not reuse development values in production.
+Optional/local-storage settings such as `PORT`, `CORS_ORIGIN`, `STORAGE_DRIVER`, and `UPLOAD_ROOT` are also documented in that file. Do not reuse development values in production.
 
 ### 2. Admin Panel
 

@@ -44,12 +44,11 @@ The backend can run on a typical managed Node host if environment variables are 
 | `JWT_ACCESS_TOKEN_TTL` | No | No | Admin JWT | `15m` | Short explicit TTL, for example `15m` |
 | `ADMIN_EMAIL` | Production yes | Sensitive | Seeded admin account | Local email | Real admin email, not printed in logs |
 | `ADMIN_PASSWORD` | Production yes | Yes | Seeded admin account | Local password | Strong one-time seed password, rotate if exposed |
-| `PUBLIC_UPLOADS_BASE_URL` | Production yes | No | Product image URLs | Local API uploads URL | HTTPS base URL for durable upload serving |
 | `VITE_API_BASE_URL` | Admin yes | No | Admin frontend | `http://localhost:4000` | Production HTTPS API URL |
 | `API_BASE_URL` | Mobile release yes | No | Flutter app | Localhost or emulator URL | Production HTTPS API URL |
 | `TAZASCAN_PRODUCTION` | Mobile release yes | No | Flutter production guard | false | `true` for release builds |
 
-Production secret fallback check: backend refuses production startup without `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DATABASE_URL`, `CORS_ORIGIN`, and `PUBLIC_UPLOADS_BASE_URL`. That is READY.
+Production secret fallback check: backend refuses production startup without `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DATABASE_URL`, and `CORS_ORIGIN`. Image URLs are relative (`/uploads/products/...`, `/product-submissions/uploads/...`) and clients resolve them against their API base URL, so no public uploads URL is configured. That is READY.
 
 JWT secret check: outside `NODE_ENV=test` the backend refuses to start (any environment) when `JWT_SECRET` is missing, shorter than 32 characters, a known placeholder/example value, or obviously non-random. There is no fallback secret; tests use a fixed test-only secret that is rejected elsewhere.
 

@@ -155,8 +155,7 @@ describe('startup configuration (env.ts)', () => {
     NODE_ENV: 'production',
     CORS_ORIGIN: 'https://admin.example.com',
     ADMIN_EMAIL: 'admin@example.com',
-    ADMIN_PASSWORD: 'example-admin-password',
-    PUBLIC_UPLOADS_BASE_URL: 'https://api.example.com/uploads'
+    ADMIN_PASSWORD: 'example-admin-password'
   };
 
   it('fails fast in development when JWT_SECRET is missing', () => {
@@ -188,6 +187,33 @@ describe('startup configuration (env.ts)', () => {
 
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
+  });
+
+  it('starts in production without PUBLIC_UPLOADS_BASE_URL (image URLs are relative)', () => {
+    const result = loadEnv({ ...productionVars, JWT_SECRET: validSecret });
+
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    expect(productionVars).not.toHaveProperty('PUBLIC_UPLOADS_BASE_URL');
+  });
+
+  it('ignores a leftover PUBLIC_UPLOADS_BASE_URL from older deployments', () => {
+    const result = loadEnv({
+      ...productionVars,
+      JWT_SECRET: validSecret,
+      PUBLIC_UPLOADS_BASE_URL: 'not even a url'
+    });
+
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+  });
+
+  it('still enforces the genuinely required production variables', () => {
+    const result = loadEnv({ ...productionVars, JWT_SECRET: validSecret, CORS_ORIGIN: '' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing required production secrets: CORS_ORIGIN');
+    expect(result.stderr).not.toContain('PUBLIC_UPLOADS_BASE_URL');
   });
 
   it('starts in development with a valid secret', () => {

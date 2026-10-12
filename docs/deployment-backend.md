@@ -13,7 +13,6 @@ JWT_SECRET=<at least 32 random characters, e.g. output of: node -e "console.log(
 JWT_ACCESS_TOKEN_TTL=15m
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=strong-password
-PUBLIC_UPLOADS_BASE_URL=https://api.example.com/uploads
 TRUST_PROXY_HOPS=1
 ```
 
