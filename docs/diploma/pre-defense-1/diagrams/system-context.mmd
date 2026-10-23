@@ -1,0 +1,21 @@
+
+flowchart LR
+    Consumer["Consumer"]
+    Admin["Administrator"]
+
+    Mobile["TazaScan Mobile App (Flutter)"]
+    AdminPanel["Admin Panel (React)"]
+    API["REST API (Node.js / Express)"]
+    DB[("PostgreSQL")]
+    Import["Controlled Import Scripts"]
+    OFF["Open Food Facts"]
+    Allergen["Hybrid Allergen Analysis (Planned)"]
+
+    Consumer --> Mobile
+    Admin --> AdminPanel
+    Mobile --> API
+    AdminPanel --> API
+    API --> DB
+    OFF --> Import
+    Import --> API
+    API -.-> Allergen

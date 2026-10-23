@@ -1,0 +1,40 @@
+
+flowchart TB
+    subgraph Frontend["Frontend Applications"]
+        Mobile["Flutter Mobile App"]
+        Admin["React Admin Panel"]
+    end
+
+    subgraph Backend["Existing Backend - Node.js / Express"]
+        API["REST API Controllers"]
+        Product["Product Service"]
+        OCR["OCR Processing"]
+        Scoring["TazaScore / Nutri-Score"]
+        Halal["Halal Check"]
+        Repository["Prisma Repositories"]
+    end
+
+    DB[("PostgreSQL Database")]
+
+    Mobile --> API
+    Admin --> API
+    API --> Product
+    API --> OCR
+    API --> Scoring
+    API --> Halal
+    Product --> Repository
+    Repository --> DB
+
+    subgraph Planned["Planned Hybrid Allergen Module"]
+        Detector["Allergen Detection Service"]
+        Rules["Rule-Based Matcher"]
+        NLP["NLP Ingredient Analysis"]
+        Evidence["Evidence and Uncertainty Classification"]
+    end
+
+    API -.-> Detector
+    Detector -.-> Rules
+    Detector -.-> NLP
+    Rules -.-> Evidence
+    NLP -.-> Evidence
+    Evidence -.-> Detector
