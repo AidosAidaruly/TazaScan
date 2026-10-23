@@ -1,0 +1,26 @@
+
+flowchart LR
+    Consumer["Consumer"]
+    Admin["Administrator"]
+
+    subgraph Existing["Existing TazaScan MVP"]
+        Scan(["Scan product barcode"])
+        Search(["Search food products"])
+        Details(["View ingredients and nutrition"])
+        Submit(["Submit unknown product"])
+        Manage(["Review and manage products"])
+    end
+
+    subgraph Planned["Planned Diploma Module"]
+        Detect(["Detect potential allergens"])
+        Explain(["View allergen evidence and uncertainty"])
+    end
+
+    Consumer --> Scan
+    Consumer --> Search
+    Consumer --> Details
+    Consumer --> Submit
+    Admin --> Manage
+
+    Consumer -.-> Detect
+    Detect -.-> Explain

@@ -78,11 +78,11 @@ TazaScore v1.1 is TazaScan's versioned, deterministic 0-100 food-profile score. 
 
 ### Components
 
-| Component | Maximum | Current role |
-| --- | ---: | --- |
-| Nutritional quality | 90 | Dominant component, based on the separate Nutri-Score V2-2023 implementation when complete data is available, or a weighted partial-data path when it is not. |
-| Ingredients/additives | 10 | Conservative component. An E-number or unknown additive alone does not create a penalty. |
-| Data confidence | 0 | Metadata only; it never adds score points. |
+| Component             | Maximum | Current role                                                                                                                                                  |
+| --------------------- | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nutritional quality   |      90 | Dominant component, based on the separate Nutri-Score V2-2023 implementation when complete data is available, or a weighted partial-data path when it is not. |
+| Ingredients/additives |      10 | Conservative component. An E-number or unknown additive alone does not create a penalty.                                                                      |
+| Data confidence       |       0 | Metadata only; it never adds score points.                                                                                                                    |
 
 Official Nutri-Score A-E remains a separate indicator. The repository's `OfficialNutriScoreEngine` targets the revised 2023 methodology, but the implementation is not presented as officially certified. Legacy persisted score fields also remain in the data model for compatibility; they are not the same as TazaScore.
 
@@ -128,20 +128,20 @@ TazaScore is computed by the backend and returned in product DTOs; it is not per
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| Mobile | Flutter, Dart, Material, `http`, `mobile_scanner`, `image_picker`, `shared_preferences` |
-| Admin | React 19, TypeScript, Vite, React Router |
-| Backend | Node.js, TypeScript, Express 5 |
-| Database | PostgreSQL |
-| ORM and migrations | Prisma 7 |
-| Validation | Zod |
-| Authentication | bcrypt password hashing, JWT access tokens, role middleware |
-| Images | Multer uploads, Sharp decoding/normalization, storage-provider abstraction |
-| OCR | Tesseract.js |
-| Backend tests | Vitest, Supertest |
-| Frontend tests | Flutter Test, Vitest, React Testing Library |
-| External product data | Official Open Food Facts API through controlled import scripts |
+| Layer                 | Technology                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| Mobile                | Flutter, Dart, Material, `http`, `mobile_scanner`, `image_picker`, `shared_preferences` |
+| Admin                 | React 19, TypeScript, Vite, React Router                                                |
+| Backend               | Node.js, TypeScript, Express 5                                                          |
+| Database              | PostgreSQL                                                                              |
+| ORM and migrations    | Prisma 7                                                                                |
+| Validation            | Zod                                                                                     |
+| Authentication        | bcrypt password hashing, JWT access tokens, role middleware                             |
+| Images                | Multer uploads, Sharp decoding/normalization, storage-provider abstraction              |
+| OCR                   | Tesseract.js                                                                            |
+| Backend tests         | Vitest, Supertest                                                                       |
+| Frontend tests        | Flutter Test, Vitest, React Testing Library                                             |
+| External product data | Official Open Food Facts API through controlled import scripts                          |
 
 ## Repository Structure
 
@@ -231,11 +231,11 @@ Production startup rejects missing critical environment configuration. Further h
 
 The latest completed project verification records:
 
-| Area | Result |
-| --- | --- |
+| Area    | Result                                                                                                  |
+| ------- | ------------------------------------------------------------------------------------------------------- |
 | Backend | 29 test files, 275 tests passed; typecheck, lint, build, Prisma validation, and migration status passed |
-| Admin | 8 test files, 45 tests passed; lint and build passed |
-| Flutter | 128 tests passed; `flutter analyze` and debug APK build passed |
+| Admin   | 8 test files, 45 tests passed; lint and build passed                                                    |
+| Flutter | 128 tests passed; `flutter analyze` and debug APK build passed                                          |
 
 For this README update, the backend suite was run again and passed all 275 tests. The current machine did not have Admin dependencies installed, so its suite was not re-run. Flutter tooling stalled without output in the current Windows session; the table therefore reports the latest completed verification documented in [the MVP gap audit](docs/mvp-gap-audit.md), not a new run.
 
@@ -399,9 +399,34 @@ Planned work includes:
 
 These items are planned and are not represented as implemented features.
 
-## Graduation / Research Context
+## Diploma Project — Pre-Defense 1
 
-TazaScan is being prepared as a candidate graduation/startup project within the Software Engineering program at Astana IT University. The repository is intended to demonstrate full-stack software engineering, data-quality controls, explainable scoring, mobile UX, and responsible communication of uncertain product data. This statement does not imply formal endorsement or approval by AITU.
+**Project Title:** Development of a Mobile Application for Potential Allergen Detection Based on Hybrid Food Ingredient Analysis
+
+- **Student:** Aidos Aidaruly
+- **University:** Astana IT University
+- **Program:** Software Engineering
+- **Supervisor:** Arailym Orazova
+
+### Diploma Scope
+
+The diploma project extends the existing TazaScan application with a planned hybrid allergen detection module combining rule-based ingredient matching and natural language processing (NLP).
+
+The module is intended to identify potential allergens in food ingredient lists, explain which ingredients triggered the detection, and distinguish direct allergen mentions, precautionary statements ("may contain"), and insufficient information.
+
+The planned evaluation will compare the hybrid approach with a rule-based baseline using Precision, Recall, and F1-score.
+
+### Current Progress
+
+At Pre-Defense 1, the existing TazaScan MVP provides barcode scanning, product search, ingredient information, OCR assistance, scoring, and administration features.
+
+The hybrid allergen detection module has not yet been implemented. Its requirements, architecture, research foundation, and evaluation approach are documented as part of the diploma work.
+
+### Diploma Resources
+
+- [Pre-Defense 1 Report](docs/diploma/pre-defense-1/TazaScan_PreDefense1_Report.docx)
+- [YouTrack Project](https://tazascan.youtrack.cloud/projects/TAZA)
+- [Pre-Defense 1 Documentation Task](https://tazascan.youtrack.cloud/issue/TAZA-12)
 
 ## Disclaimer
 
