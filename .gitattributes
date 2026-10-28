@@ -1,0 +1,2 @@
+# Prisma checksums the raw bytes of each migration.sql; keep LF on every platform.
+backend/api/prisma/migrations/**/*.sql text eol=lf
