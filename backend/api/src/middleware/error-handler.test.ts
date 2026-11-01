@@ -315,9 +315,14 @@ describe('error handler: unexpected errors', () => {
     }
   });
 
-  it('logs only the type of body-parser errors, whose message can quote the raw body', async () => {
+  it('logs only the type of unmapped body-parser errors, whose message can quote the raw body', async () => {
     const app = express();
-    app.use(express.json());
+    // A verify failure (403, entity.verify.failed) is not a mapped client error: it stays 500.
+    app.use(express.json({
+      verify: () => {
+        throw new Error('verify rejected');
+      }
+    }));
     app.post('/fail', (_request, response) => {
       response.status(200).end();
     });
@@ -326,20 +331,142 @@ describe('error handler: unexpected errors', () => {
     const response = await request(app)
       .post('/fail')
       .set('Content-Type', 'application/json')
-      .send('{"password":"leaked-password-value"');
+      .send('{"password":"leaked-password-value"}');
 
-    // Status unchanged by this fix: body-parser errors are not HttpErrors and stay 500.
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: { message: 'Internal server error' } });
     expect(response.text).not.toContain('leaked-password-value');
     const line = vi.mocked(console.error).mock.calls[0]![0] as string;
     expect(JSON.parse(line)).toMatchObject({
       event: 'unhandled_error',
-      name: 'SyntaxError',
-      type: 'entity.parse.failed',
-      status: 400
+      name: 'Error',
+      type: 'entity.verify.failed',
+      status: 403
     });
     expect(line).not.toContain('leaked-password-value');
     expect(line).not.toContain('password');
+  });
+});
+
+describe('error handler: request body errors', () => {
+  function jsonApp() {
+    const app = express();
+    app.use(express.json({ limit: '1mb' }));
+    app.post('/echo', (request, response) => {
+      response.status(200).json({ data: request.body });
+    });
+    app.use(errorHandler);
+    return app;
+  }
+
+  it('passes valid JSON through to the route', async () => {
+    const response = await request(jsonApp()).post('/echo').send({ name: 'Кетчуп', count: 2 });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ data: { name: 'Кетчуп', count: 2 } });
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('maps malformed JSON to 400 without echoing the body', async () => {
+    const response = await request(jsonApp())
+      .post('/echo')
+      .set('Content-Type', 'application/json')
+      .send('{"password":"leaked-password-value"');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: { message: 'Malformed JSON request body' } });
+    expect(response.text).not.toContain('leaked-password-value');
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('maps a body over the limit to 413', async () => {
+    const response = await request(jsonApp())
+      .post('/echo')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ padding: 'a'.repeat(1024 * 1024) }));
+
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({ error: { message: 'Request body too large' } });
+  });
+
+  // raw-body errors that cannot be produced reliably over a real socket (Node's HTTP parser
+  // enforces Content-Length), built with the same type/status/expose shape body-parser uses.
+  it.each([
+    ['request.size.invalid', 400, 'Request body size did not match Content-Length'],
+    ['request.aborted', 400, 'Request aborted'],
+    ['charset.unsupported', 415, 'Unsupported request body charset'],
+    ['encoding.unsupported', 415, 'Unsupported request body encoding'],
+    ['entity.parse.failed', 400, 'Malformed JSON request body'],
+    ['entity.too.large', 413, 'Request body too large']
+  ])('maps parser error %s to %i', async (type, status, message) => {
+    const error = Object.assign(new Error(`raw body {"password":"leaked-password-value"}`), {
+      type,
+      status,
+      statusCode: status,
+      expose: true,
+      body: '{"password":"leaked-password-value"}'
+    });
+
+    const response = await request(appThrowing(error)).get('/fail');
+
+    expect(response.status).toBe(status);
+    expect(response.body).toEqual({ error: { message } });
+    expect(response.text).not.toContain('leaked-password-value');
+  });
+
+  // Codes observed from body-parser 2.4.0 for corrupt gzip, truncated gzip, deflate, br, zstd.
+  it.each(['Z_DATA_ERROR', 'Z_BUF_ERROR', 'ERR__ERROR_FORMAT_PADDING_1', 'ZSTD_error_prefix_unknown'])(
+    'maps a corrupt compressed body (%s) to 400',
+    async (code) => {
+      const error = Object.assign(new Error('incorrect header check'), {
+        code,
+        status: 400,
+        statusCode: 400,
+        expose: true
+      });
+
+      const response = await request(appThrowing(error)).get('/fail');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: { message: 'Malformed compressed request body' } });
+      expect(response.text).not.toContain(code);
+      expect(response.text).not.toContain('header check');
+    }
+  );
+
+  it.each([
+    ['a parser type with a different status', { type: 'entity.parse.failed', status: 500 }],
+    ['a parser type without a status', { type: 'entity.too.large' }],
+    ['a 400 status without a type', { status: 400 }],
+    ['a 413 status with an unknown type', { type: 'upload.too.large', status: 413 }],
+    ['an unmapped stream error', { type: 'stream.not.readable', status: 500 }],
+    ['a zlib code without status 400', { code: 'Z_DATA_ERROR' }],
+    ['a zlib code with status 500', { code: 'Z_DATA_ERROR', status: 500 }],
+    ['a zlib code with another type', { code: 'Z_DATA_ERROR', status: 400, type: 'custom.error' }],
+    ['a non-decompression code with status 400', { code: 'P2002', status: 400 }]
+  ])('keeps %s as 500', async (_kind, fields) => {
+    const response = await request(appThrowing(Object.assign(new Error('internal'), fields))).get('/fail');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: { message: 'Internal server error' } });
+  });
+
+  it('keeps a non-Error value with parser fields as 500', async () => {
+    const response = await request(
+      appThrowing({ type: 'entity.parse.failed', status: 400, message: 'x' })
+    ).get('/fail');
+
+    expect(response.status).toBe(500);
+  });
+
+  it('leaves HttpError with the same status unchanged', async () => {
+    const response = await request(
+      appThrowing(new HttpError(413, 'Image too large', { maxBytes: 10 }))
+    ).get('/fail');
+
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({
+      error: { message: 'Image too large', details: { maxBytes: 10 } }
+    });
   });
 });
