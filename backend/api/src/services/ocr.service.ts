@@ -21,6 +21,14 @@ export function getDefaultOcrPool() {
   return defaultPool;
 }
 
+/**
+ * Releases the shared pool's workers at shutdown. Does not create a pool that was never
+ * used; the closed pool stays in place so any straggler gets a clean 503.
+ */
+export async function closeDefaultOcrPool() {
+  await defaultPool?.close();
+}
+
 type OcrPoolContract = Pick<OcrWorkerPool, 'recognize'>;
 
 export class OcrService {

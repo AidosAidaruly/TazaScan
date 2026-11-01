@@ -1,6 +1,8 @@
 import type { Server } from 'node:http';
 import { env } from './config/env';
 import { prisma } from './prisma/client';
+import { closeDefaultOcrPool } from './services/ocr.service';
+import { createShutdownHandler } from './shutdown';
 import { handleStartupFailure, startServer } from './startup';
 import { fileStorage } from './storage/storage-provider';
 
@@ -16,14 +18,11 @@ function onListening(server: Server) {
     storageDriver: fileStorage.driver
   }));
 
-  async function shutdown(signal: string) {
-    console.info(JSON.stringify({ level: 'info', event: 'shutdown', signal }));
-
-    server.close(async () => {
-      await prisma.$disconnect();
-      process.exit(0);
-    });
-  }
+  const shutdown = createShutdownHandler({
+    server,
+    closeOcr: closeDefaultOcrPool,
+    disconnectDatabase: () => prisma.$disconnect()
+  });
 
   process.on('SIGINT', () => {
     void shutdown('SIGINT');
