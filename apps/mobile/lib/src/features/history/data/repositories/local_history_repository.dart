@@ -18,42 +18,53 @@ class LocalHistoryRepository implements HistoryRepository {
     return _dataSource.readEntries();
   }
 
+  /// Records a view. This is a background side effect of opening a product, so when
+  /// unreadable stored history cannot be backed up, the view is skipped (the stored
+  /// history stays untouched and the backup is retried next time) instead of throwing.
   @override
   Future<void> saveViewedProduct(Product product) async {
     final summary = CachedProductSummaryModel.fromProduct(product);
     final now = (_clock ?? DateTime.now).call();
-    // Older views of the same product show the latest known product data, so a network
-    // refresh never leaves the history inconsistent. Their view times stay as they were.
-    final entries = _dataSource
-        .readEntries()
-        .map(
-          (entry) => entry.product.id == product.id
-              ? HistoryEntryModel(product: summary, viewedAt: entry.viewedAt)
-              : entry,
-        )
-        .toList();
 
-    if (entries.isNotEmpty && entries.first.product.id == product.id) {
-      entries[0] = HistoryEntryModel(product: summary, viewedAt: now);
-    } else {
-      entries.insert(0, HistoryEntryModel(product: summary, viewedAt: now));
+    try {
+      await _dataSource.updateEntries((current) {
+        // Older views of the same product show the latest known product data, so a
+        // network refresh never leaves the history inconsistent. Their view times stay.
+        final entries = current
+            .map(
+              (entry) => entry.product.id == product.id
+                  ? HistoryEntryModel(
+                      product: summary,
+                      viewedAt: entry.viewedAt,
+                    )
+                  : entry,
+            )
+            .toList();
+
+        if (entries.isNotEmpty && entries.first.product.id == product.id) {
+          entries[0] = HistoryEntryModel(product: summary, viewedAt: now);
+        } else {
+          entries.insert(0, HistoryEntryModel(product: summary, viewedAt: now));
+        }
+
+        return entries.take(maxEntries).toList();
+      });
+    } on HistoryBackupException {
+      // Nothing was written; the unreadable original history is kept as it was.
     }
-
-    await _dataSource.writeEntries(entries.take(maxEntries).toList());
   }
 
   @override
-  Future<void> delete(String productId, DateTime viewedAt) async {
-    final entries = _dataSource
-        .readEntries()
-        .where(
-          (entry) =>
-              entry.product.id != productId ||
-              entry.viewedAt.toIso8601String() != viewedAt.toIso8601String(),
-        )
-        .toList();
-
-    await _dataSource.writeEntries(entries);
+  Future<void> delete(String productId, DateTime viewedAt) {
+    return _dataSource.updateEntries(
+      (current) => current
+          .where(
+            (entry) =>
+                entry.product.id != productId ||
+                entry.viewedAt.toIso8601String() != viewedAt.toIso8601String(),
+          )
+          .toList(),
+    );
   }
 
   @override
