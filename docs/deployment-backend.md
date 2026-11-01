@@ -74,7 +74,7 @@ The only implemented storage driver is the local filesystem (`STORAGE_DRIVER=loc
 
 - Production must mount a persistent disk at `UPLOAD_ROOT` and set `ALLOW_LOCAL_PRODUCTION_STORAGE=true`.
 - On an ephemeral filesystem (most free container tiers), every redeploy or restart deletes all product images and submission evidence while the database still references them: product images break and Admin shows evidence as unavailable.
-- Back up the upload disk together with PostgreSQL.
+- Back up the upload disk together with PostgreSQL, following [backup-restore.md](backup-restore.md).
 - `backend/api/uploads/` is git-ignored; never commit runtime uploads.
 
 ## Rate Limits
@@ -115,6 +115,7 @@ Free tiers may sleep, throttle, or lack persistent storage. Do not rely on ephem
 
 ## Production Notes
 
+- Take a verified backup ([backup-restore.md](backup-restore.md)) before running migrations on an existing database.
 - Run Prisma migrations before serving traffic.
 - Use HTTPS only; terminate TLS at the platform or reverse proxy.
 - Store secrets in provider environment settings.

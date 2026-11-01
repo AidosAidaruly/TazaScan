@@ -69,7 +69,7 @@ JWT secret check: outside `NODE_ENV=test` the backend refuses to start (any envi
 | Seed behavior | NEEDS_CONFIGURATION | Seed creates the admin from env only if that email has no account; an existing account (password, role, active status) is never modified. Run intentionally, not automatically on every deploy unless desired. |
 | Barcode lookup | READY | Barcode is unique and indexed. |
 | Product search | NEEDS_CONFIGURATION | Current `contains` search is acceptable for MVP volume. PostgreSQL trigram/full-text indexes may be needed as data grows. |
-| Backups | BLOCKER | A production database must have provider-managed or documented automated backups before real users. |
+| Backups | BLOCKER | A production database must have provider-managed or documented automated backups before real users. The procedure (PostgreSQL + `UPLOAD_ROOT`, verification, restore drill) is in [backup-restore.md](backup-restore.md); scheduled production backups are not configured yet. |
 
 Initial MVP storage need is low for product records, but uploaded images can grow faster than rows.
 
@@ -295,7 +295,7 @@ Required database capabilities:
 - Managed PostgreSQL.
 - Migration deploy support.
 - Automated backups.
-- Restore procedure.
+- Restore procedure (see [backup-restore.md](backup-restore.md)).
 
 Required storage capabilities:
 
@@ -329,7 +329,7 @@ Required storage capabilities:
 - [ ] Solve durable image storage, or explicitly deploy on a host with persistent disk and backups.
 - [ ] Configure mobile build with `--dart-define=API_BASE_URL=https://...`.
 - [ ] Smoke-test barcode search, text search, photo search, OCR submission, Admin approval, and image display.
-- [ ] Enable PostgreSQL backups.
+- [ ] Schedule PostgreSQL and `UPLOAD_ROOT` backups with an off-host copy, per [backup-restore.md](backup-restore.md).
 - [ ] Confirm logs do not expose secrets.
 
 ## Before Public Beta
@@ -342,7 +342,7 @@ Required storage capabilities:
 - [ ] Finalize Privacy Policy, Terms, data deletion contact, and TazaScore disclaimer.
 - [ ] Load-test OCR and image normalization enough for expected beta traffic.
 - [ ] Review text search performance with real product count.
-- [ ] Create a restore drill for PostgreSQL backups.
+- [ ] Run the restore drill in [backup-restore.md](backup-restore.md) against a production backup and repeat it monthly.
 - [ ] Decide whether Admin remains local or is hosted.
 
 ## Before Store Release
