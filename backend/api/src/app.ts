@@ -9,11 +9,17 @@ import { apiRouter } from './routes';
 import { ensureProductImageUploadDirectory } from './services/product-image-storage.service';
 import { getLocalFileStorage } from './storage/storage-provider';
 
+/**
+ * Required asynchronous setup that must succeed before the server accepts requests (see
+ * startServer). Creates the upload directories; rejects if they cannot be created.
+ */
+export async function initializeApp() {
+  await ensureProductImageUploadDirectory();
+}
+
 export function createApp() {
   const app = express();
   configureTrustProxy(app);
-
-  void ensureProductImageUploadDirectory();
 
   app.disable('x-powered-by');
   app.use(helmet());

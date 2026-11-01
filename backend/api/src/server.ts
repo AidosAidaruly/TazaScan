@@ -1,11 +1,12 @@
-import { createApp } from './app';
+import type { Server } from 'node:http';
 import { env } from './config/env';
 import { prisma } from './prisma/client';
+import { handleStartupFailure, startServer } from './startup';
 import { fileStorage } from './storage/storage-provider';
 
-const app = createApp();
+startServer({ port: env.PORT }).then(onListening, (error) => handleStartupFailure(error));
 
-const server = app.listen(env.PORT, () => {
+function onListening(server: Server) {
   console.info(JSON.stringify({
     level: 'info',
     event: 'startup',
@@ -14,21 +15,21 @@ const server = app.listen(env.PORT, () => {
     trustProxyHops: env.trustProxyHops,
     storageDriver: fileStorage.driver
   }));
-});
 
-async function shutdown(signal: string) {
-  console.info(JSON.stringify({ level: 'info', event: 'shutdown', signal }));
+  async function shutdown(signal: string) {
+    console.info(JSON.stringify({ level: 'info', event: 'shutdown', signal }));
 
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
+    server.close(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    });
+  }
+
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
   });
 }
-
-process.on('SIGINT', () => {
-  void shutdown('SIGINT');
-});
-
-process.on('SIGTERM', () => {
-  void shutdown('SIGTERM');
-});
