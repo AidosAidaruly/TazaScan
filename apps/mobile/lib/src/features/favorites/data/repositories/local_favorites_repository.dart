@@ -20,23 +20,21 @@ class LocalFavoritesRepository implements FavoritesRepository {
   }
 
   @override
-  Future<void> add(Product product) async {
-    final products = _dataSource.readProducts().toList();
-    if (products.any((item) => item.id == product.id)) {
-      return;
-    }
+  Future<void> add(Product product) {
+    return _dataSource.updateProducts((products) {
+      if (products.any((item) => item.id == product.id)) {
+        return null;
+      }
 
-    products.insert(0, CachedProductSummaryModel.fromProduct(product));
-    await _dataSource.writeProducts(products);
+      return [CachedProductSummaryModel.fromProduct(product), ...products];
+    });
   }
 
   @override
-  Future<void> remove(String productId) async {
-    final products = _dataSource
-        .readProducts()
-        .where((product) => product.id != productId)
-        .toList();
-
-    await _dataSource.writeProducts(products);
+  Future<void> remove(String productId) {
+    return _dataSource.updateProducts(
+      (products) =>
+          products.where((product) => product.id != productId).toList(),
+    );
   }
 }
