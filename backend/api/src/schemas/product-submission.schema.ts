@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isSupportedProductBarcode } from '../utils/barcode';
+import { officialNutriScoreCategorySchema } from './product.schema';
 import { ingredientListSchema, optionalText, requiredText, textLimits } from './text-limits';
 
 const nullableNumberSchema = z.coerce.number().finite().nonnegative().nullable().optional();
@@ -48,6 +49,10 @@ export const updateSubmissionStatusBodySchema = z.object({
 export const approveSubmissionBodySchema = productSubmissionBodySchema.extend({
   name: requiredText(textLimits.productName),
   category: requiredText(textLimits.category),
+  // Admin-only, like on the product form: users never send it, and it stays unknown
+  // (null) unless the admin picks one. Without it TazaScore can only derive a category
+  // from a few known category labels.
+  officialNutriScoreCategory: officialNutriScoreCategorySchema,
   moderationNote: optionalText(textLimits.moderationNote)
 });
 

@@ -321,6 +321,7 @@ export class ProductSubmissionService {
         fiber: data.fiber,
         salt: data.salt
       },
+      officialNutriScoreCategory: data.officialNutriScoreCategory ?? null,
       imageUrl: null,
       dataStatus: 'community',
       source: 'user_submission',

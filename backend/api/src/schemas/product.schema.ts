@@ -9,7 +9,7 @@ import {
 } from './text-limits';
 
 const nullableNumberSchema = z.number().finite().nullable().optional();
-const officialNutriScoreCategorySchema = z
+export const officialNutriScoreCategorySchema = z
   .enum(['general_food', 'beverage', 'water', 'cheese', 'fats_oils_nuts_seeds', 'red_meat'])
   .nullable()
   .optional();

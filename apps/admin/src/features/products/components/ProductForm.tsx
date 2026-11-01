@@ -12,6 +12,7 @@ import {
 } from "../../../shared/components/FormField";
 import { resolveAssetUrl } from "../../../shared/utils/asset-url";
 import { isValidBarcode } from "../utils/barcode";
+import { officialNutriScoreCategories } from "../utils/official-nutri-score-categories";
 import { validateProductImageFile } from "../utils/product-image-validation";
 import {
   emptyProductFormValues,
@@ -50,16 +51,6 @@ const nutritionFields = [
   ["saturatedFat", "Saturated fat"],
   ["fiber", "Fiber"],
   ["salt", "Salt"],
-] as const;
-
-const officialNutriScoreCategories = [
-  ["", "Unknown"],
-  ["general_food", "General food"],
-  ["beverage", "Beverage"],
-  ["water", "Water"],
-  ["cheese", "Cheese"],
-  ["fats_oils_nuts_seeds", "Fats, oils, nuts, seeds"],
-  ["red_meat", "Red meat"],
 ] as const;
 
 export function ProductForm({

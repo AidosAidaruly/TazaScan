@@ -1,4 +1,4 @@
-import type { NutritionFactsDto, ProductDto, ServingType } from '../products/types'
+import type { NutritionFactsDto, OfficialNutriScoreCategory, ProductDto, ServingType } from '../products/types'
 
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_correction'
 
@@ -55,5 +55,6 @@ export type ApproveSubmissionPayload = {
   saturatedFat?: number | null
   fiber?: number | null
   salt?: number | null
+  officialNutriScoreCategory?: OfficialNutriScoreCategory | null
   moderationNote?: string | null
 }

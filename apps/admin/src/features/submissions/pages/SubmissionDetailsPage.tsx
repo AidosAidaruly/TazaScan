@@ -4,7 +4,10 @@ import { ApiClient } from '../../../core/api/api-client'
 import { useAuth } from '../../../core/auth/use-auth'
 import { ApiError } from '../../../core/errors/api-error'
 import { env } from '../../../config/env'
+import { SelectField } from '../../../shared/components/FormField'
 import { PageLoader } from '../../../shared/components/PageLoader'
+import { officialNutriScoreCategories } from '../../products/utils/official-nutri-score-categories'
+import type { OfficialNutriScoreCategory } from '../../products/types'
 import { SubmissionsApi } from '../api/submissions-api'
 import { SubmissionEvidenceImage } from '../components/SubmissionEvidenceImage'
 import type { ApproveSubmissionPayload, ProductSubmissionDto } from '../types'
@@ -125,6 +128,31 @@ export function SubmissionDetailsPage() {
           </div>
         </section>
         <section className="form-section">
+          <h2>Nutri-Score данные</h2>
+          <p className="section-note">
+            Optional. Pick the category only when the package supports it; leave Unknown otherwise.
+            Without a category TazaScore stays insufficient for most products.
+          </p>
+          <div className="form-grid">
+            <SelectField
+              label="Nutri-Score category"
+              value={payload.officialNutriScoreCategory ?? ''}
+              onChange={(value) =>
+                setPayload({
+                  ...payload,
+                  officialNutriScoreCategory: value === '' ? null : (value as OfficialNutriScoreCategory),
+                })
+              }
+            >
+              {officialNutriScoreCategories.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+        </section>
+        <section className="form-section">
           <h2>Moderation note</h2>
           <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} />
         </section>
@@ -189,5 +217,7 @@ function toApprovePayload(submission: ProductSubmissionDto): ApproveSubmissionPa
     saturatedFat: submission.nutritionFacts.saturatedFat,
     fiber: submission.nutritionFacts.fiber,
     salt: submission.nutritionFacts.salt,
+    // Users never submit a category; the admin chooses it, so it starts unknown.
+    officialNutriScoreCategory: null,
   }
 }
