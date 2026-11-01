@@ -98,7 +98,7 @@ Do not use `npm ci --omit=dev` on the build machine: generate, build and migrate
 ## Production Smoke Test
 
 - [ ] `GET https://<api>/health` returns `{"status":"ok",...}`.
-- [ ] `GET https://<api>/health/ready` returns `{"status":"ready",...}` (process readiness only; it does not check the database).
+- [ ] `GET https://<api>/health/ready` returns `{"status":"ready",...,"checks":{"database":"ok"}}`. It runs `SELECT 1` against PostgreSQL (2 s timeout) and returns `503` with `{"status":"not_ready",...}` when the database is unreachable; `GET /health` stays a database-independent liveness check.
 - [ ] The `startup` log line shows the expected `trustProxyHops` and `storageDriver`.
 - [ ] Upload a photo of about 4 MB through the proxy (photo search or a submission) and confirm it is not rejected with an nginx 413.
 - [ ] Run the first OCR request after startup and confirm it completes in time (no CDN download, see Working Directory).
