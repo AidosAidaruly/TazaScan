@@ -62,7 +62,10 @@ export function ingredientListSchema() {
     .default([]);
 }
 
-/** Absolute URL of at most `textLimits.url` characters. */
+/**
+ * Absolute http(s) URL of at most `textLimits.url` characters. Other schemes (javascript:,
+ * data:, vbscript:, file:, ...) are rejected with the same "Invalid URL" error.
+ */
 export function optionalUrl() {
-  return z.string().max(textLimits.url).url().nullable().optional();
+  return z.string().max(textLimits.url).url({ protocol: /^https?$/ }).nullable().optional();
 }

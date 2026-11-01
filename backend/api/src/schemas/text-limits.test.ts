@@ -154,6 +154,70 @@ describe('text length limits', () => {
   });
 });
 
+describe('URL fields accept only http and https', () => {
+  const urlFields = [
+    ['product imageUrl', productBodySchema, adminProduct, 'imageUrl'],
+    ['product update imageUrl', updateProductBodySchema, { name: 'x' }, 'imageUrl'],
+    ['halal evidenceUrl', halalCertificationBodySchema, halalCertification, 'evidenceUrl']
+  ] as const;
+
+  const accepted = [
+    'https://example.com/a.jpg',
+    'http://example.com/a.jpg',
+    'HTTPS://EXAMPLE.COM/A.JPG',
+    'https://images.openfoodfacts.org/images/products/544/900/000/0996/front_en.3.400.jpg'
+  ];
+
+  const rejected = [
+    ['javascript:', 'javascript:alert(1)'],
+    ['mixed-case javascript:', 'JaVaScRiPt:alert(document.domain)'],
+    ['javascript: with leading space', ' javascript:alert(1)'],
+    ['data:', 'data:text/html,<script>alert(1)</script>'],
+    ['vbscript:', 'vbscript:msgbox(1)'],
+    ['file:', 'file:///etc/passwd'],
+    ['ftp:', 'ftp://example.com/a.jpg'],
+    ['blob:', 'blob:https://example.com/uuid'],
+    ['malformed', 'not a url'],
+    ['missing host', 'https://'],
+    ['relative path', '/uploads/products/a.jpg'],
+    ['protocol-relative', '//example.com/a.jpg'],
+    ['empty string', '']
+  ] as const;
+
+  describe.each(urlFields)('%s', (_label, schema, base, field) => {
+    it.each(accepted)('accepts %s', (url) => {
+      expect(schema.safeParse({ ...base, [field]: url }).success).toBe(true);
+    });
+
+    it.each(rejected)('rejects %s', (_kind, url) => {
+      const result = schema.safeParse({ ...base, [field]: url });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toHaveLength(1);
+      expect(result.error?.issues[0]).toMatchObject({
+        path: [field],
+        code: 'invalid_format',
+        message: 'Invalid URL'
+      });
+    });
+
+    it('keeps null and omitted values optional', () => {
+      expect(schema.safeParse({ ...base, [field]: null }).success).toBe(true);
+      const withoutField: Record<string, unknown> = { ...base };
+      delete withoutField[field];
+      expect(schema.safeParse(withoutField).success).toBe(true);
+    });
+
+    it('keeps the length limit for an otherwise valid https URL', () => {
+      const prefix = 'https://example.com/';
+      const url = (length: number) => prefix + 'a'.repeat(length - prefix.length);
+
+      expect(schema.safeParse({ ...base, [field]: url(textLimits.url) }).success).toBe(true);
+      expect(schema.safeParse({ ...base, [field]: url(textLimits.url + 1) }).success).toBe(false);
+    });
+  });
+});
+
 describe('existing client payloads', () => {
   it('accepts the current admin product payload', () => {
     expect(productBodySchema.parse(adminProduct)).toMatchObject({ name: adminProduct.name });
@@ -222,5 +286,19 @@ describe('oversized input over HTTP', () => {
     const response = await request(appFor(productBodySchema)).post('/products').send(adminProduct);
 
     expect(response.status).toBe(201);
+  });
+
+  it('rejects a javascript: evidence URL with the standard validation response', async () => {
+    const response = await request(appFor(halalCertificationBodySchema))
+      .post('/products')
+      .send({ ...halalCertification, evidenceUrl: 'javascript:alert(document.cookie)' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: {
+        message: 'Validation failed',
+        details: { formErrors: [], fieldErrors: { evidenceUrl: ['Invalid URL'] } }
+      }
+    });
   });
 });
